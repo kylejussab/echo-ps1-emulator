@@ -1,0 +1,20 @@
+# CMake and Build Folders
+build/
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
+
+# Compiled Object files and Libraries
+*.o
+*.obj
+*.dylib
+*.a
+
+# Executables
+*.out
+*.app
+x1fc
+
+# macOS specific
+.DS_Store
