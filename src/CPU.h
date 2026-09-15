@@ -20,7 +20,18 @@ private:
     uint32_t pendingLoadRegister = 0;
     uint32_t pendingLoadValue = 0;
 
+    uint32_t hi = 0;
+    uint32_t lo = 0;
+
+    bool isCacheIsolated() const;
+
+    int32_t signExtend16(uint32_t value) const {
+        return static_cast<int32_t>(static_cast<int16_t>(value));
+    }
+
     void execute(uint32_t instruction);
+    void triggerException(uint32_t cause);    // Exception Engine
+
     void setRegister(uint32_t index, uint32_t value);
     uint32_t getRegister(uint32_t index) const;
 };
