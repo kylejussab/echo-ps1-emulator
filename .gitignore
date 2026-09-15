@@ -16,5 +16,11 @@ cmake_install.cmake
 *.app
 x1fc
 
+# PS1 Binaries
+*.BIN
+
+# VS Code settings
+.vscode
+
 # macOS specific
 .DS_Store

@@ -8,7 +8,9 @@ list(APPEND CMAKE_PREFIX_PATH "/opt/homebrew" "/usr/local")
 
 find_package(SDL2 REQUIRED)
 
-add_executable(x1fc src/main.cpp)
+add_executable(x1fc src/main.cpp 
+    src/bus.cpp
+    src/CPU.cpp)
 
 target_link_libraries(x1fc PRIVATE SDL2::SDL2)
 
