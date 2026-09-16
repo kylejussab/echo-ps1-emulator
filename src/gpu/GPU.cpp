@@ -9,7 +9,6 @@ uint32_t GPU::readGP0() {
         return 0x00000000;
     }
 
-    // readPixel automatically handles coordinate wrapping and bounds
     uint16_t firstPixel = vram.readPixel(readTransferXCursor, readTransferYCursor);
     readTransferXCursor++;
     if (readTransferXCursor >= readTransferX + readTransferWidth) {
@@ -26,7 +25,7 @@ uint32_t GPU::readGP0() {
 
     vramReadWordsRemaining--;
     if (vramReadWordsRemaining <= 0) {
-        gpuStatusRegister &= ~(1 << 27); // Transfer complete
+        gpuStatusRegister &= ~(1 << 27);
     }
 
     return static_cast<uint32_t>(firstPixel) | (static_cast<uint32_t>(secondPixel) << 16);
@@ -50,57 +49,135 @@ uint32_t GPU::readGP1() {
 
 
 void GPU::writeGP0(uint32_t value) {
-    // If we are in the middle of a multi-word transfer, route this word to whichever command currently owns the transfer.
     if (wordsRemaining > 0 || parametersRemaining > 0) {
-        uint8_t commandType = currentCommand >> 24;
-
-        if ((commandType & 0xE0) == 0x60) {
-			handleRectangleWord(value);
-			return;
-		}
-
-        if ((commandType & 0xF0) == 0x30) {
-			handleGouraudPolygonWord(value);
-			return;
-		}
-
-        if ((commandType & 0xF4) == 0x24) {
-			handleTexturedPolygonWord(value);
-			return;
-		}
-
-        switch (commandType) {
-            case 0x02: {
-                handleFillRectangleWord(value);
-                break;
-            }
-            case 0x20: case 0x21: case 0x22: case 0x23: // Monotone Triangles
-            case 0x28: case 0x29: case 0x2A: case 0x2B: {
-                handleMonotoneQuadWord(value);
-                break;
-            }
-            case 0xA0: {
-                handleCopyCPUToVRAMWord(value);
-                break;
-            }
-            case 0xC0: {
-                handleCopyVRAMToCPUParameters(value);
-                break;
-            }
-            default: {
-                cout << "Unhandled multi-word GPU command: 0x" << hex << static_cast<int>(commandType) << endl;
-                cout << "Parameters Remaining: " << dec << parametersRemaining << ", Words Remaining: " << wordsRemaining << endl;
-                exit(1);
-            }       
-        }
+        continuePendingCommand(value);
         return;
     }
 
-    // Otherwise, this word is a new command header.
+    beginNewCommand(value);
+}
+
+
+void GPU::writeGP1(uint32_t value) {
+    uint8_t commandType = value >> 24;
+
+    switch (commandType) {
+        case 0x00: { // Reset GPU
+            vram.setDisplayArea(0, 0);
+            wordsRemaining = 0;
+            parametersRemaining = 0;
+            gpuStatusRegister = Hardware::GPU_DEFAULT_STATUS;
+            break;
+        }
+        case 0x01: { // Reset Command Buffer
+            wordsRemaining = 0;
+            parametersRemaining = 0;
+            break;
+        }
+        case 0x02: { // Acknowledge Interrupt
+            gpuStatusRegister &= ~(1 << 24);
+            break;
+        }
+        case 0x03: break; // Display Enable
+        case 0x04: { // DMA Direction
+            DMADirection = value & 0x3;
+            gpuStatusRegister &= ~(0x3 << 29);
+            gpuStatusRegister |= (static_cast<uint32_t>(DMADirection) << 29);
+            updateDMARequestBit();
+            break;
+        }
+        case 0x05: { // Start of Display Area
+            uint16_t x = value & 0x3FF;
+            uint16_t y = (value >> 10) & 0x1FF;
+            vram.setDisplayArea(x, y);
+            break;
+        }
+        case 0x06: break;
+        case 0x07: break;
+        case 0x08: { // Display Mode
+            uint32_t displayBits = value & 0x3F;
+            gpuStatusRegister &= ~(0x3F << 17); 
+            gpuStatusRegister |= (displayBits << 17);
+
+            bool is480Lines = (value >> 2) & 0x1;
+            uint16_t height = is480Lines ? 480 : 240;
+            uint16_t width = 320;
+
+            bool horizontalResolutionOverride = (value >> 6) & 0x01;
+            if (horizontalResolutionOverride) {
+                width = 368;
+            } 
+            else {
+                switch (value & 0x03) {
+                    case 0: width = 256; break;
+                    case 1: width = 320; break;
+                    case 2: width = 512; break;
+                    case 3: width = 640; break;
+                }
+            }
+            vram.setDisplayDimensions(width, height);
+            break;
+        }
+        default: {
+            cout << "Warning: Unimplemented GP1 command header: 0x" << hex << static_cast<int>(commandType) << dec << endl;
+            break;
+        }
+    }
+}
+
+
+void GPU::continuePendingCommand(uint32_t value) {
+    uint8_t commandType = currentCommand >> 24;
+
+    if ((commandType & 0xE0) == 0x60) { // Rectangles (0x60-0x7F): textured/semi-transparent/raw-texture/size-mode
+        handleRectangleWord(value);
+        return;
+    }
+
+    if ((commandType & 0xF0) == 0x30) { // Gouraud-shaded triangles/quads (0x30-0x3F): same story — textured, semi-transparent, raw-texture, and quad-vs-triangle
+        handleGouraudPolygonWord(value);
+        return;
+    }
+
+    if ((commandType & 0xF4) == 0x24) { // Textured, flat-shaded triangles/quads (0x24-0x27 and 0x2C-0x2F)
+        handleTexturedPolygonWord(value);
+        return;
+    }
+
+    switch (commandType) {
+        case 0x02: { // Fill Rectangle in VRAM
+            handleFillRectangleWord(value);
+            break;
+        }
+        case 0x20: case 0x21: case 0x22: case 0x23: { // Monotone Triangle
+            // Nothing in here yet
+        }
+        case 0x28: case 0x29: case 0x2A: case 0x2B: { // Monotone Quad
+            handleMonotoneQuadWord(value);
+            break;
+        }
+        case 0xA0: { // Copy CPU to VRAM
+            handleCopyCPUToVRAMWord(value);
+            break;
+        }
+        case 0xC0: { // Copy VRAM to CPU
+            handleCopyVRAMToCPUParameters(value);
+            break;
+        }
+        default: {
+            cout << "Unhandled multi-word GPU command: 0x" << hex << static_cast<int>(commandType) << endl;
+            cout << "Parameters Remaining: " << dec << parametersRemaining << ", Words Remaining: " << wordsRemaining << endl;
+            exit(1);
+        }
+    }
+}
+
+
+void GPU::beginNewCommand(uint32_t value) {
     currentCommand = value;
     uint8_t commandType = value >> 24;
 
-    if ((commandType & 0xE0) == 0x60) {
+    if ((commandType & 0xE0) == 0x60) { // Rectangles (0x60-0x7F): textured/semi-transparent/raw-texture/size-mode
 		bool textured = (commandType >> 2) & 0x1;
 		uint8_t sizeMode = (commandType >> 3) & 0x3;
 
@@ -109,6 +186,7 @@ void GPU::writeGP0(uint32_t value) {
 		rectangleRawTexture = commandType & 0x1;
 		rectangleSizeMode = sizeMode;
 
+        // Fixed-size rectangles (1x1/8x8/16x16) already know their dimensions from the header alone
 		switch (sizeMode) {
 			case 1: rectangleWidth = 1;  rectangleHeight = 1;  break;
 			case 2: rectangleWidth = 8;  rectangleHeight = 8;  break;
@@ -176,7 +254,7 @@ void GPU::writeGP0(uint32_t value) {
         }
         case 0x20:
         case 0x21:
-        case 0x22:
+        case 0x22: 
         case 0x23: { // Monotone Triangle
             primitiveVertexCount = 3;
             primitiveIsGouraud = false;
@@ -196,7 +274,7 @@ void GPU::writeGP0(uint32_t value) {
             wordsRemaining = 4;
             break;
         }
-        case 0x60: // ... up to 0x7F can be grouped or handled generically
+        case 0x60:
         case 0x68:
         case 0x70:
         case 0x78: { 
@@ -209,7 +287,7 @@ void GPU::writeGP0(uint32_t value) {
             wordsRemaining = 0;
             break;
         }
-        case 0xA0: { // Copy CPU to Video Ram
+        case 0xA0: { // Copy CPU to VRAM
             parametersRemaining = 2;
             wordsRemaining = 0;
             break;
@@ -253,6 +331,7 @@ void GPU::writeGP0(uint32_t value) {
             rasterizer.setDrawingAreaBottomRight(right, bottom);
             parametersRemaining = 0;
             wordsRemaining = 0;
+            break;
 		}
 		case 0xE5: { // Drawing offset
 			int16_t offsetX = value & 0x7FF;
@@ -265,7 +344,7 @@ void GPU::writeGP0(uint32_t value) {
 			wordsRemaining = 0;
 			break;
 		}
-		case 0xE6: { // Mask bit setting — same
+		case 0xE6: { // Mask bit setting, not implemented yet, safe to no-op for now
 			parametersRemaining = 0;
 			wordsRemaining = 0;
 			break;
@@ -276,87 +355,6 @@ void GPU::writeGP0(uint32_t value) {
             break;
         }
     }
-}
-
-
-void GPU::writeGP1(uint32_t value) {
-    uint8_t commandType = value >> 24;
-
-    switch (commandType) {
-        case 0x00: { // Reset GPU
-            vram.setDisplayArea(0, 0);
-            wordsRemaining = 0;
-            parametersRemaining = 0;
-            gpuStatusRegister = Hardware::GPU_DEFAULT_STATUS;
-            break;
-        }
-        case 0x01: { // Reset Command Buffer
-            wordsRemaining = 0;
-            parametersRemaining = 0;
-            break;
-        }
-        case 0x02: { // Acknowledge Interrupt
-            gpuStatusRegister &= ~(1 << 24);
-            break;
-        }
-        case 0x03: break; // Display Enable
-        case 0x04: { // DMA Direction
-            DMADirection = value & 0x3;
-            gpuStatusRegister &= ~(0x3 << 29);
-            gpuStatusRegister |= (static_cast<uint32_t>(DMADirection) << 29);
-            updateDMARequestBit();
-            break;
-        }
-        case 0x05: { // Start of Display Area
-            uint16_t x = value & 0x3FF;
-            uint16_t y = (value >> 10) & 0x1FF;
-            vram.setDisplayArea(x, y);
-            break;
-        }
-        case 0x06: break;
-        case 0x07: break;
-        case 0x08: { // Display Mode
-            uint32_t displayBits = value & 0x3F;
-            gpuStatusRegister &= ~(0x3F << 17); 
-            gpuStatusRegister |= (displayBits << 17);
-
-            bool is480Lines = (value >> 2) & 0x1;
-            uint16_t height = is480Lines ? 480 : 240;
-            uint16_t width = 320;
-
-            bool horizontalResolutionOverride = (value >> 6) & 0x01;
-            if (horizontalResolutionOverride) {
-                width = 368;
-            } else {
-                switch (value & 0x03) {
-                    case 0: width = 256; break;
-                    case 1: width = 320; break;
-                    case 2: width = 512; break;
-                    case 3: width = 640; break;
-                }
-            }
-            vram.setDisplayDimensions(width, height);
-            break;
-        }
-        default:
-            cout << "Warning: Unimplemented GP1 command header: 0x" << hex << static_cast<int>(commandType) << dec << endl;
-            break;
-    }
-}
-
-// Internal Handler Functions
-
-
-void GPU::updateDMARequestBit() {
-    bool bit;
-    switch (DMADirection) {
-        case 0: bit = false; break;
-        case 1: bit = true; break;
-        case 2: bit = (gpuStatusRegister >> 28) & 1; break;
-        case 3: bit = (gpuStatusRegister >> 27) & 1; break;
-        default: bit = false;
-    }
-    gpuStatusRegister = bit ? (gpuStatusRegister | (1 << 25)) : (gpuStatusRegister & ~(1 << 25));
 }
 
 
@@ -383,6 +381,7 @@ void GPU::handleFillRectangleWord(uint32_t value) {
         return;
     }
 }
+
 
 void GPU::handleMonotoneQuadWord(uint32_t value) {
     // We can now safely rely on primitiveVertexCount since the header parser guarantees it is set to 3 or 4
@@ -413,7 +412,6 @@ void GPU::handleMonotoneQuadWord(uint32_t value) {
                                 primitiveColorLookupTableX, primitiveColorLookupTableY);
     }
 }
-
 
 
 void GPU::handleCopyCPUToVRAMWord(uint32_t value) {
@@ -454,7 +452,6 @@ void GPU::handleCopyCPUToVRAMWord(uint32_t value) {
 
     wordsRemaining--;
 }
-
 
 
 void GPU::handleCopyVRAMToCPUParameters(uint32_t value) {
@@ -537,14 +534,14 @@ void GPU::handleTexturedPolygonWord(uint32_t value) {
         primitiveVertices[vertexIndex].color = ((red >> 3) & 0x1F) | (((green >> 3) & 0x1F) << 5) | (((blue >> 3) & 0x1F) << 10);
     } 
     else {
-        // Texture & Info Word
         primitiveVertices[vertexIndex].u = value & 0xFF;
         primitiveVertices[vertexIndex].v = (value >> 8) & 0xFF;
 
         if (vertexIndex == 0) {
             primitiveColorLookupTableX = ((value >> 16) & 0x3F) * 16;
             primitiveColorLookupTableY = (value >> 22) & 0x1FF;
-        } else if (vertexIndex == 1) {
+        } 
+        else if (vertexIndex == 1) {
             // Vertex 1's texture word carries a texpage override that updates the
             // SAME persistent draw-mode state as GP0 0xE1, so it goes straight to
             // the rasterizer immediately rather than waiting for the primitive to finish.
@@ -561,9 +558,7 @@ void GPU::handleTexturedPolygonWord(uint32_t value) {
     wordsRemaining--;
 
     if (wordsRemaining == 0) {
-        rasterizer.drawPolygon(primitiveVertices, primitiveVertexCount,
-                                primitiveIsTextured, primitiveIsSemiTransparent, primitiveIsRawTexture, primitiveIsGouraud,
-                                primitiveColorLookupTableX, primitiveColorLookupTableY);
+        rasterizer.drawPolygon(primitiveVertices, primitiveVertexCount, primitiveIsTextured, primitiveIsSemiTransparent, primitiveIsRawTexture, primitiveIsGouraud, primitiveColorLookupTableX, primitiveColorLookupTableY);
     }
 }
 
@@ -618,9 +613,7 @@ void GPU::handleGouraudPolygonWord(uint32_t value) {
     wordsRemaining--;
 
     if (wordsRemaining == 0) {
-        rasterizer.drawPolygon(primitiveVertices, primitiveVertexCount,
-                                primitiveIsTextured, primitiveIsSemiTransparent, primitiveIsRawTexture, primitiveIsGouraud,
-                                primitiveColorLookupTableX, primitiveColorLookupTableY);
+        rasterizer.drawPolygon(primitiveVertices, primitiveVertexCount, primitiveIsTextured, primitiveIsSemiTransparent, primitiveIsRawTexture, primitiveIsGouraud, primitiveColorLookupTableX, primitiveColorLookupTableY);
     }
 }
 
@@ -631,8 +624,20 @@ void GPU::finishRectangleSetup() {
     uint8_t blue  = (currentCommand >> 16) & 0xFF;
     uint16_t flatColor = ((red >> 3) & 0x1F) | (((green >> 3) & 0x1F) << 5) | (((blue >> 3) & 0x1F) << 10);
 
-    rasterizer.drawRectangle(rectangleX, rectangleY, rectangleWidth, rectangleHeight, flatColor,
-                              rectangleTextured, rectangleRawTexture,
-                              rectangleTextureCoordinateU, rectangleTextureCoordinateV,
-                              rectangleColorLookupTableX, rectangleColorLookupTableY);
+    rasterizer.drawRectangle(rectangleX, rectangleY, rectangleWidth, rectangleHeight, flatColor, rectangleTextured, rectangleRawTexture, rectangleTextureCoordinateU, rectangleTextureCoordinateV, rectangleColorLookupTableX, rectangleColorLookupTableY);
 }
+
+
+void GPU::updateDMARequestBit() {
+    bool bit;
+    switch (DMADirection) {
+        case 0: bit = false; break;
+        case 1: bit = true; break;
+        case 2: bit = (gpuStatusRegister >> 28) & 1; break;
+        case 3: bit = (gpuStatusRegister >> 27) & 1; break;
+        default: bit = false;
+    }
+    gpuStatusRegister = bit ? (gpuStatusRegister | (1 << 25)) : (gpuStatusRegister & ~(1 << 25));
+}
+
+

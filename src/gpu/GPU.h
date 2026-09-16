@@ -12,38 +12,50 @@ class GPU {
 public:
     GPU();
     
+    /// @brief Reads the next data word from the GP0 port.
+	/// @return The next pixel pair from an in-progress VRAM-to-CPU transfer, or 0 if none is pending.
     uint32_t readGP0();
+
+
+    /// @brief Reads the GPU status register via the GP1 port.
+	/// @return The current status register, after side effects (FIFO-ready bits, odd/even frame toggle) needed to satisfy BIOS polling.
     uint32_t readGP1();
+
+
+    /// @brief Writes a command or data word to the GP0 port (drawing commands and VRAM transfers).
+	/// @param value The 32-bit word being written.
     void writeGP0(uint32_t value);
+
+
+    /// @brief Writes a control word to the GP1 port (display control and GPU/command-buffer reset).
+	/// @param value The 32-bit word being written.
     void writeGP1(uint32_t value);
 
-    // Delegated to VRAM member
+
+    /// @brief Gets a direct read-only pointer to the raw VRAM buffer.
+	/// @return Pointer to contiguous 16-bit pixel array (1024x512 elements).
     const uint16_t* getVRAMRawPointer() const { return vram.getRawData(); }
+
+
     uint16_t getDisplayAreaX() const { return vram.getDisplayAreaX(); }
     uint16_t getDisplayAreaY() const { return vram.getDisplayAreaY(); }
     uint16_t getDisplayWidth() const { return vram.getDisplayWidth(); }
     uint16_t getDisplayHeight() const { return vram.getDisplayHeight(); }
 
 private:
-    // =========================================================
-    // CORE HARDWARE STATE
-    // =========================================================
+    // Core Hardware State
     VRAM vram;
     Rasterizer rasterizer;
     uint32_t gpuStatusRegister = Hardware::GPU_DEFAULT_STATUS;
     uint8_t  DMADirection = 0;
 
 
-    // =========================================================
-    // GP0: COMMAND PARSER & FIFO
-    // =========================================================
+    // Command Parser & FIFO
     uint32_t currentCommand = 0;
     int wordsRemaining = 0;
     int parametersRemaining = 0;
 
-    // =========================================================
-    // GP0: PRIMITIVE BUILDER STATE
-    // =========================================================
+
     // CPU to VRAM (0xA0) / VRAM to CPU (0xC0)
     uint16_t transferX = 0, transferY = 0;
     uint16_t transferWidth = 0, transferHeight = 0;
@@ -53,6 +65,7 @@ private:
     uint16_t readTransferWidth = 0, readTransferHeight = 0;
     int readTransferXCursor = 0, readTransferYCursor = 0;
     int vramReadWordsRemaining = 0;
+
 
     // Rectangles (0x60-0x7F)
     bool rectangleTextured = false;
@@ -65,10 +78,12 @@ private:
     uint8_t rectangleTextureCoordinateU = 0, rectangleTextureCoordinateV = 0;
     uint16_t rectangleColorLookupTableX = 0, rectangleColorLookupTableY = 0;
 
-    // --- Unified Polygon State ---
+
+    // Unified Polygon State
     Vertex primitiveVertices[4];
     int primitiveVertexCount = 0;
     int primitiveCurrentVertexIndex = 0;
+
 
     // Shared Primitive Attributes
     bool primitiveIsTextured = false;
@@ -76,9 +91,11 @@ private:
     bool primitiveIsRawTexture = false;
     bool primitiveIsGouraud = false;
 
+
     // Shared Color Lookup Table (CLUT) 
     uint16_t primitiveColorLookupTableX = 0;
     uint16_t primitiveColorLookupTableY = 0;
+
 
     // Specifically for Gouraud parsing order
     enum class GouraudPolygonWordRole { Color, Position, Texture };
@@ -86,10 +103,12 @@ private:
     int gouraudPolygonWordCursor = 0;
 
 
-    // =========================================================
-    // INTERNAL HANDLERS & DISPATCHERS
-    // =========================================================
-    void updateDMARequestBit();
+    // GP0 Entry Points
+    void continuePendingCommand(uint32_t value);
+    void beginNewCommand(uint32_t value);
+
+    
+    // GP0 Word Handlers
     void handleFillRectangleWord(uint32_t value);
     void handleMonotoneQuadWord(uint32_t value);
     void handleCopyCPUToVRAMWord(uint32_t value);
@@ -98,4 +117,8 @@ private:
     void handleTexturedPolygonWord(uint32_t value);
     void handleGouraudPolygonWord(uint32_t value);
     void finishRectangleSetup();
+
+
+    // Misc
+    void updateDMARequestBit();
 };
