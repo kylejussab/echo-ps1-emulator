@@ -10,8 +10,12 @@ find_package(SDL2 REQUIRED)
 
 add_executable(x1fc src/main.cpp 
     src/bus.cpp
-    src/CPU.cpp)
+    src/CPU.cpp
+    src/gpu/GPU.cpp
+    src/gpu/Rasterizer.cpp
+    src/PlayStation.cpp)
 
+target_include_directories(x1fc PRIVATE src)
 target_link_libraries(x1fc PRIVATE SDL2::SDL2)
 
 set_target_properties(x1fc PROPERTIES 

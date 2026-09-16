@@ -13,6 +13,13 @@ CPU::CPU(Bus* bus) : bus(bus) {
         registers[i] = 0;
     }
 
+    // Explicitly zero-out the instruction cache to prevent garbage execution
+    for (int i = 0; i < 1024; i++) {
+        iCache[i].tag = 0;
+        iCache[i].data = 0;
+        iCache[i].valid = false;
+    }
+
     // Initialize COP0 Processor ID (PRid) to Sony's silicon version
     coprocessor0Registers[15] = 0x00000002;
 
@@ -22,36 +29,87 @@ CPU::CPU(Bus* bus) : bus(bus) {
 
 // Fetch the 32-bit word, advance the clocks, and execute
 void CPU::step() {
+    bool interruptsCurrentlyEnabled = (coprocessor0Registers[12] & 0x1) != 0;
+
+    isDelaySlot = nextIsDelaySlot;
+    nextIsDelaySlot = false;
+
+    if (bus->hasPendingInterrupts() && interruptsCurrentlyEnabled) {
+        if (!isDelaySlot) {
+            // Flush any pending load from the previous instruction before jumping
+            if (pendingLoadRegister != 0) {
+                setRegister(pendingLoadRegister, pendingLoadValue);
+                pendingLoadRegister = 0;
+                pendingLoadValue = 0;
+            }
+
+            triggerHardwareInterrupt();
+            return; 
+        }
+    }
+
     uint32_t registerToUpdate = pendingLoadRegister;
     uint32_t valueToUpdate = pendingLoadValue;
 
     pendingLoadRegister = 0;
     pendingLoadValue = 0;
 
+    currentProgramCounter = programCounter;
+
+    uint32_t physicalProgramCounter = programCounter & 0x1FFFFFFF;
+    uint32_t cacheIndex = (physicalProgramCounter >> 2) & 0x3FF; 
+    uint32_t cacheTag = physicalProgramCounter & ~0xFFF;         
+    
+    // KSEG1 (0xA0000000 to 0xBFFFFFFF) bypasses the cache
+    bool isUncachedRegion = (programCounter & 0xE0000000) == 0xA0000000;
+    
     uint32_t instruction = bus->read32(programCounter);
 
     programCounter = nextProgramCounter;
     nextProgramCounter += 4;
-    
+
+    lastWrittenRegister = 0xFFFFFFFF;
+
     execute(instruction);
 
-    if (registerToUpdate != 0) { 
+    if (registerToUpdate != 0 && registerToUpdate != lastWrittenRegister) { 
         setRegister(registerToUpdate, valueToUpdate);
     }
 
-    instructionCount++; // Temporary tracker
-
-    // static uint64_t totalCount = 0;
-    // totalCount++;
-    // if (totalCount % 5000000 == 0) { // Print only every 5 MILLION instructions
-    //     cout << "Crossed " << dec << (totalCount / 1000000) << " million instructions!" << endl;
-    // }
-
+    bus->tickTimers(1);
+    instructionCount++; 
 }
 
-bool CPU::isCacheIsolated() const {
-    return (coprocessor0Registers[12] & (1 << 16)) != 0;
+bool CPU::isInstructionCacheIsolated() const {
+    uint32_t statusRegister = coprocessor0Registers[12];
+    // Sony's custom CPU isolates the I-Cache using ONLY Bit 16
+    return (statusRegister & (1 << 16)) != 0;
 }
+
+void CPU::requestInterrupt() {
+    interruptPending = true;
+}
+
+void CPU::triggerHardwareInterrupt() {
+    // Normal execution: Save the current instruction's address
+    coprocessor0Registers[14] = programCounter; 
+    
+    // Cause code 0x00, and leave BD bit as 0
+    coprocessor0Registers[13] = (0x00 << 2); 
+
+    // Shift the Status Register (COP0 Reg 12)
+    uint32_t status = coprocessor0Registers[12];
+    coprocessor0Registers[12] = (status & ~0x3F) | ((status << 2) & 0x3F);
+
+    if (status & (1 << 22)) {
+        programCounter = 0x1FC00180;
+    } else {
+        programCounter = 0x80000080;
+    }
+
+    nextProgramCounter = programCounter + 4;
+}
+
 
 void CPU::execute(uint32_t instruction) {
     // Isolate the 6-bit opcode
@@ -104,13 +162,17 @@ void CPU::execute(uint32_t instruction) {
                     break;
                 }
                 case 0x08: { // JR (Jump to Address in Register)
+                    nextIsDelaySlot = true;
                     nextProgramCounter = getRegister(registerFirstSource);
+
                     break;
                 }
                 case 0x09: { // JALR (Jump and Link Register)
+                    nextIsDelaySlot = true;
                     uint32_t target = getRegister(registerFirstSource);
-    
-                    setRegister(registerTarget, nextProgramCounter);
+                    
+                    // Fix: Save PC + 8 (instruction after the delay slot)
+                    setRegister(registerTarget, programCounter + 4);
                     
                     nextProgramCounter = target;
                     break;
@@ -208,6 +270,7 @@ void CPU::execute(uint32_t instruction) {
                 }
                 case 0x27: { // NOR (Bitwise NOR)
                     setRegister(registerTarget, ~(getRegister(registerFirstSource) | getRegister(registerSecondSource)));
+                    break;
                 }
                 case 0x2A: { // SLT (Set to 1 if Less Than Signed)
                     int32_t signedFirstSource = static_cast<int32_t>(getRegister(registerFirstSource));
@@ -224,11 +287,11 @@ void CPU::execute(uint32_t instruction) {
                     setRegister(registerTarget, getRegister(registerFirstSource) < getRegister(registerSecondSource));
                     break;
                 }
-                default:
-                    cout << "Unimplemented R-Type function: 0x" << hex << function 
-                      << " at PC: 0x" << (programCounter - 4) << endl;
+                default: {
+                    cout << "Unimplemented R-Type function: 0x" << hex << function << " at PC: 0x" << (programCounter - 4) << endl;
                     cout << "\nTotal Instructions Executed: " << dec << instructionCount << endl; // Temporary tracking
                     exit(1);
+                }
             }
             break;
         }
@@ -244,26 +307,29 @@ void CPU::execute(uint32_t instruction) {
 
             switch (subOpcode) {
                 case 0x00: { // BLTZ (Branch if Less Than Zero)
-                    // Cast to signed integer for proper negative comparison
+                    nextIsDelaySlot = true;
                     if (static_cast<int32_t>(getRegister(registerSource)) < 0) {
                         nextProgramCounter = programCounter + offset;
                     }
                     break;
                 }
                 case 0x01: { // BGEZ (Branch if Greater Than or Equal to Zero)
+                    nextIsDelaySlot = true;
                     if (static_cast<int32_t>(getRegister(registerSource)) >= 0) {
                         nextProgramCounter = programCounter + offset;
                     }
                     break;
                 }
-                default:
-                    cout << "Unimplemented REGIMM sub-opcode: 0x" << hex << subOpcode 
-                        << " at PC: 0x" << (programCounter - 4) << endl;
+                default: {
+                    cout << "Unimplemented REGIMM sub-opcode: 0x" << hex << subOpcode << " at PC: 0x" << (programCounter - 4) << endl;
                     exit(1);
+                }
+                    
             }
             break;
         }
         case 0x02: { // J (Jump to Address)
+            nextIsDelaySlot = true;
             uint32_t target = (instruction & 0x3FFFFFF) << 2;
 
             uint32_t programCounterRegion = programCounter & 0xF0000000;
@@ -272,17 +338,18 @@ void CPU::execute(uint32_t instruction) {
             break;
         }
         case 0x03: { // JAL (Jump and Link)
+            nextIsDelaySlot = true;
             uint32_t target = (instruction & 0x3FFFFFF) << 2;
-    
-            // Save the return address into Register 31
-            setRegister(31, nextProgramCounter);
+
+            // Fix: Save PC + 8 (instruction after the delay slot)
+            setRegister(31, programCounter + 4); 
 
             uint32_t programCounterRegion = programCounter & 0xF0000000;
             nextProgramCounter = programCounterRegion | target;
-            
             break;
         }
         case 0x04: { // BEQ (Branch if Equal)
+            nextIsDelaySlot = true;
             uint32_t registerSource = (instruction >> 21) & 0x1F;
             uint32_t registerTarget = (instruction >> 16) & 0x1F;
             int32_t immediate = signExtend16(instruction & 0xFFFF);
@@ -294,6 +361,7 @@ void CPU::execute(uint32_t instruction) {
             break;
         }
         case 0x05: { // BNE (Branch if Not Equal)
+            nextIsDelaySlot = true;
             uint32_t registerSource = (instruction >> 21) & 0x1F;
             uint32_t registerTarget = (instruction >> 16) & 0x1F;
             int32_t immediate = signExtend16(instruction & 0xFFFF);
@@ -305,6 +373,7 @@ void CPU::execute(uint32_t instruction) {
             break;
         }
         case 0x06: { // BLEZ (Branch if Less Than or Equal to Zero)
+            nextIsDelaySlot = true;
             uint32_t registerSource = (instruction >> 21) & 0x1F;
             uint32_t registerTarget = (instruction >> 16) & 0x1F;
             int32_t immediate = signExtend16(instruction & 0xFFFF);
@@ -317,6 +386,7 @@ void CPU::execute(uint32_t instruction) {
 
         }
         case 0x07: { // BGTZ (Branch on Greater Than Zero)
+            nextIsDelaySlot = true;
             uint32_t registerSource = (instruction >> 21) & 0x1F;
             uint32_t registerTarget = (instruction >> 16) & 0x1F;
             int32_t immediate = signExtend16(instruction & 0xFFFF);
@@ -443,7 +513,6 @@ void CPU::execute(uint32_t instruction) {
 
             uint8_t byte = bus->read8(getRegister(registerSource) + immediate);
 
-            // Sign-extend and queue the load
             pendingLoadRegister = registerTarget;
             pendingLoadValue = static_cast<uint32_t>(static_cast<int8_t>(byte));
             break;
@@ -451,57 +520,45 @@ void CPU::execute(uint32_t instruction) {
         case 0x21: { // LH (Load Halfword Signed)
             uint32_t registerSource = (instruction >> 21) & 0x1F;
             uint32_t registerTarget = (instruction >> 16) & 0x1F;
-            
             int32_t immediate = signExtend16(instruction & 0xFFFF);
 
             uint16_t halfword = bus->read16(getRegister(registerSource) + immediate);
-
-            // Sign-extend the fetched halfword to 32 bits
             int32_t signExtendedHalfword = static_cast<int32_t>(static_cast<int16_t>(halfword));
 
             pendingLoadRegister = registerTarget;
             pendingLoadValue = static_cast<uint32_t>(signExtendedHalfword);
-            
             break;
         }
         case 0x22: { // LWL (Load Word Left)
             uint32_t registerSource = (instruction >> 21) & 0x1F;
             uint32_t registerTarget = (instruction >> 16) & 0x1F;
             int32_t immediate = signExtend16(instruction & 0xFFFF);
-            
-            // The exact memory address requested (might not be a multiple of 4)
             uint32_t address = getRegister(registerSource) + immediate;
 
-            // Force the address to be aligned to fetch the full 32-bit word from the Bus
             uint32_t alignedAddress = address & ~3;
             uint32_t alignedWord = bus->read32(alignedAddress);
-
-            // Calculate how many bits to shift based on the alignment offset (0, 1, 2, or 3)
             uint32_t shift = (address & 3) * 8; 
 
-            // Fetch the register's current value (or pending value if it's in the delay slot)
             uint32_t currentRegValue = getRegister(registerTarget);
             if (pendingLoadRegister == registerTarget) {
                 currentRegValue = pendingLoadValue;
             }
 
-            // Stitch the bytes together (Little-Endian logic)
             uint32_t mask = 0x00FFFFFF >> shift;
             uint32_t newValue = (currentRegValue & mask) | (alignedWord << (24 - shift));
             
             pendingLoadRegister = registerTarget;
             pendingLoadValue = newValue;
-            
             break;
         }
         case 0x23: { // LW (Load Word)
-            // Critical: It is important that after every LW is a NOP (0x00)
             uint32_t registerSource = (instruction >> 21) & 0x1F;
             uint32_t registerTarget = (instruction >> 16) & 0x1F;
             int32_t immediate = signExtend16(instruction & 0xFFFF);
 
             pendingLoadRegister = registerTarget;
             pendingLoadValue = bus->read32(getRegister(registerSource) + immediate);
+
             break;
         }
         case 0x24: { // LBU (Load Byte Unsigned)
@@ -518,45 +575,34 @@ void CPU::execute(uint32_t instruction) {
         case 0x25: { // LHU (Load Halfword Unsigned)
             uint32_t registerSource = (instruction >> 21) & 0x1F;
             uint32_t registerTarget = (instruction >> 16) & 0x1F;
-            
-            // The memory offset is always sign-extended
             int32_t immediate = signExtend16(instruction & 0xFFFF);
 
             uint16_t halfword = bus->read16(getRegister(registerSource) + immediate);
 
-            // Zero-extended
             pendingLoadRegister = registerTarget;
             pendingLoadValue = halfword;
-            
             break;
         }
         case 0x26: { // LWR (Load Word Right)
             uint32_t registerSource = (instruction >> 21) & 0x1F;
             uint32_t registerTarget = (instruction >> 16) & 0x1F;
             int32_t immediate = signExtend16(instruction & 0xFFFF);
-            
             uint32_t address = getRegister(registerSource) + immediate;
 
-            // Force alignment to fetch the full 32-bit word
             uint32_t alignedAddress = address & ~3;
             uint32_t alignedWord = bus->read32(alignedAddress);
-
-            // Calculate shift based on alignment offset
             uint32_t shift = (address & 3) * 8; 
 
-            // Fetch the register's current (or pending) value
             uint32_t currentRegValue = getRegister(registerTarget);
             if (pendingLoadRegister == registerTarget) {
                 currentRegValue = pendingLoadValue;
             }
 
-            // Stitch the bytes together (Little-Endian logic)
             uint32_t mask = 0xFFFFFF00 << (24 - shift);
             uint32_t newValue = (currentRegValue & mask) | (alignedWord >> shift);
             
             pendingLoadRegister = registerTarget;
             pendingLoadValue = newValue;
-            
             break;
         }
         case 0x28: { // SB (Store Byte)
@@ -564,14 +610,9 @@ void CPU::execute(uint32_t instruction) {
             uint32_t registerTarget = (instruction >> 16) & 0x1F;
             int32_t immediate = signExtend16(instruction & 0xFFFF);
 
-            // Mask to ensure we only send the bottom 16 bits
             uint8_t byte = getRegister(registerTarget) & 0xFF;
-        
-            // TODO: Cache implementation
-            if (isCacheIsolated()) {
-                // Real hardware would write into the cache here.
-                break;
-            }
+
+            if (isInstructionCacheIsolated()) break;
 
             bus->write8(getRegister(registerSource) + immediate, byte);
             break;
@@ -581,15 +622,10 @@ void CPU::execute(uint32_t instruction) {
             uint32_t registerTarget = (instruction >> 16) & 0x1F;
             int32_t immediate = signExtend16(instruction & 0xFFFF);
 
-            // Mask to ensure we only send the bottom 16 bits
             uint16_t halfword = getRegister(registerTarget) & 0xFFFF;
-            
-            // TODO: Cache implementation
-            if (isCacheIsolated()) {
-                // Real hardware would write into the cache here.
-                break;
-            }
-            
+
+            if (isInstructionCacheIsolated()) break;
+
             bus->write16(getRegister(registerSource) + immediate, halfword);
             break;
         }
@@ -597,82 +633,127 @@ void CPU::execute(uint32_t instruction) {
             uint32_t registerSource = (instruction >> 21) & 0x1F;
             uint32_t registerTarget = (instruction >> 16) & 0x1F;
             int32_t immediate = signExtend16(instruction & 0xFFFF);
-            
             uint32_t address = getRegister(registerSource) + immediate;
 
-            // Force alignment to read the existing 32-bit word from memory
             uint32_t alignedAddress = address & ~3;
             uint32_t alignedWord = bus->read32(alignedAddress);
-
-            // Calculate shift based on alignment offset (Little-Endian)
             uint32_t shift = (address & 3) * 8; 
 
             uint32_t mask = 0xFFFFFF00 << shift;
             uint32_t newValue = (alignedWord & mask) | (getRegister(registerTarget) >> (24 - shift));
             
+            if (isInstructionCacheIsolated()) break;
+
             bus->write32(alignedAddress, newValue);
-            
             break;
         }
         case 0x2B: { // SW (Store Word)
             uint32_t registerSource = (instruction >> 21) & 0x1F;
             uint32_t registerTarget = (instruction >> 16) & 0x1F;
             int32_t immediate = signExtend16(instruction & 0xFFFF);
+            uint32_t address = getRegister(registerSource) + immediate;
 
-            // TODO: Cache implementation
-            if (isCacheIsolated()) {
-                // Real hardware would write into the cache here.
+            // Only hijack the write if the BIOS specifically targets the I-Cache
+            if (isInstructionCacheIsolated()) {
+                uint32_t physicalAddress = address & 0x1FFFFFFF;
+                uint32_t cacheIndex = (physicalAddress >> 2) & 0x3FF;
+                uint32_t cacheTag = physicalAddress & ~0xFFF;
+
+                iCache[cacheIndex].data = getRegister(registerTarget);
+                iCache[cacheIndex].tag = cacheTag;
+                iCache[cacheIndex].valid = true;
                 break;
             }
 
-            bus->write32(getRegister(registerSource) + immediate, getRegister(registerTarget));
+            if (isInstructionCacheIsolated()) break;
+
+            bus->write32(address, getRegister(registerTarget));
             break;
         }
         case 0x2E: { // SWR (Store Word Right)
             uint32_t registerSource = (instruction >> 21) & 0x1F;
             uint32_t registerTarget = (instruction >> 16) & 0x1F;
             int32_t immediate = signExtend16(instruction & 0xFFFF);
-            
             uint32_t address = getRegister(registerSource) + immediate;
+            
             uint32_t alignedAddress = address & ~3;
             uint32_t alignedWord = bus->read32(alignedAddress);
-
             uint32_t shift = (address & 3) * 8; 
 
-            // Splice the bytes together in the opposite direction
             uint32_t mask = 0x00FFFFFF >> (24 - shift);
             uint32_t newValue = (alignedWord & mask) | (getRegister(registerTarget) << shift);
             
+            if (isInstructionCacheIsolated()) break;
+
             bus->write32(alignedAddress, newValue);
-            
             break;
         }
-        default: // The Safety Net Crash
-            cout << "Unimplemented instruction: 0x" << hex << instruction << " at PC: 0x" << (programCounter - 4) << endl;
+        default: {  // The Safety Net Crash
+            uint32_t opcode = instruction >> 26;
+            bool isGarbage = true;
 
-            cout << "\nTotal Instructions Executed: " << dec << instructionCount << endl; // Temporary tracking
+            // WHITELIST: These are the only valid primary opcodes on the PS1
+            if (opcode <= 0x13) {
+                isGarbage = false; // 0x00-0x13: ALU, Branches, Jumps, and Coprocessor operations
+            } 
+            else if (opcode >= 0x20 && opcode <= 0x26) {
+                isGarbage = false; // 0x20-0x26: Memory Loads (LB, LH, LW, etc.)
+            } 
+            else if (opcode >= 0x28 && opcode <= 0x2E) {
+                isGarbage = false; // 0x28-0x2E: Memory Stores (SB, SH, SW, etc.)
+            }
+            else if (opcode >= 0x30 && opcode <= 0x33) {
+                isGarbage = false; // 0x30-0x33: Coprocessor Loads
+            }
+            else if (opcode >= 0x38 && opcode <= 0x3B) {
+                isGarbage = false; // 0x38-0x3B: Coprocessor Stores
+            }
+
+            if (isGarbage) {
+                cout << "\n---------------------------------------ERROR!---------------------------------------" << endl;
+                cout << "CPU: Executed garbage memory!" << endl;
+                cout << "Unknown hardware Opcode (0x" << hex << opcode << ") found in instruction 0x" << instruction << " at PC: 0x" << (programCounter - 4) << endl;
+                cout << "------------------------------------------------------------------------------------" << endl;
+            } 
+            else {
+                cout << "Unimplemented valid instruction: 0x" << hex << instruction << " (Opcode 0x" << opcode << ") at PC: 0x" << (programCounter - 4) << endl;
+            }
+
+            cout << "\nTotal Instructions Executed: " << dec << instructionCount << endl;
             exit(1); 
+        }
     }
 }
 
-// 101010 11
 
 void CPU::triggerException(uint32_t cause) {
-    // 1. Save the current instruction's address into COP0 Register 14 (EPC)
-    coprocessor0Registers[14] = programCounter - 4;
+    if (isDelaySlot) {
+        // The exception happened in a delay slot. Save the branch's address.
+        coprocessor0Registers[14] = currentProgramCounter - 4; 
+        
+        // Set the Cause code and flag the BD (Branch Delay) bit (Bit 31)
+        coprocessor0Registers[13] = (cause << 2) | (1 << 31); 
+    } else {
+        // Normal execution. Save the current instruction's address.
+        coprocessor0Registers[14] = currentProgramCounter; 
+        
+        // Set the Cause code, leave BD bit as 0
+        coprocessor0Registers[13] = (cause << 2); 
+    }
 
-    // 2. Shift the Status Register (COP0 Reg 12) to temporarily disable interrupts
+    // Clear pipeline state so the exception handler boots cleanly
+    isDelaySlot = false;
+    nextIsDelaySlot = false;
+
+    // Shift the Status Register (COP0 Reg 12)
     uint32_t status = coprocessor0Registers[12];
     coprocessor0Registers[12] = (status & ~0x3F) | ((status << 2) & 0x3F);
 
-    // 3. Set the Cause Register (COP0 Reg 13)
-    coprocessor0Registers[13] = (cause << 2);
-
-    // 4. Hijack the Program Counter based on the BEV bit (Bit 22)
+    // Hijack the Program Counter based on the BEV bit (Bit 22)
     if (status & (1 << 22)) {
-        programCounter = 0x1FC00180; // Boot/ROM handler
+        programCounter = 0x1FC00180;
     } else {
-        programCounter = 0x80000080; // RAM handler
+        programCounter = 0x80000080;
     }
     
     nextProgramCounter = programCounter + 4;
@@ -681,11 +762,15 @@ void CPU::triggerException(uint32_t cause) {
 
 // Register 0 is hardwired to 0 in physical silicon
 void CPU::setRegister(uint32_t index, uint32_t value) {
-    if (index == 0) return; 
+    if (index == 0) return;
+
     registers[index] = value;
+    lastWrittenRegister = index;
 }
 
 uint32_t CPU::getRegister(uint32_t index) const {
     if (index == 0) return 0;
     return registers[index];
 }
+
+
