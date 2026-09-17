@@ -34,6 +34,23 @@ namespace Hardware {
     constexpr uint16_t GPU_DEFAULT_DISPLAY_WIDTH = 320;
     constexpr uint16_t GPU_DEFAULT_DISPLAY_HEIGHT = 240;
 
+    // Hardware Interrupts (IRQ) ---
+    constexpr uint16_t IRQ_VBLANK = 0x0001; // Bit 0: Vertical Blank (TV Refresh)
+    constexpr uint16_t IRQ_GPU    = 0x0002; // Bit 1: GPU Interrupt
+    constexpr uint16_t IRQ_CDROM  = 0x0004; // Bit 2: CD-ROM Interrupt
+    constexpr uint16_t IRQ_DMA    = 0x0008; // Bit 3: DMA Interrupt
+    constexpr uint16_t IRQ_TIMER0 = 0x0010; // Bit 4: Timer 0
+    constexpr uint16_t IRQ_TIMER1 = 0x0020; // Bit 5: Timer 1
+    constexpr uint16_t IRQ_TIMER2 = 0x0040; // Bit 6: Timer 2
+    constexpr uint16_t IRQ_PAD_MEM= 0x0080; // Bit 7: Controller & Memory Card
+
     // Display Timing
     constexpr double TARGET_FRAMES_PER_SECOND = 60.0; // NTSC refresh rate
+
+    // Pre-calculated metrics and overscan
+    constexpr int CYCLES_PER_FRAME = static_cast<int>(CPU_CLOCK_SPEED_HERTZ / TARGET_FRAMES_PER_SECOND);
+    constexpr uint32_t MILLISECONDS_PER_FRAME = static_cast<uint32_t>(1000.0 / TARGET_FRAMES_PER_SECOND);
+    
+    constexpr int OVERSCAN_CROP_TOP = 0;
+    constexpr int OVERSCAN_CROP_BOTTOM = 5;
 }

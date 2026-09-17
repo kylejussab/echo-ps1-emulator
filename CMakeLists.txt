@@ -13,7 +13,10 @@ add_executable(x1fc src/main.cpp
     src/CPU.cpp
     src/gpu/GPU.cpp
     src/gpu/Rasterizer.cpp
-    src/PlayStation.cpp)
+    src/PlayStation.cpp
+    src/CDROM.cpp
+    src/DualShock.cpp
+    src/SIO.cpp)
 
 target_include_directories(x1fc PRIVATE src)
 target_link_libraries(x1fc PRIVATE SDL2::SDL2)

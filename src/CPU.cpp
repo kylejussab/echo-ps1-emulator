@@ -2,24 +2,10 @@
 #include "Constants.h"
 #include <iostream>
 
-using namespace std;
-
-// Initialize the CPU with the Bus and set the starting Program Counter to the BIOS
 CPU::CPU(Bus* bus) : bus(bus) {
     programCounter = Hardware::BIOS_STARTING_ADDRESS;
     nextProgramCounter = programCounter + Hardware::INSTRUCTION_SIZE;
     
-    for (int i = 0; i < 32; i++) {
-        registers[i] = 0;
-    }
-
-    // Explicitly zero-out the instruction cache to prevent garbage execution
-    for (int i = 0; i < 1024; i++) {
-        iCache[i].tag = 0;
-        iCache[i].data = 0;
-        iCache[i].valid = false;
-    }
-
     // Initialize COP0 Processor ID (PRid) to Sony's silicon version
     coprocessor0Registers[15] = 0x00000002;
 
@@ -27,7 +13,7 @@ CPU::CPU(Bus* bus) : bus(bus) {
     coprocessor0Registers[12] = 0x10400000;
 }
 
-// Fetch the 32-bit word, advance the clocks, and execute
+
 void CPU::step() {
     bool interruptsCurrentlyEnabled = (coprocessor0Registers[12] & 0x1) != 0;
 
@@ -44,6 +30,8 @@ void CPU::step() {
             }
 
             triggerHardwareInterrupt();
+            bus->tickHardware(1);
+            instructionCount++;
             return; 
         }
     }
@@ -56,58 +44,34 @@ void CPU::step() {
 
     currentProgramCounter = programCounter;
 
+    // Cache calculation variables (staged for future I-Cache implementation)
     uint32_t physicalProgramCounter = programCounter & 0x1FFFFFFF;
     uint32_t cacheIndex = (physicalProgramCounter >> 2) & 0x3FF; 
-    uint32_t cacheTag = physicalProgramCounter & ~0xFFF;         
-    
-    // KSEG1 (0xA0000000 to 0xBFFFFFFF) bypasses the cache
+    uint32_t cacheTag = physicalProgramCounter & 0xFFFFF000;         
     bool isUncachedRegion = (programCounter & 0xE0000000) == 0xA0000000;
     
     uint32_t instruction = bus->read32(programCounter);
 
     programCounter = nextProgramCounter;
-    nextProgramCounter += 4;
+    nextProgramCounter += Hardware::INSTRUCTION_SIZE;
 
     lastWrittenRegister = 0xFFFFFFFF;
 
     execute(instruction);
 
-    if (registerToUpdate != 0 && registerToUpdate != lastWrittenRegister) { 
+    if (registerToUpdate != 0 && registerToUpdate != lastWrittenRegister && registerToUpdate != pendingLoadRegister) { 
         setRegister(registerToUpdate, valueToUpdate);
     }
 
-    bus->tickTimers(1);
+    bus->tickHardware(1);
     instructionCount++; 
 }
+
 
 bool CPU::isInstructionCacheIsolated() const {
     uint32_t statusRegister = coprocessor0Registers[12];
     // Sony's custom CPU isolates the I-Cache using ONLY Bit 16
-    return (statusRegister & (1 << 16)) != 0;
-}
-
-void CPU::requestInterrupt() {
-    interruptPending = true;
-}
-
-void CPU::triggerHardwareInterrupt() {
-    // Normal execution: Save the current instruction's address
-    coprocessor0Registers[14] = programCounter; 
-    
-    // Cause code 0x00, and leave BD bit as 0
-    coprocessor0Registers[13] = (0x00 << 2); 
-
-    // Shift the Status Register (COP0 Reg 12)
-    uint32_t status = coprocessor0Registers[12];
-    coprocessor0Registers[12] = (status & ~0x3F) | ((status << 2) & 0x3F);
-
-    if (status & (1 << 22)) {
-        programCounter = 0x1FC00180;
-    } else {
-        programCounter = 0x80000080;
-    }
-
-    nextProgramCounter = programCounter + 4;
+    return (statusRegister & 0x00010000) != 0;
 }
 
 
@@ -172,7 +136,7 @@ void CPU::execute(uint32_t instruction) {
                     uint32_t target = getRegister(registerFirstSource);
                     
                     // Fix: Save PC + 8 (instruction after the delay slot)
-                    setRegister(registerTarget, programCounter + 4);
+                    setRegister(registerTarget, programCounter + Hardware::INSTRUCTION_SIZE);
                     
                     nextProgramCounter = target;
                     break;
@@ -180,6 +144,11 @@ void CPU::execute(uint32_t instruction) {
                 case 0x0C: { // SYSCALL (System Call)
                     // 0x08 is the standard MIPS hardware cause code for a Syscall
                     triggerException(0x08); 
+                    break;
+                }
+                case 0x0D: { // BREAK (Breakpoint)
+                    // 0x09 is the MIPS hardware cause code for a Breakpoint Exception (Bp)
+                    triggerException(0x09); 
                     break;
                 }
                 case 0x10: { // MFHI (Move From HI Register)
@@ -196,6 +165,17 @@ void CPU::execute(uint32_t instruction) {
                 }
                 case 0x13: { // MTLO (Move To LO Register)
                     lo = getRegister(registerFirstSource);
+                    break;
+                }
+                case 0x18: { // MULT (Multiply Signed)
+                    int64_t value1 = static_cast<int64_t>(static_cast<int32_t>(getRegister(registerFirstSource)));
+                    int64_t value2 = static_cast<int64_t>(static_cast<int32_t>(getRegister(registerSecondSource)));
+                    
+                    int64_t result = value1 * value2;
+                    
+                    // Split the 64-bit signed result into two 32-bit chunks
+                    lo = static_cast<uint32_t>(result & 0xFFFFFFFF);
+                    hi = static_cast<uint32_t>((result >> 32) & 0xFFFFFFFF);
                     break;
                 }
                 case 0x19: { // MULTU (Multiply Unsigned)
@@ -245,11 +225,35 @@ void CPU::execute(uint32_t instruction) {
                     break;
                 }
                 case 0x20: { // ADD (Add)
-                    setRegister(registerTarget, getRegister(registerFirstSource) + getRegister(registerSecondSource));
+                    uint32_t first = getRegister(registerFirstSource);
+                    uint32_t second = getRegister(registerSecondSource);
+                    uint32_t result = first + second;
+
+                    // Check if both operands have the same sign, but the result has a different sign (Bit 31)
+                    if (~(first ^ second) & (first ^ result) & 0x80000000) {
+                        triggerException(0x0C); // 0x0C is the MIPS Cause Code for Arithmetic Overflow
+                    } 
+                    else {
+                        setRegister(registerTarget, result);
+                    }
                     break;
                 }
                 case 0x21: { // ADDU (Add Unsigned)
                     setRegister(registerTarget, getRegister(registerFirstSource) + getRegister(registerSecondSource));
+                    break;
+                }
+                case 0x22: { // SUB (Subtract Signed)
+                    uint32_t first = getRegister(registerFirstSource);
+                    uint32_t second = getRegister(registerSecondSource);
+                    uint32_t result = first - second;
+
+                    // Check if operands have different signs, AND the result sign doesn't match the first operand
+                    if ((first ^ second) & (first ^ result) & 0x80000000) {
+                        triggerException(0x0C); // MIPS Cause Code 0x0C for Arithmetic Overflow
+                    }
+                    else {
+                        setRegister(registerTarget, result);
+                    }
                     break;
                 }
                 case 0x23: { // SUBU (Subtract Unsigned)
@@ -288,8 +292,8 @@ void CPU::execute(uint32_t instruction) {
                     break;
                 }
                 default: {
-                    cout << "Unimplemented R-Type function: 0x" << hex << function << " at PC: 0x" << (programCounter - 4) << endl;
-                    cout << "\nTotal Instructions Executed: " << dec << instructionCount << endl; // Temporary tracking
+                    std::cout << "Unimplemented R-Type function: 0x" << std::hex << function << " at PC: 0x" << (programCounter - Hardware::INSTRUCTION_SIZE) << std::endl;
+                    std::cout << "\nTotal Instructions Executed: " << std::dec << instructionCount << std::endl; // Temporary tracking
                     exit(1);
                 }
             }
@@ -297,7 +301,7 @@ void CPU::execute(uint32_t instruction) {
         }
         case 0x01: { // REGIMM (Branch operations using a single register)
             uint32_t registerSource = (instruction >> 21) & 0x1F;
-            uint32_t subOpcode = (instruction >> 16) & 0x1F; //
+            uint32_t subOpcode = (instruction >> 16) & 0x1F;
             
             // Extract and sign-extend the 16-bit immediate
             int32_t immediate = signExtend16(instruction & 0xFFFF);
@@ -320,11 +324,28 @@ void CPU::execute(uint32_t instruction) {
                     }
                     break;
                 }
+                case 0x10: { // BLTZAL (Branch if Less Than Zero And Link)
+                    nextIsDelaySlot = true;
+                    setRegister(31, programCounter + Hardware::INSTRUCTION_SIZE); 
+                    
+                    if (static_cast<int32_t>(getRegister(registerSource)) < 0) {
+                        nextProgramCounter = programCounter + offset;
+                    }
+                    break;
+                }
+                case 0x11: { // BGEZAL (Branch if Greater Than or Equal to Zero And Link)
+                    nextIsDelaySlot = true;
+                    setRegister(31, programCounter + Hardware::INSTRUCTION_SIZE); 
+                    
+                    if (static_cast<int32_t>(getRegister(registerSource)) >= 0) {
+                        nextProgramCounter = programCounter + offset;
+                    }
+                    break;
+                }
                 default: {
-                    cout << "Unimplemented REGIMM sub-opcode: 0x" << hex << subOpcode << " at PC: 0x" << (programCounter - 4) << endl;
+                    triggerException(0x0A);
                     exit(1);
                 }
-                    
             }
             break;
         }
@@ -342,7 +363,7 @@ void CPU::execute(uint32_t instruction) {
             uint32_t target = (instruction & 0x3FFFFFF) << 2;
 
             // Fix: Save PC + 8 (instruction after the delay slot)
-            setRegister(31, programCounter + 4); 
+            setRegister(31, programCounter + Hardware::INSTRUCTION_SIZE); 
 
             uint32_t programCounterRegion = programCounter & 0xF0000000;
             nextProgramCounter = programCounterRegion | target;
@@ -448,7 +469,7 @@ void CPU::execute(uint32_t instruction) {
         case 0x0C: { // ANDI (Bitwise AND Immediate)
             uint32_t registerSource = (instruction >> 21) & 0x1F;
             uint32_t registerTarget = (instruction >> 16) & 0x1F;
-            uint32_t immediate = instruction & 0xFFFF; // Autofills left with 0s 
+            uint32_t immediate = instruction & 0xFFFF;
 
             setRegister(registerTarget, getRegister(registerSource) & immediate);
             break;
@@ -456,16 +477,24 @@ void CPU::execute(uint32_t instruction) {
         case 0x0D: { // ORI (Bitwise OR Immediate)
             uint32_t registerSource = (instruction >> 21) & 0x1F;
             uint32_t registerTarget = (instruction >> 16) & 0x1F;
-            uint32_t immediate = instruction & 0xFFFF; // Autofills left with 0s 
+            uint32_t immediate = instruction & 0xFFFF;
 
             setRegister(registerTarget, getRegister(registerSource) | immediate);
+            break;
+        }
+        case 0x0E: { // XORI (Exclusive OR Immediate)
+            uint32_t registerSource = (instruction >> 21) & 0x1F;
+            uint32_t registerTarget = (instruction >> 16) & 0x1F;
+            
+            uint32_t immediate = instruction & 0xFFFF; 
+            
+            setRegister(registerTarget, getRegister(registerSource) ^ immediate);
             break;
         }
         case 0x0F: { // LUI (Load Upper Immediate)
             uint32_t registerTarget = (instruction >> 16) & 0x1F;
             uint32_t immediate = instruction & 0xFFFF;
             
-            // LUI shifts the immediate value into the upper 16 bits of the register
             setRegister(registerTarget, immediate << 16);
             break;
         }
@@ -484,25 +513,67 @@ void CPU::execute(uint32_t instruction) {
                     uint32_t cpuRegisterSource = (instruction >> 16) & 0x1F;
                     uint32_t coprocessor0RegisterTarget = (instruction >> 11) & 0x1F;
 
-                    // Copy data from the standard CPU register to the COP0 register
                     coprocessor0Registers[coprocessor0RegisterTarget] = getRegister(cpuRegisterSource);
                     break;
                 }
                 case 0x10: { // RFE (Return From Exception)
-                    // The Status Register is COP0 Register 12
                     uint32_t statusRegister = coprocessor0Registers[12];
                     
-                    // RFE shifts the interrupt bits (bits 2-5) back to the right by 2
-                    uint32_t mode = statusRegister & 0x3F;
-                    statusRegister = (statusRegister & ~0xF) | (mode >> 2);
+                    uint32_t mode = statusRegister & 0x0000003F;
+                    statusRegister = (statusRegister & 0xFFFFFFF0) | (mode >> 2);
                     
                     coprocessor0Registers[12] = statusRegister;
                     break;
                 }
-                default:
-                    cout << "Unimplemented COP0 instruction: " << hex << coprocessorOopcode 
-                         << " at PC: 0x" << hex << (programCounter - 4) << endl;
+                default: {
+                    std::cout << "Unimplemented COP0 instruction: " << std::hex << coprocessorOopcode << " at PC: 0x" << std::hex << (programCounter - Hardware::INSTRUCTION_SIZE) << std::endl;
                     exit(1);
+                }
+            }
+            break;
+        }
+        case 0x12: { // Coprocessor 2 (Geometry Transformation Engine)
+            if (instruction & 0x02000000) { // Bit 25
+                break; 
+            }
+
+            // Otherwise, it's a register move operation
+            uint32_t coprocessor2Opcode = (instruction >> 21) & 0x1F;
+
+            switch (coprocessor2Opcode) {
+                case 0x00: { // MFC2 (Move From Coprocessor 2 Data Register)
+                    uint32_t registerTarget = (instruction >> 16) & 0x1F;
+                    uint32_t coprocessor2Register = (instruction >> 11) & 0x1F;
+                    
+                    setRegister(registerTarget, coprocessor2DataRegisters[coprocessor2Register]);
+                    break;
+                }
+                case 0x02: { // CFC2 (Move From Coprocessor 2 Control Register)
+                    uint32_t registerTarget = (instruction >> 16) & 0x1F;
+                    uint32_t coprocessor2Register = (instruction >> 11) & 0x1F;
+                    
+                    setRegister(registerTarget, coprocessor2ControlRegisters[coprocessor2Register]);
+                    break;
+                }
+                case 0x04: { // MTC2 (Move To Coprocessor 2 Data Register)
+                    uint32_t cpuRegisterSource = (instruction >> 16) & 0x1F;
+                    uint32_t coprocessor2RegisterTarget = (instruction >> 11) & 0x1F;
+
+                    coprocessor2DataRegisters[coprocessor2RegisterTarget] = getRegister(cpuRegisterSource);
+                    break;
+                }
+                case 0x06: { // CTC2 (Move To Coprocessor 2 Control Register)
+                    uint32_t cpuRegisterSource = (instruction >> 16) & 0x1F;
+                    uint32_t coprocessor2RegisterTarget = (instruction >> 11) & 0x1F;
+
+                    coprocessor2ControlRegisters[coprocessor2RegisterTarget] = getRegister(cpuRegisterSource);
+                    break;
+                }
+                default: {
+                    std::cout << "Unimplemented COP2 instruction: 0x" << std::hex << coprocessor2Opcode << " at PC: 0x" << std::hex << (programCounter - Hardware::INSTRUCTION_SIZE) << std::endl;
+                    exit(1);
+                }
+                    
             }
             break;
         }
@@ -521,6 +592,12 @@ void CPU::execute(uint32_t instruction) {
             uint32_t registerSource = (instruction >> 21) & 0x1F;
             uint32_t registerTarget = (instruction >> 16) & 0x1F;
             int32_t immediate = signExtend16(instruction & 0xFFFF);
+            uint32_t address = getRegister(registerSource) + immediate;
+
+            if (address & 1) {
+                triggerException(0x04); // AdEL: Address Error (Load)
+                break;
+            }
 
             uint16_t halfword = bus->read16(getRegister(registerSource) + immediate);
             int32_t signExtendedHalfword = static_cast<int32_t>(static_cast<int16_t>(halfword));
@@ -535,7 +612,7 @@ void CPU::execute(uint32_t instruction) {
             int32_t immediate = signExtend16(instruction & 0xFFFF);
             uint32_t address = getRegister(registerSource) + immediate;
 
-            uint32_t alignedAddress = address & ~3;
+            uint32_t alignedAddress = address & 0xFFFFFFFC;
             uint32_t alignedWord = bus->read32(alignedAddress);
             uint32_t shift = (address & 3) * 8; 
 
@@ -555,6 +632,12 @@ void CPU::execute(uint32_t instruction) {
             uint32_t registerSource = (instruction >> 21) & 0x1F;
             uint32_t registerTarget = (instruction >> 16) & 0x1F;
             int32_t immediate = signExtend16(instruction & 0xFFFF);
+            uint32_t address = getRegister(registerSource) + immediate;
+
+            if (address & 3) {
+                triggerException(0x04); // AdEL: Address Error (Load)
+                break;
+            }
 
             pendingLoadRegister = registerTarget;
             pendingLoadValue = bus->read32(getRegister(registerSource) + immediate);
@@ -577,6 +660,13 @@ void CPU::execute(uint32_t instruction) {
             uint32_t registerTarget = (instruction >> 16) & 0x1F;
             int32_t immediate = signExtend16(instruction & 0xFFFF);
 
+            uint32_t address = getRegister(registerSource) + immediate;
+
+            if (address & 1) {
+                triggerException(0x04); // AdEL: Address Error (Load)
+                break;
+            }
+
             uint16_t halfword = bus->read16(getRegister(registerSource) + immediate);
 
             pendingLoadRegister = registerTarget;
@@ -589,7 +679,7 @@ void CPU::execute(uint32_t instruction) {
             int32_t immediate = signExtend16(instruction & 0xFFFF);
             uint32_t address = getRegister(registerSource) + immediate;
 
-            uint32_t alignedAddress = address & ~3;
+            uint32_t alignedAddress = address & 0xFFFFFFFC;
             uint32_t alignedWord = bus->read32(alignedAddress);
             uint32_t shift = (address & 3) * 8; 
 
@@ -621,6 +711,12 @@ void CPU::execute(uint32_t instruction) {
             uint32_t registerSource = (instruction >> 21) & 0x1F;
             uint32_t registerTarget = (instruction >> 16) & 0x1F;
             int32_t immediate = signExtend16(instruction & 0xFFFF);
+            uint32_t address = getRegister(registerSource) + immediate;
+
+            if (address & 1) {
+                triggerException(0x05); // AdES: Address Error (Store)
+                break;
+            }
 
             uint16_t halfword = getRegister(registerTarget) & 0xFFFF;
 
@@ -635,7 +731,7 @@ void CPU::execute(uint32_t instruction) {
             int32_t immediate = signExtend16(instruction & 0xFFFF);
             uint32_t address = getRegister(registerSource) + immediate;
 
-            uint32_t alignedAddress = address & ~3;
+            uint32_t alignedAddress = address & 0xFFFFFFFC;
             uint32_t alignedWord = bus->read32(alignedAddress);
             uint32_t shift = (address & 3) * 8; 
 
@@ -653,11 +749,15 @@ void CPU::execute(uint32_t instruction) {
             int32_t immediate = signExtend16(instruction & 0xFFFF);
             uint32_t address = getRegister(registerSource) + immediate;
 
-            // Only hijack the write if the BIOS specifically targets the I-Cache
+            if (address & 3) {
+                triggerException(0x05); // AdES: Address Error (Store)
+                break;
+            }
+
             if (isInstructionCacheIsolated()) {
                 uint32_t physicalAddress = address & 0x1FFFFFFF;
-                uint32_t cacheIndex = (physicalAddress >> 2) & 0x3FF;
-                uint32_t cacheTag = physicalAddress & ~0xFFF;
+                uint32_t cacheIndex = (physicalAddress >> 2) & 0x000003FF;
+                uint32_t cacheTag = physicalAddress & 0xFFFFF000;
 
                 iCache[cacheIndex].data = getRegister(registerTarget);
                 iCache[cacheIndex].tag = cacheTag;
@@ -676,9 +776,9 @@ void CPU::execute(uint32_t instruction) {
             int32_t immediate = signExtend16(instruction & 0xFFFF);
             uint32_t address = getRegister(registerSource) + immediate;
             
-            uint32_t alignedAddress = address & ~3;
+            uint32_t alignedAddress = address & 0xFFFFFFFC;
             uint32_t alignedWord = bus->read32(alignedAddress);
-            uint32_t shift = (address & 3) * 8; 
+            uint32_t shift = (address & 0x00000003) * 8; 
 
             uint32_t mask = 0x00FFFFFF >> (24 - shift);
             uint32_t newValue = (alignedWord & mask) | (getRegister(registerTarget) << shift);
@@ -688,52 +788,96 @@ void CPU::execute(uint32_t instruction) {
             bus->write32(alignedAddress, newValue);
             break;
         }
+        case 0x32: { // LWC2 (Load Word to Coprocessor 2)
+            uint32_t registerSource = (instruction >> 21) & 0x1F;
+            uint32_t coprocessor2RegisterTarget = (instruction >> 16) & 0x1F;
+            int32_t immediate = signExtend16(instruction & 0xFFFF);
+            uint32_t address = getRegister(registerSource) + immediate;
+
+            if (address & 3) {
+                triggerException(0x04); // AdEL
+                break;
+            }
+
+            coprocessor2DataRegisters[coprocessor2RegisterTarget] = bus->read32(address);
+            break;
+        }
+        case 0x3A: { // SWC2 (Store Word from Coprocessor 2)
+            uint32_t registerSource = (instruction >> 21) & 0x1F;
+            uint32_t coprocessor2RegisterSource = (instruction >> 16) & 0x1F;
+            int32_t immediate = signExtend16(instruction & 0xFFFF);
+            uint32_t address = getRegister(registerSource) + immediate;
+
+            if (address & 3) {
+                triggerException(0x05); // AdES
+                break;
+            }
+
+            bus->write32(address, coprocessor2DataRegisters[coprocessor2RegisterSource]);
+            break;
+        }
         default: {  // The Safety Net Crash
             uint32_t opcode = instruction >> 26;
             bool isGarbage = true;
 
-            // WHITELIST: These are the only valid primary opcodes on the PS1
             if (opcode <= 0x13) {
-                isGarbage = false; // 0x00-0x13: ALU, Branches, Jumps, and Coprocessor operations
+                isGarbage = false;
             } 
             else if (opcode >= 0x20 && opcode <= 0x26) {
-                isGarbage = false; // 0x20-0x26: Memory Loads (LB, LH, LW, etc.)
+                isGarbage = false; 
             } 
             else if (opcode >= 0x28 && opcode <= 0x2E) {
-                isGarbage = false; // 0x28-0x2E: Memory Stores (SB, SH, SW, etc.)
+                isGarbage = false; 
             }
             else if (opcode >= 0x30 && opcode <= 0x33) {
-                isGarbage = false; // 0x30-0x33: Coprocessor Loads
+                isGarbage = false; 
             }
             else if (opcode >= 0x38 && opcode <= 0x3B) {
-                isGarbage = false; // 0x38-0x3B: Coprocessor Stores
+                isGarbage = false;
             }
 
             if (isGarbage) {
-                cout << "\n---------------------------------------ERROR!---------------------------------------" << endl;
-                cout << "CPU: Executed garbage memory!" << endl;
-                cout << "Unknown hardware Opcode (0x" << hex << opcode << ") found in instruction 0x" << instruction << " at PC: 0x" << (programCounter - 4) << endl;
-                cout << "------------------------------------------------------------------------------------" << endl;
+                std::cout << "\n---------------------------------------ERROR!---------------------------------------" << std::endl;
+                std::cout << "CPU: Executed garbage memory!" << std::endl;
+                std::cout << "Unknown hardware Opcode (0x" << std::hex << opcode << ") found in instruction 0x" << instruction << " at PC: 0x" << (programCounter - Hardware::INSTRUCTION_SIZE) << std::endl;
+                std::cout << "------------------------------------------------------------------------------------" << std::endl;
             } 
             else {
-                cout << "Unimplemented valid instruction: 0x" << hex << instruction << " (Opcode 0x" << opcode << ") at PC: 0x" << (programCounter - 4) << endl;
+                std::cout << "Unimplemented valid instruction: 0x" << std::hex << instruction << " (Opcode 0x" << opcode << ") at PC: 0x" << (programCounter - Hardware::INSTRUCTION_SIZE) << std::endl;
             }
 
-            cout << "\nTotal Instructions Executed: " << dec << instructionCount << endl;
+            std::cout << "\nTotal Instructions Executed: " << std::dec << instructionCount << std::endl;
             exit(1); 
         }
     }
 }
 
 
+
+// Register 0 is hardwired to 0 in physical silicon
+void CPU::setRegister(uint32_t index, uint32_t value) {
+    if (index == 0) return;
+
+    registers[index] = value;
+    lastWrittenRegister = index;
+}
+
+
+uint32_t CPU::getRegister(uint32_t index) const {
+    if (index == 0) return 0;
+    return registers[index];
+}
+
+
 void CPU::triggerException(uint32_t cause) {
     if (isDelaySlot) {
         // The exception happened in a delay slot. Save the branch's address.
-        coprocessor0Registers[14] = currentProgramCounter - 4; 
+        coprocessor0Registers[14] = currentProgramCounter - Hardware::INSTRUCTION_SIZE; 
         
         // Set the Cause code and flag the BD (Branch Delay) bit (Bit 31)
-        coprocessor0Registers[13] = (cause << 2) | (1 << 31); 
-    } else {
+        coprocessor0Registers[13] = (cause << 2) | 0x80000000; 
+    } 
+    else {
         // Normal execution. Save the current instruction's address.
         coprocessor0Registers[14] = currentProgramCounter; 
         
@@ -747,30 +891,37 @@ void CPU::triggerException(uint32_t cause) {
 
     // Shift the Status Register (COP0 Reg 12)
     uint32_t status = coprocessor0Registers[12];
-    coprocessor0Registers[12] = (status & ~0x3F) | ((status << 2) & 0x3F);
+    coprocessor0Registers[12] = (status & 0xFFFFFFC0) | ((status << 2) & 0x0000003F);
 
     // Hijack the Program Counter based on the BEV bit (Bit 22)
-    if (status & (1 << 22)) {
+    if (status & 0x00400000) {
         programCounter = 0x1FC00180;
     } else {
         programCounter = 0x80000080;
     }
     
-    nextProgramCounter = programCounter + 4;
+    nextProgramCounter = programCounter + Hardware::INSTRUCTION_SIZE;
 }
 
 
-// Register 0 is hardwired to 0 in physical silicon
-void CPU::setRegister(uint32_t index, uint32_t value) {
-    if (index == 0) return;
+void CPU::triggerHardwareInterrupt() {
+    // Normal execution: Save the current instruction's address
+    coprocessor0Registers[14] = programCounter; 
+    
+    // Cause code 0x00, and leave BD bit as 0
+    coprocessor0Registers[13] = (0x00 << 2); 
 
-    registers[index] = value;
-    lastWrittenRegister = index;
+    // Shift the Status Register (COP0 Reg 12)
+    uint32_t status = coprocessor0Registers[12];
+    coprocessor0Registers[12] = (status & 0xFFFFFFC0) | ((status << 2) & 0x0000003F);
+
+    if (status & 0x00400000) {
+        programCounter = 0x1FC00180;
+    } 
+    else {
+        programCounter = 0x80000080;
+    }
+
+    nextProgramCounter = programCounter + Hardware::INSTRUCTION_SIZE;
 }
-
-uint32_t CPU::getRegister(uint32_t index) const {
-    if (index == 0) return 0;
-    return registers[index];
-}
-
 

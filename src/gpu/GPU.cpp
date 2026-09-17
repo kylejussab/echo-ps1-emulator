@@ -25,7 +25,7 @@ uint32_t GPU::readGP0() {
 
     vramReadWordsRemaining--;
     if (vramReadWordsRemaining <= 0) {
-        gpuStatusRegister &= ~(1 << 27);
+        gpuStatusRegister &= ~0x08000000; // Clear Bit 27
     }
 
     return static_cast<uint32_t>(firstPixel) | (static_cast<uint32_t>(secondPixel) << 16);
@@ -33,17 +33,9 @@ uint32_t GPU::readGP0() {
 
 
 uint32_t GPU::readGP1() {
-    // 1. Force the FIFO to report as empty and ready
-    // Bit 26 (0x04000000): Ready to receive command word
-    // Bit 28 (0x10000000): Ready to receive DMA block
-    gpuStatusRegister |= 0x14000000;
-
-    // 2. Recalculate Bit 25 (DMA Request) since Bit 28 just changed!
+    // Force Bits 26, 27, and 28 high (Idle and Ready)
+    gpuStatusRegister |= 0x1C000000;
     updateDMARequestBit();
-
-    // 3. Toggle Bit 31 (Odd/Even frame) to satisfy BIOS VSync polling loops
-    gpuStatusRegister ^= (1 << 31);
-
     return gpuStatusRegister;
 }
 
@@ -75,13 +67,18 @@ void GPU::writeGP1(uint32_t value) {
             break;
         }
         case 0x02: { // Acknowledge Interrupt
-            gpuStatusRegister &= ~(1 << 24);
+            gpuStatusRegister &= ~0x01000000; // Clear Bit 24
             break;
         }
-        case 0x03: break; // Display Enable
+        case 0x03: { // Display Enable
+            uint32_t displayEnable = value & 0x01;
+            gpuStatusRegister &= ~0x00800000; // Clear Bit 23
+            gpuStatusRegister |= (displayEnable << 23);
+            break; 
+        }
         case 0x04: { // DMA Direction
             DMADirection = value & 0x3;
-            gpuStatusRegister &= ~(0x3 << 29);
+            gpuStatusRegister &= ~0x60000000; // Clear Bits 29-30
             gpuStatusRegister |= (static_cast<uint32_t>(DMADirection) << 29);
             updateDMARequestBit();
             break;
@@ -96,7 +93,7 @@ void GPU::writeGP1(uint32_t value) {
         case 0x07: break;
         case 0x08: { // Display Mode
             uint32_t displayBits = value & 0x3F;
-            gpuStatusRegister &= ~(0x3F << 17); 
+            gpuStatusRegister &= ~0x007E0000; // Clear Bits 17-22 
             gpuStatusRegister |= (displayBits << 17);
 
             bool is480Lines = (value >> 2) & 0x1;
@@ -119,11 +116,12 @@ void GPU::writeGP1(uint32_t value) {
             break;
         }
         default: {
-            cout << "Warning: Unimplemented GP1 command header: 0x" << hex << static_cast<int>(commandType) << dec << endl;
+            std::cout << "Warning: Unimplemented GP1 command header: 0x" << std::hex << static_cast<int>(commandType) << std::dec << std::endl;
             break;
         }
     }
 }
+
 
 
 void GPU::continuePendingCommand(uint32_t value) {
@@ -165,8 +163,8 @@ void GPU::continuePendingCommand(uint32_t value) {
             break;
         }
         default: {
-            cout << "Unhandled multi-word GPU command: 0x" << hex << static_cast<int>(commandType) << endl;
-            cout << "Parameters Remaining: " << dec << parametersRemaining << ", Words Remaining: " << wordsRemaining << endl;
+            std::cout << "Unhandled multi-word GPU command: 0x" << std::hex << static_cast<int>(commandType) << std::endl;
+            std::cout << "Parameters Remaining: " << std::dec << parametersRemaining << ", Words Remaining: " << wordsRemaining << std::endl;
             exit(1);
         }
     }
@@ -177,16 +175,15 @@ void GPU::beginNewCommand(uint32_t value) {
     currentCommand = value;
     uint8_t commandType = value >> 24;
 
-    if ((commandType & 0xE0) == 0x60) { // Rectangles (0x60-0x7F): textured/semi-transparent/raw-texture/size-mode
-		bool textured = (commandType >> 2) & 0x1;
-		uint8_t sizeMode = (commandType >> 3) & 0x3;
+    if ((commandType & 0xE0) == 0x60) { // Rectangles (0x60-0x7F)
+		bool textured = (commandType >> 2) & 0x01;
+		uint8_t sizeMode = (commandType >> 3) & 0x03;
 
 		rectangleTextured = textured;
-		rectangleSemiTransparent = (commandType >> 1) & 0x1;
-		rectangleRawTexture = commandType & 0x1;
+		rectangleSemiTransparent = (commandType >> 1) & 0x01;
+		rectangleRawTexture = commandType & 0x01;
 		rectangleSizeMode = sizeMode;
 
-        // Fixed-size rectangles (1x1/8x8/16x16) already know their dimensions from the header alone
 		switch (sizeMode) {
 			case 1: rectangleWidth = 1;  rectangleHeight = 1;  break;
 			case 2: rectangleWidth = 8;  rectangleHeight = 8;  break;
@@ -200,12 +197,12 @@ void GPU::beginNewCommand(uint32_t value) {
 		return;
 	}
 
-    if ((commandType & 0xF0) == 0x30) { // Gouraud-shaded triangle/quad, textured or not (0x30-0x3F)
-        bool isQuad = (commandType >> 3) & 0x1;
+    if ((commandType & 0xF0) == 0x30) { // Gouraud-shaded triangle/quad (0x30-0x3F)
+        bool isQuad = (commandType >> 3) & 0x01;
         primitiveIsGouraud = true;
-        primitiveIsTextured = (commandType >> 2) & 0x1;
-        primitiveIsSemiTransparent = (commandType >> 1) & 0x1;
-        primitiveIsRawTexture = commandType & 0x1;
+        primitiveIsTextured = (commandType >> 2) & 0x01;
+        primitiveIsSemiTransparent = (commandType >> 1) & 0x01;
+        primitiveIsRawTexture = commandType & 0x01;
         
         primitiveVertexCount = isQuad ? 4 : 3;
         primitiveCurrentVertexIndex = 0;
@@ -228,12 +225,12 @@ void GPU::beginNewCommand(uint32_t value) {
         return;
     }
 
-    if ((commandType & 0xF4) == 0x24) { // Textured triangle (0x24-0x27) / quad (0x2C-0x2F), flat shaded
-        bool isQuad = (commandType >> 3) & 0x1;
+    if ((commandType & 0xF4) == 0x24) { // Textured triangle (0x24-0x27) / quad (0x2C-0x2F)
+        bool isQuad = (commandType >> 3) & 0x01;
         primitiveIsGouraud = false;
         primitiveIsTextured = true;
-        primitiveIsRawTexture = commandType & 0x1;
-        primitiveIsSemiTransparent = (commandType >> 1) & 0x1;
+        primitiveIsRawTexture = commandType & 0x01;
+        primitiveIsSemiTransparent = (commandType >> 1) & 0x01;
         primitiveVertexCount = isQuad ? 4 : 3;
 
         wordsRemaining = primitiveVertexCount * 2;
@@ -252,10 +249,7 @@ void GPU::beginNewCommand(uint32_t value) {
             wordsRemaining = 0;
             break;
         }
-        case 0x20:
-        case 0x21:
-        case 0x22: 
-        case 0x23: { // Monotone Triangle
+        case 0x20: case 0x21: case 0x22: case 0x23: { // Monotone Triangle
             primitiveVertexCount = 3;
             primitiveIsGouraud = false;
             primitiveIsTextured = false;
@@ -263,10 +257,7 @@ void GPU::beginNewCommand(uint32_t value) {
             wordsRemaining = 3;
             break;
         }
-        case 0x28:
-        case 0x29:
-        case 0x2A:
-        case 0x2B: { // Monotone Quad
+        case 0x28: case 0x29: case 0x2A: case 0x2B: { // Monotone Quad
             primitiveVertexCount = 4;
             primitiveIsGouraud = false;
             primitiveIsTextured = false;
@@ -274,11 +265,8 @@ void GPU::beginNewCommand(uint32_t value) {
             wordsRemaining = 4;
             break;
         }
-        case 0x60:
-        case 0x68:
-        case 0x70:
-        case 0x78: { 
-            parametersRemaining = 1; // Most simple rects take 1 parameter word (position/size)
+        case 0x60: case 0x68: case 0x70: case 0x78: {  // Rectangles
+            parametersRemaining = 1;
             wordsRemaining = 0;
             break;
         }
@@ -298,12 +286,12 @@ void GPU::beginNewCommand(uint32_t value) {
             break;
         }
         case 0xE1: { // Draw Mode setting (texture page)
-			uint16_t baseX = (value & 0xF) * 64;
-			uint16_t baseY = ((value >> 4) & 0x1) * 256;
-			uint8_t semiTransparency = (value >> 5) & 0x3;
-			uint8_t colorDepth = (value >> 7) & 0x3;
-			bool flipX = (value >> 12) & 0x1;
-			bool flipY = (value >> 13) & 0x1;
+			uint16_t baseX = (value & 0x0F) * 64;
+			uint16_t baseY = ((value >> 4) & 0x01) * 256;
+			uint8_t semiTransparency = (value >> 5) & 0x03;
+			uint8_t colorDepth = (value >> 7) & 0x03;
+			bool flipX = (value >> 12) & 0x01;
+			bool flipY = (value >> 13) & 0x01;
 
 			rasterizer.setTexturePage(baseX, baseY, colorDepth, semiTransparency);
 			rasterizer.setTextureFlip(flipX, flipY);
@@ -384,10 +372,8 @@ void GPU::handleFillRectangleWord(uint32_t value) {
 
 
 void GPU::handleMonotoneQuadWord(uint32_t value) {
-    // We can now safely rely on primitiveVertexCount since the header parser guarantees it is set to 3 or 4
     int vertexIndex = primitiveVertexCount - wordsRemaining; 
 
-    // Extract 11-bit signed coordinates (RAW — the rasterizer applies the drawing offset)
     int16_t rawX = value & 0xFFFF;
     if (rawX & 0x400) rawX |= 0xF800; 
 
@@ -397,7 +383,6 @@ void GPU::handleMonotoneQuadWord(uint32_t value) {
     primitiveVertices[vertexIndex].x = rawX;
     primitiveVertices[vertexIndex].y = rawY;
 
-    // Extract the flat color from the command header and apply it to this vertex
     uint8_t red   = currentCommand & 0xFF;
     uint8_t green = (currentCommand >> 8) & 0xFF;
     uint8_t blue  = (currentCommand >> 16) & 0xFF;
@@ -405,11 +390,8 @@ void GPU::handleMonotoneQuadWord(uint32_t value) {
 
     wordsRemaining--;
 
-    // Hand the complete primitive to the rasterizer once all vertices are received
     if (wordsRemaining == 0) {
-        rasterizer.drawPolygon(primitiveVertices, primitiveVertexCount,
-                                primitiveIsTextured, primitiveIsSemiTransparent, primitiveIsRawTexture, primitiveIsGouraud,
-                                primitiveColorLookupTableX, primitiveColorLookupTableY);
+        rasterizer.drawPolygon(primitiveVertices, primitiveVertexCount, primitiveIsTextured, primitiveIsSemiTransparent, primitiveIsRawTexture, primitiveIsGouraud, primitiveColorLookupTableX, primitiveColorLookupTableY);
     }
 }
 
@@ -471,7 +453,7 @@ void GPU::handleCopyVRAMToCPUParameters(uint32_t value) {
 		uint32_t totalPixels = static_cast<uint32_t>(readTransferWidth) * static_cast<uint32_t>(readTransferHeight);
 		vramReadWordsRemaining = (totalPixels + 1) / 2;
 
-		gpuStatusRegister |= (1 << 27); // Ready to send VRAM to CPU
+		gpuStatusRegister |= 0x08000000; // Set Bit 27 (Ready to send VRAM to CPU)
 		parametersRemaining--;
 		return;
 	}
@@ -482,7 +464,6 @@ void GPU::handleRectangleWord(uint32_t value) {
     int parameterWordIndex = rectangleParametersExpected - parametersRemaining;
 
     if (parameterWordIndex == 0) {
-        // Keep X and Y as RAW values — the rasterizer applies the drawing offset
         rectangleX = static_cast<int16_t>(value & 0xFFFF);
         rectangleY = static_cast<int16_t>((value >> 16) & 0xFFFF);
 
@@ -517,7 +498,6 @@ void GPU::handleTexturedPolygonWord(uint32_t value) {
     bool isTextureCoordinateWord = (wordIndex % 2) == 1;
 
     if (!isTextureCoordinateWord) {
-        // Position Word (RAW — the rasterizer applies the drawing offset)
         int16_t rawX = value & 0xFFFF;
         if (rawX & 0x400) rawX |= 0xF800;
         
@@ -527,7 +507,6 @@ void GPU::handleTexturedPolygonWord(uint32_t value) {
         primitiveVertices[vertexIndex].x = rawX;
         primitiveVertices[vertexIndex].y = rawY;
         
-        // Extract the base color from the header so the texture can be modulated (tinted)
         uint8_t red   = currentCommand & 0xFF;
         uint8_t green = (currentCommand >> 8) & 0xFF;
         uint8_t blue  = (currentCommand >> 16) & 0xFF;
@@ -542,14 +521,11 @@ void GPU::handleTexturedPolygonWord(uint32_t value) {
             primitiveColorLookupTableY = (value >> 22) & 0x1FF;
         } 
         else if (vertexIndex == 1) {
-            // Vertex 1's texture word carries a texpage override that updates the
-            // SAME persistent draw-mode state as GP0 0xE1, so it goes straight to
-            // the rasterizer immediately rather than waiting for the primitive to finish.
             uint16_t texturePageValue = (value >> 16) & 0xFFFF;
-            uint16_t baseX = (texturePageValue & 0xF) * 64;
-            uint16_t baseY = ((texturePageValue >> 4) & 0x1) * 256;
-            uint8_t semiTransparency = (texturePageValue >> 5) & 0x3;
-            uint8_t colorDepth = (texturePageValue >> 7) & 0x3;
+            uint16_t baseX = (texturePageValue & 0x0F) * 64;
+            uint16_t baseY = ((texturePageValue >> 4) & 0x01) * 256;
+            uint8_t semiTransparency = (texturePageValue >> 5) & 0x03;
+            uint8_t colorDepth = (texturePageValue >> 7) & 0x03;
 
             rasterizer.setTexturePage(baseX, baseY, colorDepth, semiTransparency);
         }
@@ -578,7 +554,6 @@ void GPU::handleGouraudPolygonWord(uint32_t value) {
             break;
         }
         case GouraudPolygonWordRole::Position: {
-            // RAW — the rasterizer applies the drawing offset
             int16_t rawX = value & 0xFFFF;
             if (rawX & 0x400) rawX |= 0xF800;
             
@@ -596,13 +571,13 @@ void GPU::handleGouraudPolygonWord(uint32_t value) {
             if (primitiveCurrentVertexIndex == 0) {
                 primitiveColorLookupTableX = ((value >> 16) & 0x3F) * 16;
                 primitiveColorLookupTableY = (value >> 22) & 0x1FF;
-            } else if (primitiveCurrentVertexIndex == 1) {
-                // Same texpage-override side effect as in handleTexturedPolygonWord.
+            } 
+            else if (primitiveCurrentVertexIndex == 1) {
                 uint16_t texturePageValue = (value >> 16) & 0xFFFF;
-                uint16_t baseX = (texturePageValue & 0xF) * 64;
-                uint16_t baseY = ((texturePageValue >> 4) & 0x1) * 256;
-                uint8_t semiTransparency = (texturePageValue >> 5) & 0x3;
-                uint8_t colorDepth = (texturePageValue >> 7) & 0x3;
+                uint16_t baseX = (texturePageValue & 0x0F) * 64;
+                uint16_t baseY = ((texturePageValue >> 4) & 0x01) * 256;
+                uint8_t semiTransparency = (texturePageValue >> 5) & 0x03;
+                uint8_t colorDepth = (texturePageValue >> 7) & 0x03;
 
                 rasterizer.setTexturePage(baseX, baseY, colorDepth, semiTransparency);
             }
@@ -633,11 +608,10 @@ void GPU::updateDMARequestBit() {
     switch (DMADirection) {
         case 0: bit = false; break;
         case 1: bit = true; break;
-        case 2: bit = (gpuStatusRegister >> 28) & 1; break;
-        case 3: bit = (gpuStatusRegister >> 27) & 1; break;
+        case 2: bit = (gpuStatusRegister >> 28) & 0x01; break;
+        case 3: bit = (gpuStatusRegister >> 27) & 0x01; break;
         default: bit = false;
     }
-    gpuStatusRegister = bit ? (gpuStatusRegister | (1 << 25)) : (gpuStatusRegister & ~(1 << 25));
+    gpuStatusRegister = bit ? (gpuStatusRegister | 0x02000000) : (gpuStatusRegister & ~0x02000000);
 }
-
 

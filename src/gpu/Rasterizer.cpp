@@ -4,203 +4,225 @@
 using namespace std;
 
 void Rasterizer::setTexturePage(uint16_t baseX, uint16_t baseY, uint8_t colorDepth, uint8_t semiTransparency) {
-	texturePageBaseX = baseX;
-	texturePageBaseY = baseY;
-	texturePageColorDepth = colorDepth;
-	texturePageSemiTransparency = semiTransparency;
+    texturePageBaseX = baseX;
+    texturePageBaseY = baseY;
+    texturePageColorDepth = colorDepth;
+    texturePageSemiTransparency = semiTransparency;
 }
+
 
 void Rasterizer::setTextureFlip(bool flipX, bool flipY) {
-	textureFlipX = flipX;
-	textureFlipY = flipY;
+    textureFlipX = flipX;
+    textureFlipY = flipY;
 }
+
 
 void Rasterizer::setDrawingArea(uint16_t left, uint16_t top, uint16_t right, uint16_t bottom) {
-	drawingAreaLeft = left;
-	drawingAreaTop = top;
-	drawingAreaRight = right;
-	drawingAreaBottom = bottom;
+    drawingAreaLeft = left;
+    drawingAreaTop = top;
+    drawingAreaRight = right;
+    drawingAreaBottom = bottom;
 }
 
-void Rasterizer::setDrawingOffset(int16_t offsetX, int16_t offsetY) {
-	drawingOffsetX = offsetX;
-	drawingOffsetY = offsetY;
-}
 
 void Rasterizer::setDrawingAreaTopLeft(uint16_t left, uint16_t top) {
-	drawingAreaLeft = left;
-	drawingAreaTop = top;
+    drawingAreaLeft = left;
+    drawingAreaTop = top;
 }
+
 
 void Rasterizer::setDrawingAreaBottomRight(uint16_t right, uint16_t bottom) {
-	drawingAreaRight = right;
-	drawingAreaBottom = bottom;
+    drawingAreaRight = right;
+    drawingAreaBottom = bottom;
 }
 
-void Rasterizer::drawPolygon(const Vertex* vertices, int vertexCount,
-                              bool isTextured, bool isSemiTransparent, bool isRawTexture, bool isGouraud,
-                              uint16_t colorLookupTableX, uint16_t colorLookupTableY) {
-	(void)isSemiTransparent; // reserved for future semi-transparency blending — not yet wired up
-	(void)isRawTexture;      // reserved for future raw-texture (unlit) sampling — not yet wired up
 
-	Vertex offsetVertices[4];
-	for (int index = 0; index < vertexCount; index++) {
-		offsetVertices[index] = vertices[index];
-		offsetVertices[index].x += drawingOffsetX;
-		offsetVertices[index].y += drawingOffsetY;
-	}
-
-	drawTriangle(offsetVertices[0], offsetVertices[1], offsetVertices[2], isTextured, isGouraud, colorLookupTableX, colorLookupTableY);
-
-	// Quads are drawn as two triangles with a V1, V3, V2 winding, matching PS1 hardware.
-	if (vertexCount == 4) {
-		drawTriangle(offsetVertices[1], offsetVertices[3], offsetVertices[2], isTextured, isGouraud, colorLookupTableX, colorLookupTableY);
-	}
+void Rasterizer::setDrawingOffset(int16_t offsetX, int16_t offsetY) {
+    drawingOffsetX = offsetX;
+    drawingOffsetY = offsetY;
 }
 
-void Rasterizer::drawRectangle(int16_t x, int16_t y, uint16_t width, uint16_t height, uint16_t flatColor,
-                                bool isTextured, bool isRawTexture,
-                                uint8_t textureCoordinateU, uint8_t textureCoordinateV,
-                                uint16_t colorLookupTableX, uint16_t colorLookupTableY) {
-	(void)isRawTexture; // reserved for future raw-texture (unlit) sampling — not yet wired up
 
-	int16_t originX = x + drawingOffsetX;
-	int16_t originY = y + drawingOffsetY;
+void Rasterizer::drawPolygon(const Vertex* vertices, int vertexCount, bool isTextured, bool isSemiTransparent, bool isRawTexture, bool isGouraud, uint16_t colorLookupTableX, uint16_t colorLookupTableY) {
+    // TODO: Wire up semi-transparency blending
+    (void)isSemiTransparent; 
+    
+    // TODO: Wire up raw-texture sampling (bypassing color modulation)
+    (void)isRawTexture;      
 
-	for (uint16_t row = 0; row < height; row++) {
-		for (uint16_t column = 0; column < width; column++) {
-			int16_t pixelX = originX + column;
-			int16_t pixelY = originY + row;
+    // Apply the persistent drawing offset to all vertices once before rasterization
+    Vertex offsetVertices[4];
+    for (int index = 0; index < vertexCount; index++) {
+        offsetVertices[index] = vertices[index];
+        offsetVertices[index].x += drawingOffsetX;
+        offsetVertices[index].y += drawingOffsetY;
+    }
 
-			if (pixelX < static_cast<int16_t>(drawingAreaLeft) || pixelX > static_cast<int16_t>(drawingAreaRight) ||
-			    pixelY < static_cast<int16_t>(drawingAreaTop)  || pixelY > static_cast<int16_t>(drawingAreaBottom)) {
-				continue;
-			}
+    drawTriangle(offsetVertices[0], offsetVertices[1], offsetVertices[2], isTextured, isGouraud, colorLookupTableX, colorLookupTableY);
 
-			uint16_t color;
-
-			if (isTextured) {
-				int textureCoordinateX = textureCoordinateU + (textureFlipX ? -column : column);
-				int textureCoordinateY = textureCoordinateV + (textureFlipY ? -row : row);
-				uint16_t texel = sampleTexture(textureCoordinateX, textureCoordinateY, colorLookupTableX, colorLookupTableY);
-
-				if (texel == 0) continue;
-				color = texel;
-			} else {
-				color = flatColor;
-			}
-
-			vram.writePixel(pixelX, pixelY, color);
-		}
-	}
+    // Quads are drawn as two triangles with a V1, V3, V2 winding, matching PS1 hardware.
+    if (vertexCount == 4) {
+        drawTriangle(offsetVertices[1], offsetVertices[3], offsetVertices[2], isTextured, isGouraud, colorLookupTableX, colorLookupTableY);
+    }
 }
+
+
+void Rasterizer::drawRectangle(int16_t x, int16_t y, uint16_t width, uint16_t height, uint16_t flatColor, bool isTextured, bool isRawTexture, uint8_t textureCoordinateU, uint8_t textureCoordinateV, uint16_t colorLookupTableX, uint16_t colorLookupTableY) {
+    // TODO: Wire up raw-texture sampling
+    (void)isRawTexture; 
+
+    int16_t originX = x + drawingOffsetX;
+    int16_t originY = y + drawingOffsetY;
+
+    for (uint16_t row = 0; row < height; row++) {
+        for (uint16_t column = 0; column < width; column++) {
+            int16_t pixelX = originX + column;
+            int16_t pixelY = originY + row;
+
+            // Rectangles strictly obey the hardware clipping plane
+            if (pixelX < static_cast<int16_t>(drawingAreaLeft) || pixelX > static_cast<int16_t>(drawingAreaRight) ||
+                pixelY < static_cast<int16_t>(drawingAreaTop)  || pixelY > static_cast<int16_t>(drawingAreaBottom)) {
+                continue;
+            }
+
+            uint16_t color;
+
+            if (isTextured) {
+                int textureCoordinateX = textureCoordinateU + (textureFlipX ? -column : column);
+                int textureCoordinateY = textureCoordinateV + (textureFlipY ? -row : row);
+                uint16_t texel = sampleTexture(textureCoordinateX, textureCoordinateY, colorLookupTableX, colorLookupTableY);
+
+                if (texel == 0) continue; // 0x0000 is fully transparent in PS1 textures
+                
+                // TODO: Multiply texel by flatColor unless isRawTexture is true
+                color = texel;
+            } 
+			else {
+                color = flatColor;
+            }
+
+            vram.writePixel(pixelX, pixelY, color);
+        }
+    }
+}
+
 
 void Rasterizer::fillRectangle(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t color) {
-	for (uint16_t row = 0; row < height; row++) {
-		for (uint16_t column = 0; column < width; column++) {
-			uint16_t pixelX = x + column;
-			uint16_t pixelY = y + row;
+    // The PS1 Block Fill command explicitly ignores both the Drawing Offset and the Drawing Area clip.
+    // It is only constrained by the absolute physical limits of the 1024x512 VRAM.
+    for (uint16_t row = 0; row < height; row++) {
+        for (uint16_t column = 0; column < width; column++) {
+            uint16_t pixelX = x + column;
+            uint16_t pixelY = y + row;
 
-			if (pixelX >= static_cast<int16_t>(drawingAreaLeft) && pixelX <= static_cast<int16_t>(drawingAreaRight) &&
-			    pixelY >= static_cast<int16_t>(drawingAreaTop)  && pixelY <= static_cast<int16_t>(drawingAreaBottom)) {
-				vram.writePixel(pixelX, pixelY, color);
-			}
-		}
-	}
+            if (pixelX < Hardware::VRAM_WIDTH && pixelY < Hardware::VRAM_HEIGHT) {
+                vram.writePixel(pixelX, pixelY, color);
+            }
+        }
+    }
 }
 
-void Rasterizer::drawTriangle(const Vertex& vertex0, const Vertex& vertex1, const Vertex& vertex2,
-                               bool isTextured, bool isGouraud,
-                               uint16_t colorLookupTableX, uint16_t colorLookupTableY) {
-	int16_t minX = min({vertex0.x, vertex1.x, vertex2.x});
-	int16_t maxX = max({vertex0.x, vertex1.x, vertex2.x});
-	int16_t minY = min({vertex0.y, vertex1.y, vertex2.y});
-	int16_t maxY = max({vertex0.y, vertex1.y, vertex2.y});
 
-	minX = max((int16_t)0, minX);
-	maxX = min((int16_t)(Hardware::VRAM_WIDTH - 1), maxX);
-	minY = max((int16_t)0, minY);
-	maxY = min((int16_t)(Hardware::VRAM_HEIGHT - 1), maxY);
 
-	clipToDrawingArea(minX, maxX, minY, maxY);
+void Rasterizer::drawTriangle(const Vertex& vertex0, const Vertex& vertex1, const Vertex& vertex2, bool isTextured, bool isGouraud, uint16_t colorLookupTableX, uint16_t colorLookupTableY) {
+    // Find the bounding box of the triangle
+    int16_t minX = min({vertex0.x, vertex1.x, vertex2.x});
+    int16_t maxX = max({vertex0.x, vertex1.x, vertex2.x});
+    int16_t minY = min({vertex0.y, vertex1.y, vertex2.y});
+    int16_t maxY = max({vertex0.y, vertex1.y, vertex2.y});
 
-	int32_t areaTotal = edgeFunction(vertex0.x, vertex0.y, vertex1.x, vertex1.y, vertex2.x, vertex2.y);
-	if (areaTotal == 0) return;
+    // Constrain the bounding box to absolute VRAM limits
+    minX = max((int16_t)0, minX);
+    maxX = min((int16_t)(Hardware::VRAM_WIDTH - 1), maxX);
+    minY = max((int16_t)0, minY);
+    maxY = min((int16_t)(Hardware::VRAM_HEIGHT - 1), maxY);
 
-	for (int16_t pixelY = minY; pixelY <= maxY; pixelY++) {
-		for (int16_t pixelX = minX; pixelX <= maxX; pixelX++) {
-			int32_t edge0 = edgeFunction(vertex1.x, vertex1.y, vertex2.x, vertex2.y, pixelX, pixelY);
-			int32_t edge1 = edgeFunction(vertex2.x, vertex2.y, vertex0.x, vertex0.y, pixelX, pixelY);
-			int32_t edge2 = edgeFunction(vertex0.x, vertex0.y, vertex1.x, vertex1.y, pixelX, pixelY);
+    // Further constrain to the active drawing area
+    clipToDrawingArea(minX, maxX, minY, maxY);
 
-			bool inside = (edge0 >= 0 && edge1 >= 0 && edge2 >= 0) || (edge0 <= 0 && edge1 <= 0 && edge2 <= 0);
-			if (!inside) continue;
+    int32_t areaTotal = edgeFunction(vertex0.x, vertex0.y, vertex1.x, vertex1.y, vertex2.x, vertex2.y);
+    if (areaTotal == 0) return; // Degenerate triangle
 
-			float weight0 = static_cast<float>(edge0) / areaTotal;
-			float weight1 = static_cast<float>(edge1) / areaTotal;
-			float weight2 = static_cast<float>(edge2) / areaTotal;
+    for (int16_t pixelY = minY; pixelY <= maxY; pixelY++) {
+        for (int16_t pixelX = minX; pixelX <= maxX; pixelX++) {
+            int32_t edge0 = edgeFunction(vertex1.x, vertex1.y, vertex2.x, vertex2.y, pixelX, pixelY);
+            int32_t edge1 = edgeFunction(vertex2.x, vertex2.y, vertex0.x, vertex0.y, pixelX, pixelY);
+            int32_t edge2 = edgeFunction(vertex0.x, vertex0.y, vertex1.x, vertex1.y, pixelX, pixelY);
 
-			uint16_t finalColor = vertex0.color;
+            // True if the pixel is inside or exactly on the edge of the triangle
+            bool inside = (edge0 >= 0 && edge1 >= 0 && edge2 >= 0) || (edge0 <= 0 && edge1 <= 0 && edge2 <= 0);
+            if (!inside) continue;
 
-			if (isGouraud) {
-				auto interpolateChannel = [&](int shift) {
-					int channel0 = (vertex0.color >> shift) & 0x1F;
-					int channel1 = (vertex1.color >> shift) & 0x1F;
-					int channel2 = (vertex2.color >> shift) & 0x1F;
-					return static_cast<int>(weight0 * channel0 + weight1 * channel1 + weight2 * channel2) & 0x1F;
-				};
-				finalColor = interpolateChannel(0) | (interpolateChannel(5) << 5) | (interpolateChannel(10) << 10);
-			}
+            // TODO: Optimization - Convert floating point barycentric weights to fixed-point integer math 
+            float weight0 = static_cast<float>(edge0) / areaTotal;
+            float weight1 = static_cast<float>(edge1) / areaTotal;
+            float weight2 = static_cast<float>(edge2) / areaTotal;
 
-			if (isTextured) {
-				int textureCoordinateX = static_cast<int>(weight0 * vertex0.u + weight1 * vertex1.u + weight2 * vertex2.u);
-				int textureCoordinateY = static_cast<int>(weight0 * vertex0.v + weight1 * vertex1.v + weight2 * vertex2.v);
+            uint16_t finalColor = vertex0.color;
 
-				uint16_t texel = sampleTexture(textureCoordinateX, textureCoordinateY, colorLookupTableX, colorLookupTableY);
-				if (texel == 0) continue;
+            if (isGouraud) {
+                auto interpolateChannel = [&](int shift) {
+                    int channel0 = (vertex0.color >> shift) & 0x1F;
+                    int channel1 = (vertex1.color >> shift) & 0x1F;
+                    int channel2 = (vertex2.color >> shift) & 0x1F;
+                    return static_cast<int>(weight0 * channel0 + weight1 * channel1 + weight2 * channel2) & 0x1F;
+                };
+                // Recombine 5-bit color channels
+                finalColor = interpolateChannel(0) | (interpolateChannel(5) << 5) | (interpolateChannel(10) << 10);
+            }
 
-				finalColor = texel;
-			}
+            if (isTextured) {
+                int textureCoordinateX = static_cast<int>(weight0 * vertex0.u + weight1 * vertex1.u + weight2 * vertex2.u);
+                int textureCoordinateY = static_cast<int>(weight0 * vertex0.v + weight1 * vertex1.v + weight2 * vertex2.v);
 
-			vram.writePixel(pixelX, pixelY, finalColor);
-		}
-	}
+                uint16_t texel = sampleTexture(textureCoordinateX, textureCoordinateY, colorLookupTableX, colorLookupTableY);
+                if (texel == 0) continue; // 0x0000 is fully transparent in PS1 textures
+
+                // TODO: Multiply texel by finalColor unless isRawTexture is true
+                finalColor = texel;
+            }
+
+            vram.writePixel(pixelX, pixelY, finalColor);
+        }
+    }
 }
+
 
 void Rasterizer::clipToDrawingArea(int16_t& minX, int16_t& maxX, int16_t& minY, int16_t& maxY) {
-	minX = max(minX, (int16_t)max(0, (int)drawingAreaLeft));
-	maxX = min(maxX, (int16_t)min((int)Hardware::VRAM_WIDTH - 1, (int)drawingAreaRight));
-	minY = max(minY, (int16_t)max(0, (int)drawingAreaTop));
-	maxY = min(maxY, (int16_t)min((int)Hardware::VRAM_HEIGHT - 1, (int)drawingAreaBottom));
+    minX = max(minX, (int16_t)max(0, (int)drawingAreaLeft));
+    maxX = min(maxX, (int16_t)min((int)Hardware::VRAM_WIDTH - 1, (int)drawingAreaRight));
+    minY = max(minY, (int16_t)max(0, (int)drawingAreaTop));
+    maxY = min(maxY, (int16_t)min((int)Hardware::VRAM_HEIGHT - 1, (int)drawingAreaBottom));
 }
 
+
 uint16_t Rasterizer::sampleTexture(int textureX, int textureY, uint16_t colorLookupTableX, uint16_t colorLookupTableY) {
-	switch (texturePageColorDepth) {
-		case 0: { // 4-bit CLUT
-			int videoRamX = texturePageBaseX + (textureX / 4);
-			int videoRamY = texturePageBaseY + textureY;
+    switch (texturePageColorDepth) {
+        case 0: { // 4-bit CLUT (4 pixels packed into 1 16-bit word)
+            int videoRamX = texturePageBaseX + (textureX / 4);
+            int videoRamY = texturePageBaseY + textureY;
 
-			uint16_t pixelDataWord = vram.readPixel(videoRamX, videoRamY);
-			int bitShift = (textureX % 4) * 4;
-			uint8_t colorLookupTableIndex = (pixelDataWord >> bitShift) & 0xF;
+            uint16_t pixelDataWord = vram.readPixel(videoRamX, videoRamY);
+            int bitShift = (textureX % 4) * 4;
+            uint8_t colorLookupTableIndex = (pixelDataWord >> bitShift) & 0xF;
 
-			return vram.readPixel(colorLookupTableX + colorLookupTableIndex, colorLookupTableY);
-		}
-		case 1: { // 8-bit CLUT
-			int videoRamX = texturePageBaseX + (textureX / 2);
-			int videoRamY = texturePageBaseY + textureY;
+            return vram.readPixel(colorLookupTableX + colorLookupTableIndex, colorLookupTableY);
+        }
+        case 1: { // 8-bit CLUT (2 pixels packed into 1 16-bit word)
+            int videoRamX = texturePageBaseX + (textureX / 2);
+            int videoRamY = texturePageBaseY + textureY;
 
-			uint16_t pixelDataWord = vram.readPixel(videoRamX, videoRamY);
-			int bitShift = (textureX % 2) * 8;
-			uint8_t colorLookupTableIndex = (pixelDataWord >> bitShift) & 0xFF;
+            uint16_t pixelDataWord = vram.readPixel(videoRamX, videoRamY);
+            int bitShift = (textureX % 2) * 8;
+            uint8_t colorLookupTableIndex = (pixelDataWord >> bitShift) & 0xFF;
 
-			return vram.readPixel(colorLookupTableX + colorLookupTableIndex, colorLookupTableY);
-		}
-		default: { // 15-bit Direct
-			int videoRamX = texturePageBaseX + textureX;
-			int videoRamY = texturePageBaseY + textureY;
+            return vram.readPixel(colorLookupTableX + colorLookupTableIndex, colorLookupTableY);
+        }
+        default: { // 15-bit Direct (1 pixel per 16-bit word, no CLUT)
+            int videoRamX = texturePageBaseX + textureX;
+            int videoRamY = texturePageBaseY + textureY;
 
-			return vram.readPixel(videoRamX, videoRamY);
-		}
-	}
+            return vram.readPixel(videoRamX, videoRamY);
+        }
+    }
 }
