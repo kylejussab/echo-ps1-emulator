@@ -13,7 +13,7 @@ public:
     /// @brief Initializes the hardware, loads the BIOS, and sets up the SDL window.
     /// @param biosPath The filesystem path to the PS1 BIOS binary (e.g., SCPH1001.BIN).
     /// @return True if initialization and loading succeeded, false otherwise.
-    bool powerOn(const std::string& biosPath);
+    bool powerOn(const std::string& biosPath, const std::string& cuePath = "");
 
 
     /// @brief Enters the main execution loop, pumping OS events, stepping the CPU, and rendering frames.

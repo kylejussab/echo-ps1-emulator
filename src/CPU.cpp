@@ -2,6 +2,8 @@
 #include "Constants.h"
 #include <iostream>
 
+#include <cstdio>
+
 CPU::CPU(Bus* bus) : bus(bus) {
     programCounter = Hardware::BIOS_STARTING_ADDRESS;
     nextProgramCounter = programCounter + Hardware::INSTRUCTION_SIZE;
@@ -65,6 +67,10 @@ void CPU::step() {
 
     bus->tickHardware(1);
     instructionCount++; 
+
+    // if (instructionCount % 3000000 == 0) {
+    //     std::cout << "[Heartbeat] CPU is executing at PC: 0x" << std::hex << std::uppercase << programCounter << std::endl;
+    // }
 }
 
 
@@ -874,15 +880,15 @@ void CPU::triggerException(uint32_t cause) {
         // The exception happened in a delay slot. Save the branch's address.
         coprocessor0Registers[14] = currentProgramCounter - Hardware::INSTRUCTION_SIZE; 
         
-        // Set the Cause code and flag the BD (Branch Delay) bit (Bit 31)
-        coprocessor0Registers[13] = (cause << 2) | 0x80000000; 
+        // Clear old cause (bits 2-6) and BD bit, set new cause, set BD bit
+        coprocessor0Registers[13] = (coprocessor0Registers[13] & ~0x8000007C) | (cause << 2) | 0x80000000; 
     } 
     else {
         // Normal execution. Save the current instruction's address.
         coprocessor0Registers[14] = currentProgramCounter; 
         
-        // Set the Cause code, leave BD bit as 0
-        coprocessor0Registers[13] = (cause << 2); 
+        // Clear old cause and BD bit, set new cause
+        coprocessor0Registers[13] = (coprocessor0Registers[13] & ~0x8000007C) | (cause << 2); 
     }
 
     // Clear pipeline state so the exception handler boots cleanly

@@ -47,10 +47,29 @@ namespace Hardware {
     // Display Timing
     constexpr double TARGET_FRAMES_PER_SECOND = 60.0; // NTSC refresh rate
 
+
     // Pre-calculated metrics and overscan
     constexpr int CYCLES_PER_FRAME = static_cast<int>(CPU_CLOCK_SPEED_HERTZ / TARGET_FRAMES_PER_SECOND);
     constexpr uint32_t MILLISECONDS_PER_FRAME = static_cast<uint32_t>(1000.0 / TARGET_FRAMES_PER_SECOND);
     
     constexpr int OVERSCAN_CROP_TOP = 0;
     constexpr int OVERSCAN_CROP_BOTTOM = 5;
+
+    // Display Timing & Scanlines
+    constexpr int SCANLINES_PER_FRAME_NTSC = 263;
+    constexpr int CYCLES_PER_SCANLINE = CYCLES_PER_FRAME / SCANLINES_PER_FRAME_NTSC;
+
+
+    // CD-ROM Memory Map
+    constexpr uint32_t REG_CDROM_BASE   = 0x1F801800; // 0x1F801800 - 0x1F801803
+
+    // CD-ROM Drive Mechanics & Timing
+    constexpr int CD_SECTORS_PER_SECOND_1X = 75;
+    constexpr int CD_SECTORS_PER_SECOND_2X = 150;
+    
+    // ~225,792 cycles for a 2x speed sector read
+    constexpr int DELAY_CDROM_READ = static_cast<int>(CPU_CLOCK_SPEED_HERTZ / CD_SECTORS_PER_SECOND_2X); 
+    
+    // General mechanical delay for seek/acknowledge (~10k-50k cycles on real silicon)
+    constexpr int DELAY_CDROM_ACK = 25000; 
 }

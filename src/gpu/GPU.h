@@ -10,6 +10,14 @@
 class GPU {
 public:
     GPU();
+
+    bool consumeInterruptRequest() {
+        if (interruptRequestFired) {
+            interruptRequestFired = false;
+            return true;
+        }
+        return false;
+    }
     
     /// @brief Reads the next data word from the GP0 port.
 	/// @return The next pixel pair from an in-progress VRAM-to-CPU transfer, or 0 if none is pending.
@@ -60,6 +68,14 @@ private:
     Rasterizer rasterizer;
     uint32_t   gpuStatusRegister = Hardware::GPU_DEFAULT_STATUS;
     uint8_t    DMADirection = 0;
+
+
+
+    bool interruptRequestFired = false;
+
+
+    
+    uint32_t gpuReadLatch = 0;
 
 
     // Command Parser & FIFO

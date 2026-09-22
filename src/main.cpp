@@ -16,7 +16,7 @@ int main(int argc, char* argv[]) {
 
     PlayStation ps1;
 
-    if (!ps1.powerOn("SCPH1001.BIN")) {
+    if (!ps1.powerOn("SCPH1001.BIN", "games/Tetris Plus (USA)/Tetris Plus (USA).cue")) {
         std::cerr << "Failed to load BIOS ROM!" << std::endl;
         SDL_Quit();
         return 1;

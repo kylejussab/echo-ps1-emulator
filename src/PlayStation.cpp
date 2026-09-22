@@ -8,7 +8,7 @@ PlayStation::PlayStation() : cpu(&bus) {
 
     window = SDL_CreateWindow("PlayStation 1", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, windowWidth, windowHeight, SDL_WINDOW_SHOWN);
                               
-    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     
     // Lock the internal rendering resolution to a standard 4:3 aspect ratio
     SDL_RenderSetLogicalSize(renderer, 640, 480);
@@ -25,10 +25,15 @@ PlayStation::~PlayStation() {
 }
 
 
-bool PlayStation::powerOn(const std::string& biosPath) {
+bool PlayStation::powerOn(const std::string& biosPath, const std::string& cuePath) {
     if (!bus.loadBIOS(biosPath)) {
         return false;
     }
+
+    if (!cuePath.empty()) {
+        bus.getCDROM().mount(cuePath);
+    }
+
     return true;
 }
 

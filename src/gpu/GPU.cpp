@@ -1,12 +1,15 @@
 #include "GPU.h"
 #include <iostream>
+#include <stdexcept>
+#include <sstream>
+#include <iomanip>
 
 GPU::GPU() : rasterizer(vram) {}
 
 
 uint32_t GPU::readGP0() {
     if (vramReadWordsRemaining <= 0) {
-        return 0x00000000;
+        return gpuReadLatch;
     }
 
     uint16_t firstPixel = vram.readPixel(readTransferXCursor, readTransferYCursor);
@@ -115,9 +118,18 @@ void GPU::writeGP1(uint32_t value) {
             vram.setDisplayDimensions(width, height);
             break;
         }
-        default: {
-            std::cout << "Warning: Unimplemented GP1 command header: 0x" << std::hex << static_cast<int>(commandType) << std::dec << std::endl;
+        case 0x10: { // Get GPU Info
+            switch (value & 0x0F) {
+                case 7: gpuReadLatch = 2; break; // GPU version
+                case 8: gpuReadLatch = 0; break;
+                default: break;                  // unimplemented queries leave the latch unchanged
+            }
             break;
+        }
+        default: {
+            std::stringstream ss;
+            ss << "FATAL: Unhandled GP1 command header: 0x" << std::hex << static_cast<int>(commandType);
+            throw std::runtime_error(ss.str());
         }
     }
 }
@@ -163,9 +175,9 @@ void GPU::continuePendingCommand(uint32_t value) {
             break;
         }
         default: {
-            std::cout << "Unhandled multi-word GPU command: 0x" << std::hex << static_cast<int>(commandType) << std::endl;
-            std::cout << "Parameters Remaining: " << std::dec << parametersRemaining << ", Words Remaining: " << wordsRemaining << std::endl;
-            exit(1);
+            std::stringstream ss;
+            ss << "FATAL: Unhandled multi-word GPU command: 0x" << std::hex << static_cast<int>(commandType) << " (Params remaining: " << std::dec << parametersRemaining << ")";
+            throw std::runtime_error(ss.str());
         }
     }
 }
@@ -244,8 +256,20 @@ void GPU::beginNewCommand(uint32_t value) {
             wordsRemaining = 0;
             break;
         }
+        case 0x01: { // Clear Cache
+            parametersRemaining = 0;
+            wordsRemaining = 0;
+            break;
+        }
         case 0x02: { // Fill Rectangle in Video Ram
             parametersRemaining = 2;
+            wordsRemaining = 0;
+            break;
+        }
+        case 0x1F: { // Interrupt Request (IRQ1)
+            gpuStatusRegister |= 0x01000000; // Set Bit 24 high
+            interruptRequestFired = true; 
+            parametersRemaining = 0;
             wordsRemaining = 0;
             break;
         }
@@ -338,9 +362,9 @@ void GPU::beginNewCommand(uint32_t value) {
 			break;
 		}
         default: {
-            parametersRemaining = 0;
-            wordsRemaining = 0;
-            break;
+            std::stringstream ss;
+            ss << "FATAL: Unhandled GP0 command: 0x" << std::hex << static_cast<int>(commandType);
+            throw std::runtime_error(ss.str());
         }
     }
 }

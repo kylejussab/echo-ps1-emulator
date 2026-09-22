@@ -19,6 +19,9 @@ x1fc
 # PS1 Binaries
 *.BIN
 
+# PS1 ROMS
+games/
+
 # VS Code settings
 .vscode
 

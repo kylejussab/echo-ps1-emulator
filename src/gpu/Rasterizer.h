@@ -117,7 +117,7 @@ private:
 
 	// Internal rendering helpers
 
-	void drawTriangle(const Vertex& vertex0, const Vertex& vertex1, const Vertex& vertex2, bool isTextured, bool isGouraud, uint16_t colorLookupTableX, uint16_t colorLookupTableY);
+	void drawTriangle(const Vertex& vertex0, const Vertex& vertex1, const Vertex& vertex2, bool isTextured, bool isRawTexture, bool isGouraud, uint16_t colorLookupTableX, uint16_t colorLookupTableY);
 	
 	
 	void clipToDrawingArea(int16_t& minX, int16_t& maxX, int16_t& minY, int16_t& maxY);

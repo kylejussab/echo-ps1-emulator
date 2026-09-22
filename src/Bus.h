@@ -4,7 +4,7 @@
 #include <vector>
 #include "Constants.h"
 #include "gpu/GPU.h"
-#include "CDROM.h"
+#include "cdrom/CDROM.h"
 #include "SIO.h"
 
 /// @brief Emulates the MIPS R3000A CPU, managing instruction execution, the delay slot pipeline, and Coprocessor state.
@@ -46,7 +46,8 @@ public:
     
     /// @brief Flags a specific hardware interrupt to be processed.
     /// @param interruptBit The bitmask corresponding to the hardware component (e.g., IRQ_VBLANK).
-    void triggerHardwareInterrupt(uint16_t interruptBit)  { interruptStatus |= interruptBit; };    
+    void triggerHardwareInterrupt(uint16_t interruptBit)  { interruptStatus |= interruptBit; };
+
 private:
     // Memory & Devices
     std::vector<uint8_t> ram;
@@ -62,7 +63,11 @@ private:
     uint32_t vblankCounter = 0;
 
     uint16_t timer0 = 0;
+    
     uint16_t timer1 = 0;
+    uint32_t timer1Mode = 0;
+    uint16_t timer1Target = 0xFFFF;
+    
     uint16_t timer2 = 0;
     uint16_t timer2Target = 0xFFFF;
     uint32_t timer2Mode = 0;
@@ -77,6 +82,11 @@ private:
     uint32_t DMAChannel2MemoryAddress = 0;
     uint32_t DMAChannel2BlockControl = 0;
     uint32_t DMAChannel2ChannelControl = 0;
+
+    // Channel 3: CD-ROM
+    uint32_t DMAChannel3MemoryAddress = 0;
+    uint32_t DMAChannel3BlockControl = 0;
+    uint32_t DMAChannel3ChannelControl = 0;
     
     // Channel 6: OTC (Ordering Table Clear)
     uint32_t DMAChannel6MemoryAddress = 0;
@@ -86,14 +96,7 @@ private:
     // Internal Handlers
     void performGPUDMATransfer(bool directionToRAM);
     void performOTCDMATransfer();
+    void performCDROMDMATransfer();
     void setDMAInterruptFlag(uint8_t channel);
     void updateDMAInterruptLine();
-
-
-
-    // DEBUG
-
-    /// @brief Monitors hardware I/O reads to detect infinite polling loops.
-    /// @param address The absolute memory address being read.
-    void checkSpinlock(uint32_t address);
 };

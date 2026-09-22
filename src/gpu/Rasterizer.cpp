@@ -1,6 +1,9 @@
 #include "Rasterizer.h"
 #include <algorithm>
 
+
+#include <iostream>
+
 using namespace std;
 
 void Rasterizer::setTexturePage(uint16_t baseX, uint16_t baseY, uint8_t colorDepth, uint8_t semiTransparency) {
@@ -58,11 +61,11 @@ void Rasterizer::drawPolygon(const Vertex* vertices, int vertexCount, bool isTex
         offsetVertices[index].y += drawingOffsetY;
     }
 
-    drawTriangle(offsetVertices[0], offsetVertices[1], offsetVertices[2], isTextured, isGouraud, colorLookupTableX, colorLookupTableY);
+    drawTriangle(offsetVertices[0], offsetVertices[1], offsetVertices[2], isTextured, isRawTexture, isGouraud, colorLookupTableX, colorLookupTableY);
 
     // Quads are drawn as two triangles with a V1, V3, V2 winding, matching PS1 hardware.
     if (vertexCount == 4) {
-        drawTriangle(offsetVertices[1], offsetVertices[3], offsetVertices[2], isTextured, isGouraud, colorLookupTableX, colorLookupTableY);
+        drawTriangle(offsetVertices[1], offsetVertices[3], offsetVertices[2], isTextured, isRawTexture, isGouraud, colorLookupTableX, colorLookupTableY);
     }
 }
 
@@ -92,13 +95,29 @@ void Rasterizer::drawRectangle(int16_t x, int16_t y, uint16_t width, uint16_t he
                 int textureCoordinateY = textureCoordinateV + (textureFlipY ? -row : row);
                 uint16_t texel = sampleTexture(textureCoordinateX, textureCoordinateY, colorLookupTableX, colorLookupTableY);
 
-                if (texel == 0) continue; // 0x0000 is fully transparent in PS1 textures
-                
-                // TODO: Multiply texel by flatColor unless isRawTexture is true
-                color = texel;
-            } 
-			else {
-                color = flatColor;
+                if (texel == 0) continue; 
+
+                if (!isRawTexture) {
+                    // Extract 5-bit RGB channels from the texture
+                    int texR = texel & 0x1F;
+                    int texG = (texel >> 5) & 0x1F;
+                    int texB = (texel >> 10) & 0x1F;
+
+                    // Extract 5-bit RGB channels from the flat rectangle color
+                    int colR = flatColor & 0x1F;
+                    int colG = (flatColor >> 5) & 0x1F;
+                    int colB = (flatColor >> 10) & 0x1F;
+
+                    // Multiply and shift
+                    int outR = std::min(31, (texR * colR) >> 4);
+                    int outG = std::min(31, (texG * colG) >> 4);
+                    int outB = std::min(31, (texB * colB) >> 4);
+
+                    color = outR | (outG << 5) | (outB << 10);
+                } 
+                else {
+                    color = texel;
+                }
             }
 
             vram.writePixel(pixelX, pixelY, color);
@@ -124,7 +143,7 @@ void Rasterizer::fillRectangle(uint16_t x, uint16_t y, uint16_t width, uint16_t 
 
 
 
-void Rasterizer::drawTriangle(const Vertex& vertex0, const Vertex& vertex1, const Vertex& vertex2, bool isTextured, bool isGouraud, uint16_t colorLookupTableX, uint16_t colorLookupTableY) {
+void Rasterizer::drawTriangle(const Vertex& vertex0, const Vertex& vertex1, const Vertex& vertex2, bool isTextured, bool isRawTexture, bool isGouraud, uint16_t colorLookupTableX, uint16_t colorLookupTableY) {
     // Find the bounding box of the triangle
     int16_t minX = min({vertex0.x, vertex1.x, vertex2.x});
     int16_t maxX = max({vertex0.x, vertex1.x, vertex2.x});
@@ -178,8 +197,27 @@ void Rasterizer::drawTriangle(const Vertex& vertex0, const Vertex& vertex1, cons
                 uint16_t texel = sampleTexture(textureCoordinateX, textureCoordinateY, colorLookupTableX, colorLookupTableY);
                 if (texel == 0) continue; // 0x0000 is fully transparent in PS1 textures
 
-                // TODO: Multiply texel by finalColor unless isRawTexture is true
-                finalColor = texel;
+                if (!isRawTexture) {
+                    // Extract 5-bit RGB channels from the texture
+                    int texR = texel & 0x1F;
+                    int texG = (texel >> 5) & 0x1F;
+                    int texB = (texel >> 10) & 0x1F;
+
+                    // Extract 5-bit RGB channels from the interpolated vertex color
+                    int colR = finalColor & 0x1F;
+                    int colG = (finalColor >> 5) & 0x1F;
+                    int colB = (finalColor >> 10) & 0x1F;
+
+                    // Multiply and shift (PS1 treats vertex color 16 as a 1.0 multiplier)
+                    int outR = std::min(31, (texR * colR) >> 4);
+                    int outG = std::min(31, (texG * colG) >> 4);
+                    int outB = std::min(31, (texB * colB) >> 4);
+
+                    finalColor = outR | (outG << 5) | (outB << 10);
+                } 
+                else {
+                    finalColor = texel;
+                }
             }
 
             vram.writePixel(pixelX, pixelY, finalColor);
