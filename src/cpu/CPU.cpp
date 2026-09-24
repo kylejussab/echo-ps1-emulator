@@ -1,5 +1,5 @@
-#include "CPU.h"
-#include "Constants.h"
+#include "cpu/CPU.h"
+#include "../core/Constants.h"
 #include <iostream>
 
 #include <cstdio>
@@ -17,12 +17,13 @@ CPU::CPU(Bus* bus) : bus(bus) {
 
 
 void CPU::step() {
-    bool interruptsCurrentlyEnabled = (coprocessor0Registers[12] & 0x1) != 0;
+    bool globalInterruptsEnabled = (coprocessor0Registers[12] & 0x1) != 0;
+    bool hardwareInterruptsUnmasked = (coprocessor0Registers[12] & 0x400) != 0;
 
     isDelaySlot = nextIsDelaySlot;
     nextIsDelaySlot = false;
 
-    if (bus->hasPendingInterrupts() && interruptsCurrentlyEnabled) {
+    if (bus->hasPendingInterrupts() && globalInterruptsEnabled && hardwareInterruptsUnmasked) {
         if (!isDelaySlot) {
             // Flush any pending load from the previous instruction before jumping
             if (pendingLoadRegister != 0) {
@@ -40,6 +41,9 @@ void CPU::step() {
 
     uint32_t registerToUpdate = pendingLoadRegister;
     uint32_t valueToUpdate = pendingLoadValue;
+
+    inFlightLoadRegister = registerToUpdate;
+	inFlightLoadValue = valueToUpdate;
 
     pendingLoadRegister = 0;
     pendingLoadValue = 0;
@@ -68,8 +72,10 @@ void CPU::step() {
     bus->tickHardware(1);
     instructionCount++; 
 
-    // if (instructionCount % 3000000 == 0) {
-    //     std::cout << "[Heartbeat] CPU is executing at PC: 0x" << std::hex << std::uppercase << programCounter << std::endl;
+    // static uint32_t lastHeartbeatPC = 0xFFFFFFFF;
+    // if (instructionCount % 5000000 == 0 && programCounter != lastHeartbeatPC) {
+    //     std::cout << "[Heartbeat] PC: 0x" << std::hex << programCounter << std::endl;
+    //     lastHeartbeatPC = programCounter;
     // }
 }
 
@@ -148,6 +154,9 @@ void CPU::execute(uint32_t instruction) {
                     break;
                 }
                 case 0x0C: { // SYSCALL (System Call)
+                    uint32_t t1 = getRegister(9); 
+                    uint32_t a0 = getRegister(4); 
+                    
                     // 0x08 is the standard MIPS hardware cause code for a Syscall
                     triggerException(0x08); 
                     break;
@@ -540,7 +549,8 @@ void CPU::execute(uint32_t instruction) {
         }
         case 0x12: { // Coprocessor 2 (Geometry Transformation Engine)
             if (instruction & 0x02000000) { // Bit 25
-                break; 
+                gte.executeCommand(instruction);
+                break;
             }
 
             // Otherwise, it's a register move operation
@@ -549,37 +559,32 @@ void CPU::execute(uint32_t instruction) {
             switch (coprocessor2Opcode) {
                 case 0x00: { // MFC2 (Move From Coprocessor 2 Data Register)
                     uint32_t registerTarget = (instruction >> 16) & 0x1F;
-                    uint32_t coprocessor2Register = (instruction >> 11) & 0x1F;
-                    
-                    setRegister(registerTarget, coprocessor2DataRegisters[coprocessor2Register]);
+                    uint32_t gteRegister = (instruction >> 11) & 0x1F;
+                    setRegister(registerTarget, gte.readDataRegister(gteRegister));
                     break;
                 }
                 case 0x02: { // CFC2 (Move From Coprocessor 2 Control Register)
                     uint32_t registerTarget = (instruction >> 16) & 0x1F;
-                    uint32_t coprocessor2Register = (instruction >> 11) & 0x1F;
-                    
-                    setRegister(registerTarget, coprocessor2ControlRegisters[coprocessor2Register]);
+                    uint32_t gteRegister = (instruction >> 11) & 0x1F;
+                    setRegister(registerTarget, gte.readControlRegister(gteRegister));
                     break;
                 }
                 case 0x04: { // MTC2 (Move To Coprocessor 2 Data Register)
                     uint32_t cpuRegisterSource = (instruction >> 16) & 0x1F;
-                    uint32_t coprocessor2RegisterTarget = (instruction >> 11) & 0x1F;
-
-                    coprocessor2DataRegisters[coprocessor2RegisterTarget] = getRegister(cpuRegisterSource);
+                    uint32_t gteRegisterTarget = (instruction >> 11) & 0x1F;
+                    gte.writeDataRegister(gteRegisterTarget, getRegister(cpuRegisterSource));
                     break;
                 }
                 case 0x06: { // CTC2 (Move To Coprocessor 2 Control Register)
                     uint32_t cpuRegisterSource = (instruction >> 16) & 0x1F;
-                    uint32_t coprocessor2RegisterTarget = (instruction >> 11) & 0x1F;
-
-                    coprocessor2ControlRegisters[coprocessor2RegisterTarget] = getRegister(cpuRegisterSource);
+                    uint32_t gteRegisterTarget = (instruction >> 11) & 0x1F;
+                    gte.writeControlRegister(gteRegisterTarget, getRegister(cpuRegisterSource));
                     break;
                 }
                 default: {
                     std::cout << "Unimplemented COP2 instruction: 0x" << std::hex << coprocessor2Opcode << " at PC: 0x" << std::hex << (programCounter - Hardware::INSTRUCTION_SIZE) << std::endl;
                     exit(1);
-                }
-                    
+                }  
             }
             break;
         }
@@ -623,8 +628,8 @@ void CPU::execute(uint32_t instruction) {
             uint32_t shift = (address & 3) * 8; 
 
             uint32_t currentRegValue = getRegister(registerTarget);
-            if (pendingLoadRegister == registerTarget) {
-                currentRegValue = pendingLoadValue;
+            if (registerTarget != 0 && inFlightLoadRegister == registerTarget) {
+                currentRegValue = inFlightLoadValue;
             }
 
             uint32_t mask = 0x00FFFFFF >> shift;
@@ -690,8 +695,8 @@ void CPU::execute(uint32_t instruction) {
             uint32_t shift = (address & 3) * 8; 
 
             uint32_t currentRegValue = getRegister(registerTarget);
-            if (pendingLoadRegister == registerTarget) {
-                currentRegValue = pendingLoadValue;
+            if (registerTarget != 0 && inFlightLoadRegister == registerTarget) {
+                currentRegValue = inFlightLoadValue;
             }
 
             uint32_t mask = 0xFFFFFF00 << (24 - shift);
@@ -805,7 +810,7 @@ void CPU::execute(uint32_t instruction) {
                 break;
             }
 
-            coprocessor2DataRegisters[coprocessor2RegisterTarget] = bus->read32(address);
+            gte.writeDataRegister(coprocessor2RegisterTarget, bus->read32(address));
             break;
         }
         case 0x3A: { // SWC2 (Store Word from Coprocessor 2)
@@ -819,7 +824,8 @@ void CPU::execute(uint32_t instruction) {
                 break;
             }
 
-            bus->write32(address, coprocessor2DataRegisters[coprocessor2RegisterSource]);
+            
+            bus->write32(address, gte.readDataRegister(coprocessor2RegisterSource));
             break;
         }
         default: {  // The Safety Net Crash
@@ -911,11 +917,10 @@ void CPU::triggerException(uint32_t cause) {
 
 
 void CPU::triggerHardwareInterrupt() {
-    // Normal execution: Save the current instruction's address
     coprocessor0Registers[14] = programCounter; 
     
-    // Cause code 0x00, and leave BD bit as 0
-    coprocessor0Registers[13] = (0x00 << 2); 
+    // Preserve IP bits (8-15), clear ExcCode (2-6) and BD (31), and hard-assert IP2 (Bit 10)
+    coprocessor0Registers[13] = (coprocessor0Registers[13] & 0x0000FF00) | (1 << 10); 
 
     // Shift the Status Register (COP0 Reg 12)
     uint32_t status = coprocessor0Registers[12];

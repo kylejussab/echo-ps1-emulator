@@ -88,6 +88,7 @@ void PlayStation::run() {
         
         // Frame Pacing
         uint32_t frameElapsedTicks = SDL_GetTicks() - frameStartTicks;
+
         if (frameElapsedTicks < Hardware::MILLISECONDS_PER_FRAME) {
             SDL_Delay(Hardware::MILLISECONDS_PER_FRAME - frameElapsedTicks);
         }

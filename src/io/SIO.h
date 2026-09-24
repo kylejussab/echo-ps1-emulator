@@ -1,6 +1,6 @@
 #pragma once
 #include <cstdint>
-#include "DualShock.h"
+#include "io/DualShock.h"
 
 class SIO {
 public:

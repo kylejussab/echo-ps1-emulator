@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <vector>
 #include <iostream>
-#include "../Constants.h"
+#include "../core/Constants.h"
 #include "VRAM.h"
 #include "Rasterizer.h"
 
@@ -63,6 +63,14 @@ public:
     /// @return The display height in pixels.
     uint16_t getDisplayHeight() const { return vram.getDisplayHeight(); }
 private:
+    uint16_t horizontalDisplayRangeX1 = 0;
+    uint16_t horizontalDisplayRangeX2 = 0;
+    uint16_t verticalDisplayRangeY1 = 0;
+    uint16_t verticalDisplayRangeY2 = 0;
+
+
+
+
     // Core Hardware State
     VRAM       vram;
     Rasterizer rasterizer;
@@ -138,7 +146,7 @@ private:
     
     // GP0 Word Handlers
     void handleFillRectangleWord(uint32_t value);
-    void handleMonotoneQuadWord(uint32_t value);
+    void handleMonotonePolygonWord(uint32_t value);
     void handleCopyCPUToVRAMWord(uint32_t value);
     void handleCopyVRAMToCPUParameters(uint32_t value);
     void handleRectangleWord(uint32_t value);

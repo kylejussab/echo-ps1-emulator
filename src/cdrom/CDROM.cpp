@@ -1,11 +1,12 @@
 #include "CDROM.h"
 #include <iostream>
-#include "../Constants.h"
+#include "../core/Constants.h"
 
 CDROM::CDROM() {
     index = 0;
     interruptEnable = 0;
     interruptFlag = 0;
+    mode = 0;
 }
 
 bool CDROM::mount(const std::string& cuePath) {
@@ -28,7 +29,6 @@ void CDROM::tick(int cycles) {
                 for (uint8_t byte : active.responsePayload) {
                     responseFIFO.push(byte);
                 }
-                
                 interruptFlag = (interruptFlag & ~0x07) | active.flag;
             }
         }
@@ -36,34 +36,39 @@ void CDROM::tick(int cycles) {
 
     // 2. Process continuous reading
     if (isReading) {
-        readCycleTimer -= cycles;
-        if (readCycleTimer <= 0) {
-            readCycleTimer += Hardware::DELAY_CDROM_READ;
+		readCycleTimer -= cycles;
 
-            if (disc.readSector(currentReadLBA, sectorBuffer)) {
-                while (!dataFIFO.empty()) dataFIFO.pop();
+		if (readCycleTimer <= 0) {
+			readCycleTimer += Hardware::DELAY_CDROM_READ;
 
-                // Bit 5 of mode register determines the sector size
-                bool isSectorSize2340 = (mode & 0x20) != 0;
-                int bytesToRead = isSectorSize2340 ? 2340 : 2048;
-                int startOffset = isSectorSize2340 ? 12 : 24;
+			if (disc.readSector(currentReadLBA, sectorBuffer)) {
+				// Bit 5 of mode register determines the sector size
+				bool isSectorSize2340 = (mode & 0x20) != 0;
+				int bytesToRead = isSectorSize2340 ? 2340 : 2048;
+				int startOffset = isSectorSize2340 ? 12 : 24;
 
-                for (int i = 0; i < bytesToRead; i++) {
-                    dataFIFO.push(sectorBuffer[startOffset + i]);
-                }
-                
-                currentReadLBA++;
-                
-                // Trigger INT1 (Data Ready)
-                queueInterrupt(0x01, 0, {0x22}); 
-            }
-            else {
-                // Out of bounds / Read Error
-                queueInterrupt(0x05, 0, {0x22}); // INT5 Error
-                isReading = false;
-            }
-        }
-    }
+				// A newly arrived sector replaces whatever the CPU left unread
+				while (!dataFIFO.empty()) dataFIFO.pop();
+
+				for (int byteIndex = 0; byteIndex < bytesToRead; byteIndex++) {
+					dataFIFO.push(sectorBuffer[startOffset + byteIndex]);
+				}
+
+				currentReadLBA++;
+
+				// Trigger INT1 (Data Ready)
+				queueInterrupt(0x01, 0, {0x22});
+			}
+			else {
+				// Out of bounds / Read Error
+				queueInterrupt(0x05, 0, {0x22}); // INT5 Error
+				isReading = false;
+			}
+		}
+	}
+
+
+    
 }
 
 void CDROM::queueInterrupt(uint8_t flag, int delayCycles, std::vector<uint8_t> response) {
@@ -102,20 +107,27 @@ uint8_t CDROM::read8(uint32_t address) {
 
 void CDROM::write8(uint32_t address, uint8_t value) {
     switch (address & 0x03) {
-        case 0x00: index = value & 0x03; break;
-        case 0x01: if (index == 0) executeCommand(value); break;
-        case 0x02: 
+        case 0x00: {
+            index = value & 0x03; break;
+        }
+        case 0x01: {
+            if (index == 0) executeCommand(value); break;
+        }
+        case 0x02: {
             if (index == 0) parameterFIFO.push(value);
             else if (index == 1) interruptEnable = value & 0x1F;
             break;
-        case 0x03: 
+        }
+        case 0x03: {
             if (index == 1) {
                 // Writing 1 clears the corresponding interrupt flag bit
                 interruptFlag &= ~(value & 0x1F);
+
                 // If bit 6 is written, clear the parameter FIFO
                 if (value & 0x40) while (!parameterFIFO.empty()) parameterFIFO.pop();
             }
             break;
+        }
     }
 }
 
@@ -145,12 +157,14 @@ void CDROM::executeCommand(uint8_t command) {
                 
                 // Standard 2-second offset applied by the PS1 hardware
                 seekTargetLBA = (minutes * 60 + seconds) * 75 + frames - 150;
-                
+
                 queueInterrupt(0x03, Hardware::DELAY_CDROM_ACK, {defaultStat});
             }
             break;
         }
         case 0x06: { // ReadN
+            while (!dataFIFO.empty()) dataFIFO.pop();
+
             currentReadLBA = seekTargetLBA;
             isReading = true;
             readCycleTimer = Hardware::DELAY_CDROM_READ;
@@ -160,23 +174,60 @@ void CDROM::executeCommand(uint8_t command) {
         }
         case 0x07: { // MotorOn
             queueInterrupt(0x03, Hardware::DELAY_CDROM_ACK, {defaultStat});
-            queueInterrupt(0x02, Hardware::DELAY_CDROM_ACK * 2, {0x02});
+            queueInterrupt(0x02, Hardware::DELAY_CDROM_MOTOR_SPINUP, {0x02});
             break;
         }
         case 0x09: { // Pause
+            while (!dataFIFO.empty()) dataFIFO.pop();
+
             isReading = false;
             queueInterrupt(0x03, Hardware::DELAY_CDROM_ACK, {0x02}); 
             // Pause also queues a second INT2 after the motor stops
             queueInterrupt(0x02, Hardware::DELAY_CDROM_ACK * 2, {0x02});
             break;
         }
+        case 0x13: { // GetTN (first and last track numbers)
+			if (!disc.isLoaded()) {
+				queueInterrupt(0x05, Hardware::DELAY_CDROM_ACK, {0x08, 0x40});
+				break;
+			}
+
+			uint8_t firstTrack = decToBcd(1);
+			uint8_t lastTrack = decToBcd(static_cast<uint8_t>(disc.getTrackCount()));
+			queueInterrupt(0x03, Hardware::DELAY_CDROM_ACK, {defaultStat, firstTrack, lastTrack});
+			break;
+		}
+		case 0x14: { // GetTD (start of a track, or end of the disc for track 0)
+			if (parameterFIFO.empty()) break;
+
+			uint8_t trackNumber = bcdToDec(parameterFIFO.front());
+			parameterFIFO.pop();
+
+			// LBAs start at 0 for MSF 00:02:00, so add the 150 frame offset back
+			uint32_t absoluteFrame = 0;
+			if (trackNumber == 0) {
+				absoluteFrame = disc.getTotalSectors() + 150;
+			}
+			else {
+				const Track* track = disc.getTrack(trackNumber);
+				if (track == nullptr) {
+					std::cout << "CDROM: GetTD for missing track " << static_cast<int>(trackNumber) << std::endl;
+					queueInterrupt(0x05, Hardware::DELAY_CDROM_ACK, {0x03, 0x10});
+					break;
+				}
+				absoluteFrame = track->startLBA + 150;
+			}
+
+			uint32_t minutes = absoluteFrame / (60 * 75);
+			uint32_t seconds = (absoluteFrame / 75) % 60;
+			queueInterrupt(0x03, Hardware::DELAY_CDROM_ACK,
+				{defaultStat, decToBcd(static_cast<uint8_t>(minutes)), decToBcd(static_cast<uint8_t>(seconds))});
+			break;
+		}
         case 0x0A: { // Init
             isReading = false;
-            // INT3 acknowledges the command
             queueInterrupt(0x03, Hardware::DELAY_CDROM_ACK, {defaultStat});
-            
-            // INT2 fires when the drive initialization is complete
-            queueInterrupt(0x02, Hardware::DELAY_CDROM_ACK * 3, {0x02});
+            queueInterrupt(0x02, Hardware::DELAY_CDROM_MOTOR_SPINUP, {0x02});
             break;
         }
         case 0x0B: // Mute
@@ -199,17 +250,15 @@ void CDROM::executeCommand(uint8_t command) {
             } 
             else {
                 queueInterrupt(0x03, Hardware::DELAY_CDROM_ACK, {defaultStat});
-                // INT2 follows immediately with the 8-byte license string identifying it as a legit PS1 disc
-                queueInterrupt(0x02, Hardware::DELAY_CDROM_ACK + 1000, {0x02, 0x00, 0x20, 0x00, 'S', 'C', 'E', 'A'});
+                
+                queueInterrupt(0x02, Hardware::DELAY_CDROM_ACK * 2, {0x02, 0x00, 0x20, 0x00, 'S', 'C', 'E', 'A'});
             }
             break;
         }
         case 0x15: { // SeekL
             // Set the state to Seeking (0x42) during the INT3 acknowledgment
-            queueInterrupt(0x03, Hardware::DELAY_CDROM_ACK, {0x42}); 
-            
-            // INT2 fires when the laser head arrives. The state returns to Motor On (0x02)
-            queueInterrupt(0x02, Hardware::DELAY_CDROM_ACK * 2, {0x02});
+            queueInterrupt(0x03, Hardware::DELAY_CDROM_ACK, {0x42});
+            queueInterrupt(0x02, Hardware::DELAY_CDROM_MOTOR_SPINUP, {0x02});
             break;
         }
         case 0x19: { // Test
@@ -217,7 +266,11 @@ void CDROM::executeCommand(uint8_t command) {
             uint8_t sub = parameterFIFO.front(); parameterFIFO.pop();
             if (sub == 0x20) {
                 queueInterrupt(0x03, Hardware::DELAY_CDROM_ACK, {0x94, 0x09, 0x19, 0xC0}); // BIOS Date
-            } else {
+            } 
+            else if (sub == 0x22) {
+                queueInterrupt(0x03, Hardware::DELAY_CDROM_ACK, {defaultStat, 'S', 'C', 'E', 'A'});
+            }
+            else {
                 queueInterrupt(0x03, Hardware::DELAY_CDROM_ACK, {defaultStat}); 
             }
             break;

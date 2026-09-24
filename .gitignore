@@ -17,7 +17,7 @@ cmake_install.cmake
 x1fc
 
 # PS1 Binaries
-*.BIN
+assets/*.BIN
 
 # PS1 ROMS
 games/

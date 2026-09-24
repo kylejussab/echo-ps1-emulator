@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
-#include "Bus.h"
+#include "../core/Bus.h"
+#include "GTE.h"
 
 /// @brief Emulates the MIPS R3000A CPU, managing instruction execution, the delay slot pipeline, and Coprocessor state.
 class CPU {
@@ -28,7 +29,11 @@ public:
     uint64_t instructionCount = 0; // Temporary tracker
 
 private:
+    uint32_t inFlightLoadRegister = 0;
+    uint32_t inFlightLoadValue = 0;
+
     Bus* bus;
+    GTE gte;
 
     // Core CPU State
     uint32_t programCounter = 0; // Current execution address
@@ -68,12 +73,7 @@ private:
     // Coprocessors
 
     // Coprocessor 0 (System Control)
-    uint32_t coprocessor0Registers[32] = {0};
-
-    // Coprocessor 2 (GTE) Registers
-    uint32_t coprocessor2DataRegisters[32] = {0};
-    uint32_t coprocessor2ControlRegisters[32] = {0};
-    
+    uint32_t coprocessor0Registers[32] = {0};    
     
     // Internal Execution Engine
     void execute(uint32_t instruction);

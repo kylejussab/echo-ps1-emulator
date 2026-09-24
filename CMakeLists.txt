@@ -12,16 +12,28 @@ list(APPEND CMAKE_PREFIX_PATH "/opt/homebrew" "/usr/local")
 
 find_package(SDL2 REQUIRED)
 
-add_executable(x1fc src/main.cpp 
-    src/Bus.cpp
-    src/CPU.cpp
+add_executable(x1fc 
+    src/main.cpp
+
+    src/cdrom/Disc.cpp
+    src/cdrom/CDROM.cpp
+
+    src/core/PlayStation.cpp
+    src/core/Bus.cpp
+    src/core/DMA.cpp
+
+    src/cpu/CPU.cpp
+    src/cpu/GTE.cpp
+
     src/gpu/GPU.cpp
     src/gpu/Rasterizer.cpp
-    src/PlayStation.cpp
-    src/cdrom/CDROM.cpp
-    src/DualShock.cpp
-    src/SIO.cpp
-    src/cdrom/Disc.cpp)
+
+    src/io/DualShock.cpp
+    src/io/SIO.cpp
+
+    src/mdec/MDEC.cpp
+    
+    src/spu/SPU.cpp)
 
 target_include_directories(x1fc PRIVATE src)
 target_link_libraries(x1fc PRIVATE SDL2::SDL2)

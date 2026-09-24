@@ -3,9 +3,12 @@
 #include <string>
 #include <vector>
 #include "Constants.h"
-#include "gpu/GPU.h"
-#include "cdrom/CDROM.h"
-#include "SIO.h"
+#include "DMA.h"
+#include "../gpu/GPU.h"
+#include "../cdrom/CDROM.h"
+#include "../io/SIO.h"
+#include "../spu/SPU.h"
+#include "../mdec/MDEC.h"
 
 /// @brief Emulates the MIPS R3000A CPU, managing instruction execution, the delay slot pipeline, and Coprocessor state.
 class Bus {
@@ -21,6 +24,7 @@ public:
     GPU& getGPU() { return gpu; }
     CDROM& getCDROM() { return cdrom; }
     SIO& getSIO() { return sio0; }
+    SPU& getSPU() { return spu; }
 
 
     // Memory-Mapped I/O Interface
@@ -54,7 +58,10 @@ private:
     std::vector<uint8_t> bios;
     GPU gpu;
     CDROM cdrom;
-    SIO sio0; 
+    SIO sio0;
+    SPU spu;
+    MDEC mdec;
+    DMA dma;
 
 
     // Interupts & Timers
@@ -73,30 +80,8 @@ private:
     uint32_t timer2Mode = 0;
     uint32_t timer2CycleAccumulator = 0;
 
+    bool lastCdromInt = false;
+    bool lastSio0Int = false;
 
-    // Direct Memory Access
-    uint32_t DMAControlRegister = 0x07777777; // Default PS1 startup value
-    uint32_t DMAInterruptControlRegister = 0;
-
-    // Channel 2: GPU
-    uint32_t DMAChannel2MemoryAddress = 0;
-    uint32_t DMAChannel2BlockControl = 0;
-    uint32_t DMAChannel2ChannelControl = 0;
-
-    // Channel 3: CD-ROM
-    uint32_t DMAChannel3MemoryAddress = 0;
-    uint32_t DMAChannel3BlockControl = 0;
-    uint32_t DMAChannel3ChannelControl = 0;
-    
-    // Channel 6: OTC (Ordering Table Clear)
-    uint32_t DMAChannel6MemoryAddress = 0;
-    uint32_t DMAChannel6BlockControl = 0;
-    uint32_t DMAChannel6ChannelControl = 0;
-
-    // Internal Handlers
-    void performGPUDMATransfer(bool directionToRAM);
-    void performOTCDMATransfer();
-    void performCDROMDMATransfer();
-    void setDMAInterruptFlag(uint8_t channel);
-    void updateDMAInterruptLine();
+    uint32_t memoryControlRegisters[9] = {};
 };

@@ -6,9 +6,7 @@
 namespace fs = std::filesystem;
 
 Disc::~Disc() {
-    if (binFile.is_open()) {
-        binFile.close();
-    }
+
 }
 
 uint32_t Disc::msfToLba(int minutes, int seconds, int frames) {
@@ -31,11 +29,11 @@ bool Disc::loadCue(const std::string& cuePath) {
 
     tracks.clear();
     std::string line;
-    std::string binFilename;
     Track currentTrack;
     bool inTrack = false;
 
     fs::path basePath = fs::path(cuePath).parent_path();
+    std::string currentBinFilename; // Consolidated to a single tracking variable
 
     while (std::getline(cueFile, line)) {
         std::string trimmed = trim(line);
@@ -50,9 +48,9 @@ bool Disc::loadCue(const std::string& cuePath) {
             size_t firstQuote = trimmed.find('"');
             size_t lastQuote = trimmed.rfind('"');
             if (firstQuote != std::string::npos && lastQuote != std::string::npos && firstQuote != lastQuote) {
-                binFilename = trimmed.substr(firstQuote + 1, lastQuote - firstQuote - 1);
+                currentBinFilename = trimmed.substr(firstQuote + 1, lastQuote - firstQuote - 1);
             } else {
-                ss >> binFilename;
+                ss >> currentBinFilename;
             }
         }
         else if (command == "TRACK") {
@@ -61,6 +59,9 @@ bool Disc::loadCue(const std::string& cuePath) {
             }
             inTrack = true;
             currentTrack = Track();
+            
+            // Store the absolute path so readSector() can open it directly
+            currentTrack.filename = (basePath / currentBinFilename).string();
 
             int trackNum = 0;
             std::string typeStr;
@@ -88,7 +89,10 @@ bool Disc::loadCue(const std::string& cuePath) {
                 msfStream >> mm >> colon1 >> ss_val >> colon2 >> ff;
 
                 currentTrack.startLBA = msfToLba(mm, ss_val, ff);
-                currentTrack.fileByteOffset = currentTrack.startLBA * 2352;
+                
+                // For Multi-BIN rips, the local file offset is almost always 0.
+                // We will handle the LBA math dynamically in readSector.
+                currentTrack.fileByteOffset = 0; 
             }
         }
     }
@@ -96,27 +100,32 @@ bool Disc::loadCue(const std::string& cuePath) {
     if (inTrack) {
         tracks.push_back(currentTrack);
     }
-    cueFile.close();
 
-    // Resolve .bin path relative to the .cue location
-    fs::path fullBinPath = basePath / binFilename;
-    binFile.open(fullBinPath, std::ios::binary);
 
-    if (!binFile.is_open()) {
-        std::cerr << "CDROM: Could not open BIN image: " << fullBinPath << std::endl;
-        return false;
+    uint32_t globalLBA = 0;
+    std::string lastFilename;
+    for (auto& track : tracks) {
+        if (track.filename != lastFilename) {
+            track.startLBA = globalLBA;
+            lastFilename = track.filename;
+
+            uintmax_t fileSize = fs::file_size(track.filename);
+            globalLBA += static_cast<uint32_t>(fileSize / 2352);
+        } else {
+            track.startLBA = globalLBA;
+        }
     }
 
-    binFile.seekg(0, std::ios::end);
-    totalBinSizeBytes = binFile.tellg();
-    binFile.seekg(0, std::ios::beg);
+    totalSectors = globalLBA;
 
-    std::cout << "CDROM: Loaded disc image " << fullBinPath.filename()
-              << " (" << tracks.size() << " tracks, "
-              << (totalBinSizeBytes / (1024 * 1024)) << " MB)" << std::endl;
+    cueFile.close();
+
+    std::cout << "CDROM: Loaded CUE sheet with " << tracks.size() << " tracks." << std::endl;
 
     return true;
 }
+
+
 
 const Track* Disc::getTrack(int trackNumber) const {
     for (const auto& track : tracks) {
@@ -125,16 +134,53 @@ const Track* Disc::getTrack(int trackNumber) const {
     return nullptr;
 }
 
-bool Disc::readSector(uint32_t lba, uint8_t* destination2352) {
-    if (!binFile.is_open()) return false;
 
-    uint64_t byteOffset = static_cast<uint64_t>(lba) * 2352;
-    if (byteOffset + 2352 > totalBinSizeBytes) {
-        std::cerr << "CDROM: Attempted to read out-of-bounds LBA: " << lba << std::endl;
+
+
+
+
+bool Disc::readSector(uint32_t lba, uint8_t* destination2352) {
+    const Track* targetTrack = nullptr;
+
+    // 1. Find which track contains this LBA
+    for (size_t i = 0; i < tracks.size(); ++i) {
+        if (lba >= tracks[i].startLBA) {
+            targetTrack = &tracks[i];
+        } else {
+            break;
+        }
+    }
+
+    if (!targetTrack) {
+        std::cerr << "CDROM: LBA " << lba << " is out of bounds." << std::endl;
         return false;
     }
 
-    binFile.seekg(byteOffset, std::ios::beg);
-    binFile.read(reinterpret_cast<char*>(destination2352), 2352);
-    return binFile.gcount() == 2352;
+    // 2. Find the LBA where this specific file physically begins
+    uint32_t fileStartLBA = 0;
+    for (const auto& track : tracks) {
+        if (track.filename == targetTrack->filename) {
+            fileStartLBA = track.startLBA;
+            break; // Found the very first track that lives in this file
+        }
+    }
+
+    // 3. Open the file
+    std::ifstream trackFile(targetTrack->filename, std::ios::binary);
+    if (!trackFile.is_open()) {
+        std::cerr << "CDROM: Could not open track file: " << targetTrack->filename << std::endl;
+        return false;
+    }
+
+    // 4. Calculate offset relative to the start of THIS file
+    uint32_t lbaOffsetWithinFile = lba - fileStartLBA;
+    uint64_t byteOffset = static_cast<uint64_t>(lbaOffsetWithinFile) * 2352;
+
+    trackFile.seekg(byteOffset, std::ios::beg);
+    trackFile.read(reinterpret_cast<char*>(destination2352), 2352);
+    
+    bool success = trackFile.gcount() == 2352;
+    trackFile.close();
+    
+    return success;
 }

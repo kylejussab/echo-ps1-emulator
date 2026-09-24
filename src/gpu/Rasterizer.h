@@ -1,6 +1,6 @@
 #pragma once
 #include <cstdint>
-#include "../Constants.h"
+#include "../core/Constants.h"
 #include "VRAM.h"
 
 /// @brief Represents a single point in 2D space with associated texture and color data.
@@ -15,6 +15,13 @@ struct Vertex {
 class Rasterizer {
 public:
 	explicit Rasterizer(VRAM& vram) : vram(vram) {}
+
+
+    void setTextureWindow(uint8_t maskX, uint8_t maskY, uint8_t offsetX, uint8_t offsetY);
+    void setMaskSettings(bool setMask, bool preserveMask);
+
+
+
 
 	/// @brief Sets the base VRAM coordinates and color depth for the current texture page.
     /// @param baseX The X offset in VRAM (in 64-pixel blocks).
@@ -97,6 +104,19 @@ public:
 
 private:
 	VRAM& vram;
+
+
+    uint8_t textureWindowMaskX = 0;
+    uint8_t textureWindowMaskY = 0;
+    uint8_t textureWindowOffsetX = 0;
+    uint8_t textureWindowOffsetY = 0;
+
+    bool maskForceSet = false;
+    bool maskPreserve = false;
+
+
+
+
 
 	// Persistent draw-mode state (GP0 0xE1)
 	uint16_t texturePageBaseX = 0;

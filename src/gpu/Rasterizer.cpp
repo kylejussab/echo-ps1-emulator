@@ -1,10 +1,19 @@
 #include "Rasterizer.h"
 #include <algorithm>
-
-
 #include <iostream>
+#include <iomanip>
 
-using namespace std;
+void Rasterizer::setTextureWindow(uint8_t maskX, uint8_t maskY, uint8_t offsetX, uint8_t offsetY) {
+    textureWindowMaskX = maskX;
+    textureWindowMaskY = maskY;
+    textureWindowOffsetX = offsetX;
+    textureWindowOffsetY = offsetY;
+}
+
+void Rasterizer::setMaskSettings(bool setMask, bool preserveMask) {
+    maskForceSet = setMask;
+    maskPreserve = preserveMask;
+}
 
 void Rasterizer::setTexturePage(uint16_t baseX, uint16_t baseY, uint8_t colorDepth, uint8_t semiTransparency) {
     texturePageBaseX = baseX;
@@ -48,10 +57,16 @@ void Rasterizer::setDrawingOffset(int16_t offsetX, int16_t offsetY) {
 
 void Rasterizer::drawPolygon(const Vertex* vertices, int vertexCount, bool isTextured, bool isSemiTransparent, bool isRawTexture, bool isGouraud, uint16_t colorLookupTableX, uint16_t colorLookupTableY) {
     // TODO: Wire up semi-transparency blending
-    (void)isSemiTransparent; 
+    if (isSemiTransparent) {
+        std::cout << "FATAL: Rasterizer missing Semi-Transparency (Polygons)\n";
+        exit(1);
+    }
     
     // TODO: Wire up raw-texture sampling (bypassing color modulation)
-    (void)isRawTexture;      
+    if (isRawTexture) {
+        std::cout << "FATAL: Rasterizer missing Raw Texture (Polygons)\n";
+        exit(1);
+    }
 
     // Apply the persistent drawing offset to all vertices once before rasterization
     Vertex offsetVertices[4];
@@ -72,7 +87,10 @@ void Rasterizer::drawPolygon(const Vertex* vertices, int vertexCount, bool isTex
 
 void Rasterizer::drawRectangle(int16_t x, int16_t y, uint16_t width, uint16_t height, uint16_t flatColor, bool isTextured, bool isRawTexture, uint8_t textureCoordinateU, uint8_t textureCoordinateV, uint16_t colorLookupTableX, uint16_t colorLookupTableY) {
     // TODO: Wire up raw-texture sampling
-    (void)isRawTexture; 
+    if (isRawTexture) {
+        std::cout << "FATAL: Rasterizer missing Raw Texture (Rectangles)\n";
+        exit(1);
+    }
 
     int16_t originX = x + drawingOffsetX;
     int16_t originY = y + drawingOffsetY;
@@ -93,6 +111,15 @@ void Rasterizer::drawRectangle(int16_t x, int16_t y, uint16_t width, uint16_t he
             if (isTextured) {
                 int textureCoordinateX = textureCoordinateU + (textureFlipX ? -column : column);
                 int textureCoordinateY = textureCoordinateV + (textureFlipY ? -row : row);
+                
+                // Apply Hardware Texture Window Bitmasking
+                textureCoordinateX = (textureCoordinateX & ~(textureWindowMaskX * 8)) | ((textureWindowOffsetX & textureWindowMaskX) * 8);
+                textureCoordinateY = (textureCoordinateY & ~(textureWindowMaskY * 8)) | ((textureWindowOffsetY & textureWindowMaskY) * 8);
+                
+                // PS1 textures are strictly bound to 256x256 pages
+                textureCoordinateX &= 0xFF;
+                textureCoordinateY &= 0xFF;
+                
                 uint16_t texel = sampleTexture(textureCoordinateX, textureCoordinateY, colorLookupTableX, colorLookupTableY);
 
                 if (texel == 0) continue; 
@@ -120,6 +147,12 @@ void Rasterizer::drawRectangle(int16_t x, int16_t y, uint16_t width, uint16_t he
                 }
             }
 
+            if (maskPreserve && (vram.readPixel(pixelX, pixelY) & 0x8000)) {
+                continue;
+            }
+            if (maskForceSet) {
+                color |= 0x8000;
+            }
             vram.writePixel(pixelX, pixelY, color);
         }
     }
@@ -135,6 +168,9 @@ void Rasterizer::fillRectangle(uint16_t x, uint16_t y, uint16_t width, uint16_t 
             uint16_t pixelY = y + row;
 
             if (pixelX < Hardware::VRAM_WIDTH && pixelY < Hardware::VRAM_HEIGHT) {
+                if (maskPreserve && (vram.readPixel(pixelX, pixelY) & 0x8000)) {
+                    continue; // Do not draw over masked pixels
+                }
                 vram.writePixel(pixelX, pixelY, color);
             }
         }
@@ -145,16 +181,16 @@ void Rasterizer::fillRectangle(uint16_t x, uint16_t y, uint16_t width, uint16_t 
 
 void Rasterizer::drawTriangle(const Vertex& vertex0, const Vertex& vertex1, const Vertex& vertex2, bool isTextured, bool isRawTexture, bool isGouraud, uint16_t colorLookupTableX, uint16_t colorLookupTableY) {
     // Find the bounding box of the triangle
-    int16_t minX = min({vertex0.x, vertex1.x, vertex2.x});
-    int16_t maxX = max({vertex0.x, vertex1.x, vertex2.x});
-    int16_t minY = min({vertex0.y, vertex1.y, vertex2.y});
-    int16_t maxY = max({vertex0.y, vertex1.y, vertex2.y});
+    int16_t minX = std::min({vertex0.x, vertex1.x, vertex2.x});
+    int16_t maxX = std::max({vertex0.x, vertex1.x, vertex2.x});
+    int16_t minY = std::min({vertex0.y, vertex1.y, vertex2.y});
+    int16_t maxY = std::max({vertex0.y, vertex1.y, vertex2.y});
 
     // Constrain the bounding box to absolute VRAM limits
-    minX = max((int16_t)0, minX);
-    maxX = min((int16_t)(Hardware::VRAM_WIDTH - 1), maxX);
-    minY = max((int16_t)0, minY);
-    maxY = min((int16_t)(Hardware::VRAM_HEIGHT - 1), maxY);
+    minX = std::max((int16_t)0, minX);
+    maxX = std::min((int16_t)(Hardware::VRAM_WIDTH - 1), maxX);
+    minY = std::max((int16_t)0, minY);
+    maxY = std::min((int16_t)(Hardware::VRAM_HEIGHT - 1), maxY);
 
     // Further constrain to the active drawing area
     clipToDrawingArea(minX, maxX, minY, maxY);
@@ -194,6 +230,14 @@ void Rasterizer::drawTriangle(const Vertex& vertex0, const Vertex& vertex1, cons
                 int textureCoordinateX = static_cast<int>(weight0 * vertex0.u + weight1 * vertex1.u + weight2 * vertex2.u);
                 int textureCoordinateY = static_cast<int>(weight0 * vertex0.v + weight1 * vertex1.v + weight2 * vertex2.v);
 
+                // Apply Hardware Texture Window Bitmasking
+                textureCoordinateX = (textureCoordinateX & ~(textureWindowMaskX * 8)) | ((textureWindowOffsetX & textureWindowMaskX) * 8);
+                textureCoordinateY = (textureCoordinateY & ~(textureWindowMaskY * 8)) | ((textureWindowOffsetY & textureWindowMaskY) * 8);
+                
+                // PS1 textures are strictly bound to 256x256 pages
+                textureCoordinateX &= 0xFF;
+                textureCoordinateY &= 0xFF;
+
                 uint16_t texel = sampleTexture(textureCoordinateX, textureCoordinateY, colorLookupTableX, colorLookupTableY);
                 if (texel == 0) continue; // 0x0000 is fully transparent in PS1 textures
 
@@ -220,6 +264,12 @@ void Rasterizer::drawTriangle(const Vertex& vertex0, const Vertex& vertex1, cons
                 }
             }
 
+            if (maskPreserve && (vram.readPixel(pixelX, pixelY) & 0x8000)) {
+                continue;
+            }
+            if (maskForceSet) {
+                finalColor |= 0x8000;
+            }
             vram.writePixel(pixelX, pixelY, finalColor);
         }
     }
@@ -227,10 +277,10 @@ void Rasterizer::drawTriangle(const Vertex& vertex0, const Vertex& vertex1, cons
 
 
 void Rasterizer::clipToDrawingArea(int16_t& minX, int16_t& maxX, int16_t& minY, int16_t& maxY) {
-    minX = max(minX, (int16_t)max(0, (int)drawingAreaLeft));
-    maxX = min(maxX, (int16_t)min((int)Hardware::VRAM_WIDTH - 1, (int)drawingAreaRight));
-    minY = max(minY, (int16_t)max(0, (int)drawingAreaTop));
-    maxY = min(maxY, (int16_t)min((int)Hardware::VRAM_HEIGHT - 1, (int)drawingAreaBottom));
+    minX = std::max(minX, (int16_t)std::max(0, (int)drawingAreaLeft));
+    maxX = std::min(maxX, (int16_t)std::min((int)Hardware::VRAM_WIDTH - 1, (int)drawingAreaRight));
+    minY = std::max(minY, (int16_t)std::max(0, (int)drawingAreaTop));
+    maxY = std::min(maxY, (int16_t)std::min((int)Hardware::VRAM_HEIGHT - 1, (int)drawingAreaBottom));
 }
 
 

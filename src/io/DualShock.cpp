@@ -6,7 +6,7 @@ DualShock::DualShock() {
     SDL_SetHint(SDL_HINT_GAMECONTROLLER_USE_BUTTON_LABELS, "0");
     SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_SWITCH, "1");
     SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER);
-    SDL_GameControllerAddMappingsFromFile("gamecontrollerdb.txt");
+    SDL_GameControllerAddMappingsFromFile("assets/gamecontrollerdb.txt");
 }
 
 

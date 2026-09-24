@@ -2,7 +2,7 @@
 #include <string>
 #include <SDL2/SDL.h>
 #include "Bus.h"
-#include "CPU.h"
+#include "cpu/CPU.h"
 
 class PlayStation {
 public:

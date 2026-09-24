@@ -3,17 +3,7 @@
 #include <iomanip>
 #include "Bus.h"
 
-
-
-// For hard loud crashes of incorrect hardware emulation
-#include <stdexcept>
-#include <sstream>
-
-
-
-
-
-Bus::Bus() {
+Bus::Bus() : dma(this) {
     ram.resize(Hardware::RAM_SIZE, 0);
     bios.resize(Hardware::BIOS_SIZE, 0);
 }
@@ -24,8 +14,8 @@ Bus::~Bus() {}
 bool Bus::loadBIOS(const std::string& filepath) {
     std::ifstream file(filepath, std::ios::binary);
     if (!file.is_open()) {
-        std::cerr << "BIOS file couldn't be opened at " << filepath << std::endl;
-        return false;
+        std::cout << "FATAL: BIOS file couldn't be opened at " << filepath << "\n";
+        exit(1);
     }
     file.read(reinterpret_cast<char*>(bios.data()), bios.size());
     file.close();
@@ -61,9 +51,8 @@ uint8_t Bus::read8(uint32_t address) {
         return bios[address - Hardware::BIOS_STARTING_ADDRESS];
     }
 
-    std::stringstream ss;
-    ss << "FATAL: Unhandled read8 at address: 0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << address;
-    throw std::runtime_error(ss.str());
+    std::cout << "FATAL: Unhandled read8 at address: 0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << address << "\n";
+    exit(1);
 }
 
 
@@ -98,13 +87,14 @@ uint16_t Bus::read16(uint32_t address) {
         else if (address == 0x1F801120) return timer2;
         else if (address == 0x1F801124) return timer2Mode;
         else if (address == 0x1F801128) return timer2Target;
-        return 0; 
+        
+        std::cout << "FATAL: Unimplemented Timer read at 0x" << std::hex << address << "\n";
+        exit(1);
     }
 
     // Hardware Registers: SPU (0x1F801C00)
     else if (address >= 0x1F801C00 && address <= 0x1F801DFF) {
-        // Bypassing for now
-        return 0x0000;
+       return spu.read16(address);
     }
 
     // BIOS ROM (0x1FC00000)
@@ -113,9 +103,8 @@ uint16_t Bus::read16(uint32_t address) {
         return bios[offset] | (bios[offset + 1] << 8);
     }
 
-    std::stringstream ss;
-    ss << "FATAL: Unhandled read16 at address: 0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << address;
-    throw std::runtime_error(ss.str());
+    std::cout << "FATAL: Unhandled read16 at address: 0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << address << "\n";
+    exit(1);
 }
 
 
@@ -127,6 +116,11 @@ uint32_t Bus::read32(uint32_t address) {
         uint32_t offset = address & 0x001FFFFF;
         return ram[offset] | (ram[offset + 1] << 8) | (ram[offset + 2] << 16) | (ram[offset + 3] << 24);
     }
+
+    // Memory Control (0x1F801000 - 0x1F801020)
+	else if (address >= 0x1F801000 && address <= 0x1F801020) {
+		return memoryControlRegisters[(address - 0x1F801000) >> 2];
+	}
 
     // Hardware Registers: SIO0 (0x1F801040)
     else if (address >= 0x1F801040 && address <= 0x1F80104E) {
@@ -143,23 +137,8 @@ uint32_t Bus::read32(uint32_t address) {
 
     // Hardware Registers: DMA (0x1F801080 - 0x1F8010FF)
     else if (address >= 0x1F801080 && address <= 0x1F8010FF) {
-        if (address == 0x1F8010A0) return DMAChannel2MemoryAddress;
-        else if (address == 0x1F8010A4) return DMAChannel2BlockControl;
-        else if (address == 0x1F8010A8) return DMAChannel2ChannelControl;
-        else if (address == 0x1F8010B0) return DMAChannel3MemoryAddress;
-        else if (address == 0x1F8010B4) return DMAChannel3BlockControl;
-        else if (address == 0x1F8010B8) return DMAChannel3ChannelControl;
-        else if (address == 0x1F8010E0) return DMAChannel6MemoryAddress;
-        else if (address == 0x1F8010E4) return DMAChannel6BlockControl;
-        else if (address == 0x1F8010E8) return DMAChannel6ChannelControl;
-        else if (address == Hardware::REG_DMA_DPCR) return DMAControlRegister;
-        else if (address == Hardware::REG_DMA_DICR) return DMAInterruptControlRegister;
-        else {
-            std::stringstream ss;
-            ss << "FATAL: Unhandled DMA read32 at address: 0x" << std::hex << address;
-            throw std::runtime_error(ss.str());
-        }
-    }
+  		return dma.read32(address);
+  	}
 
     // Hardware Registers: Timers (0x1F801100)
     else if (address >= 0x1F801100 && address <= 0x1F801128) {
@@ -170,7 +149,9 @@ uint32_t Bus::read32(uint32_t address) {
         else if (address == 0x1F801120) return timer2;
         else if (address == 0x1F801124) return timer2Mode;
         else if (address == 0x1F801128) return timer2Target;
-        return 0; 
+        
+        std::cout << "FATAL: Unimplemented Timer read at 0x" << std::hex << address << "\n";
+        exit(1);
     }
 
     // Hardware Registers: GPU (0x1F801810)
@@ -181,15 +162,36 @@ uint32_t Bus::read32(uint32_t address) {
         return gpu.readGP1();
     }
 
+
+    // Hardware Registers: MDEC (Video Decoder)
+    else if (address == 0x1F801824) {
+		return mdec.readStatus();
+	}
+	else if (address == 0x1F801820) {
+		std::cout << "FATAL: Unimplemented MDEC data read at 0x1F801820\n";
+		exit(1);
+	}
+    
+    // Hardware Registers: SIO1 (Memory Card / Serial)
+    else if (address >= 0x1F801050 && address <= 0x1F80105E) {
+        std::cout << "FATAL: Unimplemented SIO1 access at 0x" << std::hex << address << "\n";
+        exit(1);
+    }
+
+     // SPU
+    else if(address >= 0x1F801C00 && address <= 0x1F801DFF) {
+        return spu.read32(address);
+    }
+
+
     // BIOS ROM (0x1FC00000)
     else if (address >= Hardware::BIOS_STARTING_ADDRESS && address < Hardware::BIOS_STARTING_ADDRESS + Hardware::BIOS_SIZE) {
         uint32_t offset = address - Hardware::BIOS_STARTING_ADDRESS;
         return bios[offset] | (bios[offset + 1] << 8) | (bios[offset + 2] << 16) | (bios[offset + 3] << 24);
     }
 
-    std::stringstream ss;
-    ss << "FATAL: Unhandled read32 at address: 0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << address;
-    throw std::runtime_error(ss.str());
+    std::cout << "FATAL: Unhandled read32 at address: 0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << address << "\n";
+    exit(1);
 }
 
 
@@ -232,9 +234,8 @@ void Bus::write8(uint32_t address, uint8_t value) {
         std::cout << " (0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(2) << (int)value << std::dec << std::nouppercase << ")" << std::endl;
     }
     else {
-        std::stringstream ss;
-        ss << "FATAL: Unhandled write8 at address: 0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << address;
-        throw std::runtime_error(ss.str());
+        std::cout << "FATAL: Unhandled write8 at address: 0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << address << "\n";
+        exit(1);
     }
 }
 
@@ -256,7 +257,7 @@ void Bus::write16(uint32_t address, uint16_t value) {
 
     // Hardware Registers: Interrupts (0x1F801070)
     else if (address == Hardware::REG_INTERRUPT_STATUS) {
-        interruptStatus &= value; // Acknowledge
+        interruptStatus &= value;
     }
     else if (address == Hardware::REG_INTERRUPT_MASK) {
         interruptMask = value;
@@ -292,12 +293,11 @@ void Bus::write16(uint32_t address, uint16_t value) {
 
     // Hardware Registers: SPU (0x1F801C00)
     else if (address >= 0x1F801C00 && address <= 0x1F801DFF) {
-        // Bypassing for now
+        spu.write16(address, value);
     }
     else {
-        std::stringstream ss;
-        ss << "FATAL: Unhandled write16 at address: 0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << address;
-        throw std::runtime_error(ss.str());
+        std::cout << "FATAL: Unhandled write16 at address: 0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << address << "\n";
+        exit(1);
     }
 }
 
@@ -316,7 +316,7 @@ void Bus::write32(uint32_t address, uint32_t value) {
 
     // Memory Control (0x1F801000 - 0x1F801020)
     else if (address >= 0x1F801000 && address <= 0x1F801020) {
-        // Emulators can safely ignore hardware memory access timings
+        memoryControlRegisters[(address - 0x1F801000) >> 2] = value;
     }
 
     // Hardware Registers: SIO0 (0x1F801040)
@@ -339,48 +339,8 @@ void Bus::write32(uint32_t address, uint32_t value) {
 
     // Hardware Registers: DMA (0x1F801080 - 0x1F8010FF)
     else if (address >= 0x1F801080 && address <= 0x1F8010FF) {
-        switch (address) {
-            case 0x1F8010A0: DMAChannel2MemoryAddress = value; break;
-            case 0x1F8010A4: DMAChannel2BlockControl = value; break;
-            case 0x1F8010A8: {
-                DMAChannel2ChannelControl = value;
-                if ((value & 0x01000000) != 0) {
-                    performGPUDMATransfer((value & 0x00000001) == 0);
-                    DMAChannel2ChannelControl &= ~0x01000001;
-                }
-                break;
-            }
-            case 0x1F8010B0: DMAChannel3MemoryAddress = value; break;
-            case 0x1F8010B4: DMAChannel3BlockControl = value; break;
-            case 0x1F8010B8: {
-                DMAChannel3ChannelControl = value;
-                break;
-            }
-            case 0x1F8010E0: DMAChannel6MemoryAddress = value; break;
-            case 0x1F8010E4: DMAChannel6BlockControl = value; break;
-            case 0x1F8010E8: {
-                DMAChannel6ChannelControl = value;
-                if ((value & 0x01000000) != 0) {
-                    performOTCDMATransfer();
-                    DMAChannel6ChannelControl &= ~0x01000000;
-                }
-                break;
-            }
-            case Hardware::REG_DMA_DPCR: DMAControlRegister = value; break;
-            case Hardware::REG_DMA_DICR: {
-                uint32_t flagsToClear = value & 0x7F000000;
-                DMAInterruptControlRegister &= ~flagsToClear;
-                DMAInterruptControlRegister = (DMAInterruptControlRegister & 0xFF000000) | (value & 0x00FFFFFF);
-                updateDMAInterruptLine();
-                break;
-            }
-            default: {
-                std::stringstream ss;
-                ss << "FATAL: Unhandled DMA write32 at: 0x" << std::hex << address;
-                throw std::runtime_error(ss.str());
-            }
-        }
-    }
+  		dma.write32(address, value);
+  	}
 
     // Hardware Registers: Timers (0x1F801100)
     else if (address >= 0x1F801100 && address <= 0x1F801128) {
@@ -418,14 +378,33 @@ void Bus::write32(uint32_t address, uint32_t value) {
         gpu.writeGP1(value);
     }
 
+    // Hardware Registers: MDEC (Video Decoder)
+    else if (address == 0x1F801824) {
+		mdec.writeControl(value);
+	}
+	else if (address == 0x1F801820) {
+		std::cout << "FATAL: Unimplemented MDEC command write at 0x1F801820 value 0x" << std::hex << value << "\n";
+		exit(1);
+	}
+    
+    // Hardware Registers: SIO1 (Memory Card / Serial)
+    else if (address >= 0x1F801050 && address <= 0x1F80105E) {
+        std::cout << "FATAL: Unimplemented SIO1 access at 0x" << std::hex << address << "\n";
+        exit(1);
+    }
+
+    // SPU
+    else if(address >= 0x1F801C00 && address <= 0x1F801DFF) {
+        spu.write32(address, value);
+    }
+
     // Cache Control (0x1FFE0130)
     else if (address == 0x1FFE0130) {
         // Safe to ignore
     }
     else {
-        std::stringstream ss;
-        ss << "FATAL: Unhandled write32 at address: 0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << address;
-        throw std::runtime_error(ss.str());
+        std::cout << "FATAL: Unhandled write32 at address: 0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << address << "\n";
+        exit(1);
     }
 }
 
@@ -434,32 +413,28 @@ void Bus::tickHardware(int cycles) {
     // Feed cycles to the CD-ROM state machine
     cdrom.tick(cycles);
 
-    // Check if DMA Channel 3 is active and waiting for data
-    bool isDMA3Enabled = (DMAChannel3ChannelControl & 0x01000000) != 0;
-    
-    // Read hardware register 0x1F801800. Bit 6 (0x40) is "Data FIFO Not Empty"
-    bool isDataReady = (cdrom.read8(Hardware::REG_CDROM_BASE) & 0x40) != 0;
-    
-    if (isDMA3Enabled && isDataReady) {
-        performCDROMDMATransfer();
-        DMAChannel3ChannelControl &= ~0x01000000; // Clear the trigger bit
+    dma.tick(cycles);
+
+
+    bool currentCdromInt = cdrom.checkInterrupt();
+    if (currentCdromInt && !lastCdromInt) {
+        interruptStatus |= Hardware::IRQ_CDROM;
     }
-    
-    if (cdrom.checkInterrupt()) {
-        interruptStatus |= Hardware::IRQ_CDROM; // Trigger IRQ2
-    }
+    lastCdromInt = currentCdromInt;
 
     // GPU Interrupt (IRQ1) - Edge Triggered
     if (gpu.consumeInterruptRequest()) {
         interruptStatus |= Hardware::IRQ_GPU;
     }
 
-    // SIO0 (Controllers & Memory Cards)
     for (int i = 0; i < cycles; i++) {
-        if (sio0.tick()) {
-            interruptStatus |= 0x0080; // Trigger IRQ7
+        bool currentSio0Int = sio0.tick();
+        if (currentSio0Int && !lastSio0Int) {
+            interruptStatus |= 0x0080;
         }
+        lastSio0Int = currentSio0Int;
     }
+    
 
     // Timers
     // TODO: Implement full hardware logic for Timer 0 (Dot Clock) and Timer 1 (HBlank)
@@ -526,117 +501,3 @@ void Bus::tickHardware(int cycles) {
     }
 }
 
-
-void Bus::performGPUDMATransfer(bool directionToRAM) {
-    uint8_t syncMode = (DMAChannel2ChannelControl >> 9) & 0x03;
-    uint32_t blockSize = DMAChannel2BlockControl & 0xFFFF;
-    uint32_t blockCount = (DMAChannel2BlockControl >> 16) & 0xFFFF;
-    
-    // Hardware quirk: A block size of 0 actually translates to 65,536 words
-    if (blockSize == 0) { blockSize = 0x10000; }
-
-    uint32_t totalWords = (syncMode == 0) ? blockSize : (blockSize * blockCount);
-
-
-    // Linked List Mode (Sync Mode 2)
-
-    if (syncMode == 2) {
-        // Linked lists are strictly constrained to the 2MB main RAM
-        uint32_t currentAddress = DMAChannel2MemoryAddress & 0x001FFFFF;
-
-        while (true) {
-            uint32_t header = read32(currentAddress);
-            uint8_t wordCount = header >> 24;
-            uint32_t nextAddress = header & 0x001FFFFF;
-
-            // Transfer the packet payload (skipping the header) to the GPU
-            uint32_t payloadAddress = currentAddress + 4;
-            for (uint8_t i = 0; i < wordCount; i++) {
-                gpu.writeGP0(read32(payloadAddress));
-                payloadAddress += 4;
-            }
-            
-            // Standard hardware termination conditions
-            if ((header & 0x00FFFFFF) == 0x00FFFFFF) break; // Official End-of-List marker
-            if (nextAddress == 0x000000) break;             // Null pointer fallback
-            if (nextAddress == currentAddress) break;       // Self-referential fallback
-            
-            currentAddress = nextAddress;
-        }
-        return; 
-    }
-
-
-    // Block Transfer Mode (Sync Modes 0 and 1)
-
-    uint32_t currentAddress = DMAChannel2MemoryAddress;
-    
-    for (uint32_t wordIndex = 0; wordIndex < totalWords; wordIndex++) {
-        if (directionToRAM) {
-            write32(currentAddress, gpu.readGP0());
-        } else {
-            gpu.writeGP0(read32(currentAddress));
-        }
-        currentAddress += 4; // Advance by one 32-bit word
-    }
-}
-
-
-void Bus::performOTCDMATransfer() {
-    uint32_t currentAddress = DMAChannel6MemoryAddress & 0x1FFFFFFF;
-    uint32_t blockCount = DMAChannel6BlockControl & 0xFFFF;
-
-    // Hardware quirk: A block size of 0 translates to 65,536 words
-    if (blockCount == 0) blockCount = 0x10000;
-
-    // The OTC (Ordering Table Clear) channel builds a reversed linked list in RAM
-    for (uint32_t i = 0; i < blockCount; i++) {
-        uint32_t nextAddress = (i == blockCount - 1) ? 0x00FFFFFF : (currentAddress - 4);
-        write32(currentAddress, nextAddress);
-        currentAddress -= 4;
-    }
-
-    setDMAInterruptFlag(6);
-}
-
-
-void Bus::performCDROMDMATransfer() {
-    uint32_t currentAddress = DMAChannel3MemoryAddress & 0x001FFFFF; 
-    uint32_t totalWords = (DMAChannel3BlockControl & 0xFFFF) * ((DMAChannel3BlockControl >> 16) & 0xFFFF);
-    
-    for (uint32_t i = 0; i < totalWords; i++) {
-        uint8_t b0 = cdrom.read8(0x1F801802);
-        uint8_t b1 = cdrom.read8(0x1F801802);
-        uint8_t b2 = cdrom.read8(0x1F801802);
-        uint8_t b3 = cdrom.read8(0x1F801802);
-        
-        uint32_t word = b0 | (b1 << 8) | (b2 << 16) | (b3 << 24);
-        write32(currentAddress, word);
-        currentAddress += 4;
-    }
-    
-    setDMAInterruptFlag(3);
-}
-
-
-void Bus::setDMAInterruptFlag(uint8_t channel) {
-    DMAInterruptControlRegister |= (1 << (24 + channel));
-
-    updateDMAInterruptLine();
-}
-
-
-void Bus::updateDMAInterruptLine() {
-    bool     masterEnable = (DMAInterruptControlRegister & 0x00800000) != 0; // Bit 23
-    uint32_t enables = (DMAInterruptControlRegister >> 16) & 0x7F;
-    uint32_t flags = (DMAInterruptControlRegister >> 24) & 0x7F;
-
-    // If the master enable is set and any unmasked flag is active, pull the IRQ3 line high
-    if (masterEnable && (enables & flags) > 0) {
-        DMAInterruptControlRegister |= 0x80000000; // Set Master IRQ Flag (Bit 31)
-        interruptStatus |= 0x08;                   // Trigger IRQ3 (DMA) on the main CPU
-    } else {
-        DMAInterruptControlRegister &= ~0x80000000;
-        interruptStatus &= ~0x08;
-    }
-}

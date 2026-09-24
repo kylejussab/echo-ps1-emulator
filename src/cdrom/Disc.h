@@ -15,6 +15,7 @@ struct Track {
     TrackType type = TrackType::Unknown;
     uint32_t startLBA = 0;
     uint32_t fileByteOffset = 0;
+    std::string filename;
 };
 
 class Disc {
@@ -27,12 +28,13 @@ public:
     
     uint32_t getTrackCount() const { return static_cast<uint32_t>(tracks.size()); }
     const Track* getTrack(int trackNumber) const;
-    bool isLoaded() const { return binFile.is_open(); }
+    bool isLoaded() const { return !tracks.empty(); }
+
+    uint32_t getTotalSectors() const { return totalSectors; }
 
 private:
-    std::ifstream binFile;
     std::vector<Track> tracks;
-    uint64_t totalBinSizeBytes = 0;
+    uint32_t totalSectors = 0;
 
     static uint32_t msfToLba(int minutes, int seconds, int frames);
     static std::string trim(const std::string& str);

@@ -72,4 +72,7 @@ namespace Hardware {
     
     // General mechanical delay for seek/acknowledge (~10k-50k cycles on real silicon)
     constexpr int DELAY_CDROM_ACK = 25000; 
+
+    // Real mechanical CD motor spin-up time (~1 to 1.6 seconds on real hardware)
+    constexpr int DELAY_CDROM_MOTOR_SPINUP = static_cast<int>(CPU_CLOCK_SPEED_HERTZ * 0.005);
 }

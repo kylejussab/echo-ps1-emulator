@@ -1,7 +1,6 @@
 #include "GPU.h"
 #include <iostream>
-#include <stdexcept>
-#include <sstream>
+
 #include <iomanip>
 
 GPU::GPU() : rasterizer(vram) {}
@@ -59,6 +58,15 @@ void GPU::writeGP1(uint32_t value) {
     switch (commandType) {
         case 0x00: { // Reset GPU
             vram.setDisplayArea(0, 0);
+
+            // Hardware reset clears all drawing bounds and windows
+            rasterizer.setTextureWindow(0, 0, 0, 0);
+            rasterizer.setTexturePage(0, 0, 0, 0);
+            rasterizer.setDrawingArea(0, 0, 0, 0);
+            rasterizer.setDrawingOffset(0, 0);
+            rasterizer.setMaskSettings(false, false);
+
+
             wordsRemaining = 0;
             parametersRemaining = 0;
             gpuStatusRegister = Hardware::GPU_DEFAULT_STATUS;
@@ -92,8 +100,16 @@ void GPU::writeGP1(uint32_t value) {
             vram.setDisplayArea(x, y);
             break;
         }
-        case 0x06: break;
-        case 0x07: break;
+        case 0x06: { // Horizontal Display Range
+            horizontalDisplayRangeX1 = value & 0xFFF;
+            horizontalDisplayRangeX2 = (value >> 12) & 0xFFF;
+            break;
+        }
+        case 0x07: { // Vertical Display Range
+            verticalDisplayRangeY1 = value & 0x3FF;
+            verticalDisplayRangeY2 = (value >> 10) & 0x3FF;
+            break;
+        }
         case 0x08: { // Display Mode
             uint32_t displayBits = value & 0x3F;
             gpuStatusRegister &= ~0x007E0000; // Clear Bits 17-22 
@@ -127,9 +143,8 @@ void GPU::writeGP1(uint32_t value) {
             break;
         }
         default: {
-            std::stringstream ss;
-            ss << "FATAL: Unhandled GP1 command header: 0x" << std::hex << static_cast<int>(commandType);
-            throw std::runtime_error(ss.str());
+            std::cout << "FATAL: Unhandled GP1 command header: 0x" << std::hex << static_cast<int>(commandType) << std::endl;
+            exit(1);
         }
     }
 }
@@ -159,12 +174,14 @@ void GPU::continuePendingCommand(uint32_t value) {
             handleFillRectangleWord(value);
             break;
         }
-        case 0x20: case 0x21: case 0x22: case 0x23: { // Monotone Triangle
-            // Nothing in here yet
-        }
+        case 0x20: case 0x21: case 0x22: case 0x23: // Monotone Triangle
         case 0x28: case 0x29: case 0x2A: case 0x2B: { // Monotone Quad
-            handleMonotoneQuadWord(value);
+            handleMonotonePolygonWord(value);
             break;
+        }
+        case 0x80: { // Copy VRAM to VRAM
+            std::cout << "FATAL: Multi-word Copy VRAM to VRAM (0x80) is not implemented!\n";
+            exit(1);
         }
         case 0xA0: { // Copy CPU to VRAM
             handleCopyCPUToVRAMWord(value);
@@ -175,9 +192,8 @@ void GPU::continuePendingCommand(uint32_t value) {
             break;
         }
         default: {
-            std::stringstream ss;
-            ss << "FATAL: Unhandled multi-word GPU command: 0x" << std::hex << static_cast<int>(commandType) << " (Params remaining: " << std::dec << parametersRemaining << ")";
-            throw std::runtime_error(ss.str());
+            std::cout << "FATAL: Unhandled multi-word GPU command: 0x" << std::hex << static_cast<int>(commandType) << " (Params remaining: " << std::dec << parametersRemaining << ")" << std::endl;
+            exit(1);
         }
     }
 }
@@ -277,6 +293,7 @@ void GPU::beginNewCommand(uint32_t value) {
             primitiveVertexCount = 3;
             primitiveIsGouraud = false;
             primitiveIsTextured = false;
+            primitiveIsSemiTransparent = (commandType >> 1) & 0x01;
             parametersRemaining = 0;
             wordsRemaining = 3;
             break;
@@ -285,6 +302,7 @@ void GPU::beginNewCommand(uint32_t value) {
             primitiveVertexCount = 4;
             primitiveIsGouraud = false;
             primitiveIsTextured = false;
+            primitiveIsSemiTransparent = (commandType >> 1) & 0x01;
             parametersRemaining = 0;
             wordsRemaining = 4;
             break;
@@ -325,6 +343,13 @@ void GPU::beginNewCommand(uint32_t value) {
 			break;
 		}
 		case 0xE2: { // Texture window — stored nowhere yet, safe to no-op for now
+            uint8_t maskX = value & 0x1F;
+            uint8_t maskY = (value >> 5) & 0x1F;
+            uint8_t offsetX = (value >> 10) & 0x1F;
+            uint8_t offsetY = (value >> 15) & 0x1F;
+
+            rasterizer.setTextureWindow(maskX, maskY, offsetX, offsetY);
+
             parametersRemaining = 0;
             wordsRemaining = 0;
             break;
@@ -357,14 +382,17 @@ void GPU::beginNewCommand(uint32_t value) {
 			break;
 		}
 		case 0xE6: { // Mask bit setting, not implemented yet, safe to no-op for now
-			parametersRemaining = 0;
-			wordsRemaining = 0;
-			break;
+			bool setMask = value & 0x01;
+            bool preserveMask = (value >> 1) & 0x01;
+            rasterizer.setMaskSettings(setMask, preserveMask);
+
+            parametersRemaining = 0;
+            wordsRemaining = 0;
+            break;
 		}
         default: {
-            std::stringstream ss;
-            ss << "FATAL: Unhandled GP0 command: 0x" << std::hex << static_cast<int>(commandType);
-            throw std::runtime_error(ss.str());
+            std::cout << "FATAL: Unhandled GP0 command: 0x" << std::hex << static_cast<int>(commandType) << std::endl;
+            exit(1);
         }
     }
 }
@@ -395,14 +423,11 @@ void GPU::handleFillRectangleWord(uint32_t value) {
 }
 
 
-void GPU::handleMonotoneQuadWord(uint32_t value) {
+void GPU::handleMonotonePolygonWord(uint32_t value) {
     int vertexIndex = primitiveVertexCount - wordsRemaining; 
 
-    int16_t rawX = value & 0xFFFF;
-    if (rawX & 0x400) rawX |= 0xF800; 
-
-    int16_t rawY = (value >> 16) & 0xFFFF;
-    if (rawY & 0x400) rawY |= 0xF800; 
+    int16_t rawX = static_cast<int16_t>(value & 0xFFFF);
+    int16_t rawY = static_cast<int16_t>((value >> 16) & 0xFFFF);
 
     primitiveVertices[vertexIndex].x = rawX;
     primitiveVertices[vertexIndex].y = rawY;
@@ -414,7 +439,7 @@ void GPU::handleMonotoneQuadWord(uint32_t value) {
 
     wordsRemaining--;
 
-    if (wordsRemaining == 0) {
+    if (wordsRemaining == 0) {   
         rasterizer.drawPolygon(primitiveVertices, primitiveVertexCount, primitiveIsTextured, primitiveIsSemiTransparent, primitiveIsRawTexture, primitiveIsGouraud, primitiveColorLookupTableX, primitiveColorLookupTableY);
     }
 }
@@ -522,11 +547,8 @@ void GPU::handleTexturedPolygonWord(uint32_t value) {
     bool isTextureCoordinateWord = (wordIndex % 2) == 1;
 
     if (!isTextureCoordinateWord) {
-        int16_t rawX = value & 0xFFFF;
-        if (rawX & 0x400) rawX |= 0xF800;
-        
-        int16_t rawY = (value >> 16) & 0xFFFF;
-        if (rawY & 0x400) rawY |= 0xF800;
+        int16_t rawX = static_cast<int16_t>(value & 0xFFFF);
+        int16_t rawY = static_cast<int16_t>((value >> 16) & 0xFFFF);
 
         primitiveVertices[vertexIndex].x = rawX;
         primitiveVertices[vertexIndex].y = rawY;
@@ -578,11 +600,8 @@ void GPU::handleGouraudPolygonWord(uint32_t value) {
             break;
         }
         case GouraudPolygonWordRole::Position: {
-            int16_t rawX = value & 0xFFFF;
-            if (rawX & 0x400) rawX |= 0xF800;
-            
-            int16_t rawY = (value >> 16) & 0xFFFF;
-            if (rawY & 0x400) rawY |= 0xF800;
+            int16_t rawX = static_cast<int16_t>(value & 0xFFFF);
+            int16_t rawY = static_cast<int16_t>((value >> 16) & 0xFFFF);
 
             primitiveVertices[primitiveCurrentVertexIndex].x = rawX;
             primitiveVertices[primitiveCurrentVertexIndex].y = rawY;
