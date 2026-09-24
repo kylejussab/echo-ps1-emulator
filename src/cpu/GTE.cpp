@@ -218,11 +218,16 @@ void GTE::commandNCDS(uint32_t instruction) {
     int64_t colorMac2 = ((int64_t)G * IR2) << 4;
     int64_t colorMac3 = ((int64_t)B * IR3) << 4;
 
-    // Step 4: depth cue -- MAC + (FC - MAC) * IR0  (NCDS-specific)
-    int64_t depthMac1 = colorMac1 + ((int64_t)RFC - colorMac1) * IR0;
-    int64_t depthMac2 = colorMac2 + ((int64_t)GFC - colorMac2) * IR0;
-    int64_t depthMac3 = colorMac3 + ((int64_t)BFC - colorMac3) * IR0;
-    checkMacOverflow(depthMac1, depthMac2, depthMac3);
+    // Step 4: depth cue, done in two stages the way the hardware does it:
+	// IR = ((FC << 12) - MAC) >> shift (saturated, ignoring lm), then MAC = IR * IR0 + MAC
+	int32_t depthCueIR1 = clampSFlag((((int64_t)RFC << 12) - colorMac1) >> shift, -32768, 32767, FLAG_IR1_SAT, flags);
+	int32_t depthCueIR2 = clampSFlag((((int64_t)GFC << 12) - colorMac2) >> shift, -32768, 32767, FLAG_IR2_SAT, flags);
+	int32_t depthCueIR3 = clampSFlag((((int64_t)BFC << 12) - colorMac3) >> shift, -32768, 32767, FLAG_IR3_SAT, flags);
+
+	int64_t depthMac1 = (int64_t)depthCueIR1 * IR0 + colorMac1;
+	int64_t depthMac2 = (int64_t)depthCueIR2 * IR0 + colorMac2;
+	int64_t depthMac3 = (int64_t)depthCueIR3 * IR0 + colorMac3;
+	checkMacOverflow(depthMac1, depthMac2, depthMac3);
 
     // Step 5: SAR shift
     MAC1 = (int32_t)(depthMac1 >> shift); MAC2 = (int32_t)(depthMac2 >> shift); MAC3 = (int32_t)(depthMac3 >> shift);

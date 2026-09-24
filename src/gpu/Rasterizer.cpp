@@ -106,7 +106,7 @@ void Rasterizer::drawRectangle(int16_t x, int16_t y, uint16_t width, uint16_t he
                 continue;
             }
 
-            uint16_t color;
+            uint16_t color = flatColor;
 
             if (isTextured) {
                 int textureCoordinateX = textureCoordinateU + (textureFlipX ? -column : column);
@@ -178,101 +178,120 @@ void Rasterizer::fillRectangle(uint16_t x, uint16_t y, uint16_t width, uint16_t 
 }
 
 
+// Top-left fill rule: a pixel exactly on an edge belongs to the triangle only if that edge is a top or left edge. Assumes the triangle's winding was normalized so its area is positive.
+static bool isTopLeftEdge(int16_t startX, int16_t startY, int16_t endX, int16_t endY) {
+	int deltaX = endX - startX;
+	int deltaY = endY - startY;
+	return (deltaY == 0 && deltaX > 0) || deltaY < 0;
+}
+
 
 void Rasterizer::drawTriangle(const Vertex& vertex0, const Vertex& vertex1, const Vertex& vertex2, bool isTextured, bool isRawTexture, bool isGouraud, uint16_t colorLookupTableX, uint16_t colorLookupTableY) {
-    // Find the bounding box of the triangle
-    int16_t minX = std::min({vertex0.x, vertex1.x, vertex2.x});
-    int16_t maxX = std::max({vertex0.x, vertex1.x, vertex2.x});
-    int16_t minY = std::min({vertex0.y, vertex1.y, vertex2.y});
-    int16_t maxY = std::max({vertex0.y, vertex1.y, vertex2.y});
+	Vertex first = vertex0;
+	Vertex second = vertex1;
+	Vertex third = vertex2;
 
-    // Constrain the bounding box to absolute VRAM limits
-    minX = std::max((int16_t)0, minX);
-    maxX = std::min((int16_t)(Hardware::VRAM_WIDTH - 1), maxX);
-    minY = std::max((int16_t)0, minY);
-    maxY = std::min((int16_t)(Hardware::VRAM_HEIGHT - 1), maxY);
+	int32_t areaTotal = edgeFunction(first.x, first.y, second.x, second.y, third.x, third.y);
+	if (areaTotal == 0) return; // Degenerate triangle
 
-    // Further constrain to the active drawing area
-    clipToDrawingArea(minX, maxX, minY, maxY);
+	// Normalize the winding so the area is positive, which lets one top-left test work for both orientations
+	if (areaTotal < 0) {
+		std::swap(second, third);
+		areaTotal = -areaTotal;
+	}
 
-    int32_t areaTotal = edgeFunction(vertex0.x, vertex0.y, vertex1.x, vertex1.y, vertex2.x, vertex2.y);
-    if (areaTotal == 0) return; // Degenerate triangle
+	// Find the bounding box of the triangle
+	int16_t minX = std::min({first.x, second.x, third.x});
+	int16_t maxX = std::max({first.x, second.x, third.x});
+	int16_t minY = std::min({first.y, second.y, third.y});
+	int16_t maxY = std::max({first.y, second.y, third.y});
 
-    for (int16_t pixelY = minY; pixelY <= maxY; pixelY++) {
-        for (int16_t pixelX = minX; pixelX <= maxX; pixelX++) {
-            int32_t edge0 = edgeFunction(vertex1.x, vertex1.y, vertex2.x, vertex2.y, pixelX, pixelY);
-            int32_t edge1 = edgeFunction(vertex2.x, vertex2.y, vertex0.x, vertex0.y, pixelX, pixelY);
-            int32_t edge2 = edgeFunction(vertex0.x, vertex0.y, vertex1.x, vertex1.y, pixelX, pixelY);
+	// Constrain the bounding box to absolute VRAM limits
+	minX = std::max((int16_t)0, minX);
+	maxX = std::min((int16_t)(Hardware::VRAM_WIDTH - 1), maxX);
+	minY = std::max((int16_t)0, minY);
+	maxY = std::min((int16_t)(Hardware::VRAM_HEIGHT - 1), maxY);
 
-            // True if the pixel is inside or exactly on the edge of the triangle
-            bool inside = (edge0 >= 0 && edge1 >= 0 && edge2 >= 0) || (edge0 <= 0 && edge1 <= 0 && edge2 <= 0);
-            if (!inside) continue;
+	// Further constrain to the active drawing area
+	clipToDrawingArea(minX, maxX, minY, maxY);
 
-            // TODO: Optimization - Convert floating point barycentric weights to fixed-point integer math 
-            float weight0 = static_cast<float>(edge0) / areaTotal;
-            float weight1 = static_cast<float>(edge1) / areaTotal;
-            float weight2 = static_cast<float>(edge2) / areaTotal;
+	bool isEdge0TopLeft = isTopLeftEdge(second.x, second.y, third.x, third.y);
+	bool isEdge1TopLeft = isTopLeftEdge(third.x, third.y, first.x, first.y);
+	bool isEdge2TopLeft = isTopLeftEdge(first.x, first.y, second.x, second.y);
 
-            uint16_t finalColor = vertex0.color;
+	for (int16_t pixelY = minY; pixelY <= maxY; pixelY++) {
+		for (int16_t pixelX = minX; pixelX <= maxX; pixelX++) {
+			int32_t edge0 = edgeFunction(second.x, second.y, third.x, third.y, pixelX, pixelY);
+			int32_t edge1 = edgeFunction(third.x, third.y, first.x, first.y, pixelX, pixelY);
+			int32_t edge2 = edgeFunction(first.x, first.y, second.x, second.y, pixelX, pixelY);
 
-            if (isGouraud) {
-                auto interpolateChannel = [&](int shift) {
-                    int channel0 = (vertex0.color >> shift) & 0x1F;
-                    int channel1 = (vertex1.color >> shift) & 0x1F;
-                    int channel2 = (vertex2.color >> shift) & 0x1F;
-                    return static_cast<int>(weight0 * channel0 + weight1 * channel1 + weight2 * channel2) & 0x1F;
-                };
-                // Recombine 5-bit color channels
-                finalColor = interpolateChannel(0) | (interpolateChannel(5) << 5) | (interpolateChannel(10) << 10);
-            }
+			bool inside = (edge0 > 0 || (edge0 == 0 && isEdge0TopLeft))
+				&& (edge1 > 0 || (edge1 == 0 && isEdge1TopLeft))
+				&& (edge2 > 0 || (edge2 == 0 && isEdge2TopLeft));
+			if (!inside) continue;
 
-            if (isTextured) {
-                int textureCoordinateX = static_cast<int>(weight0 * vertex0.u + weight1 * vertex1.u + weight2 * vertex2.u);
-                int textureCoordinateY = static_cast<int>(weight0 * vertex0.v + weight1 * vertex1.v + weight2 * vertex2.v);
+			uint16_t finalColor = first.color;
 
-                // Apply Hardware Texture Window Bitmasking
-                textureCoordinateX = (textureCoordinateX & ~(textureWindowMaskX * 8)) | ((textureWindowOffsetX & textureWindowMaskX) * 8);
-                textureCoordinateY = (textureCoordinateY & ~(textureWindowMaskY * 8)) | ((textureWindowOffsetY & textureWindowMaskY) * 8);
-                
-                // PS1 textures are strictly bound to 256x256 pages
-                textureCoordinateX &= 0xFF;
-                textureCoordinateY &= 0xFF;
+			if (isGouraud) {
+				auto interpolateChannel = [&](int shift) {
+					int64_t numerator = static_cast<int64_t>(edge0) * ((first.color >> shift) & 0x1F)
+						+ static_cast<int64_t>(edge1) * ((second.color >> shift) & 0x1F)
+						+ static_cast<int64_t>(edge2) * ((third.color >> shift) & 0x1F);
+					return static_cast<int>(numerator / areaTotal) & 0x1F;
+				};
+				// Recombine 5-bit color channels
+				finalColor = interpolateChannel(0) | (interpolateChannel(5) << 5) | (interpolateChannel(10) << 10);
+			}
 
-                uint16_t texel = sampleTexture(textureCoordinateX, textureCoordinateY, colorLookupTableX, colorLookupTableY);
-                if (texel == 0) continue; // 0x0000 is fully transparent in PS1 textures
+			if (isTextured) {
+				int64_t numeratorU = static_cast<int64_t>(edge0) * first.u + static_cast<int64_t>(edge1) * second.u + static_cast<int64_t>(edge2) * third.u;
+				int64_t numeratorV = static_cast<int64_t>(edge0) * first.v + static_cast<int64_t>(edge1) * second.v + static_cast<int64_t>(edge2) * third.v;
+				int textureCoordinateX = static_cast<int>(numeratorU / areaTotal);
+				int textureCoordinateY = static_cast<int>(numeratorV / areaTotal);
 
-                if (!isRawTexture) {
-                    // Extract 5-bit RGB channels from the texture
-                    int texR = texel & 0x1F;
-                    int texG = (texel >> 5) & 0x1F;
-                    int texB = (texel >> 10) & 0x1F;
+				// Apply Hardware Texture Window Bitmasking
+				textureCoordinateX = (textureCoordinateX & ~(textureWindowMaskX * 8)) | ((textureWindowOffsetX & textureWindowMaskX) * 8);
+				textureCoordinateY = (textureCoordinateY & ~(textureWindowMaskY * 8)) | ((textureWindowOffsetY & textureWindowMaskY) * 8);
 
-                    // Extract 5-bit RGB channels from the interpolated vertex color
-                    int colR = finalColor & 0x1F;
-                    int colG = (finalColor >> 5) & 0x1F;
-                    int colB = (finalColor >> 10) & 0x1F;
+				// PS1 textures are strictly bound to 256x256 pages
+				textureCoordinateX &= 0xFF;
+				textureCoordinateY &= 0xFF;
 
-                    // Multiply and shift (PS1 treats vertex color 16 as a 1.0 multiplier)
-                    int outR = std::min(31, (texR * colR) >> 4);
-                    int outG = std::min(31, (texG * colG) >> 4);
-                    int outB = std::min(31, (texB * colB) >> 4);
+				uint16_t texel = sampleTexture(textureCoordinateX, textureCoordinateY, colorLookupTableX, colorLookupTableY);
+				if (texel == 0) continue; // 0x0000 is fully transparent in PS1 textures
 
-                    finalColor = outR | (outG << 5) | (outB << 10);
-                } 
-                else {
-                    finalColor = texel;
-                }
-            }
+				if (!isRawTexture) {
+					// Extract 5-bit RGB channels from the texture
+					int textureRed = texel & 0x1F;
+					int textureGreen = (texel >> 5) & 0x1F;
+					int textureBlue = (texel >> 10) & 0x1F;
 
-            if (maskPreserve && (vram.readPixel(pixelX, pixelY) & 0x8000)) {
-                continue;
-            }
-            if (maskForceSet) {
-                finalColor |= 0x8000;
-            }
-            vram.writePixel(pixelX, pixelY, finalColor);
-        }
-    }
+					// Extract 5-bit RGB channels from the interpolated vertex color
+					int colorRed = finalColor & 0x1F;
+					int colorGreen = (finalColor >> 5) & 0x1F;
+					int colorBlue = (finalColor >> 10) & 0x1F;
+
+					// Multiply and shift (PS1 treats vertex color 16 as a 1.0 multiplier)
+					int outputRed = std::min(31, (textureRed * colorRed) >> 4);
+					int outputGreen = std::min(31, (textureGreen * colorGreen) >> 4);
+					int outputBlue = std::min(31, (textureBlue * colorBlue) >> 4);
+
+					finalColor = outputRed | (outputGreen << 5) | (outputBlue << 10);
+				}
+				else {
+					finalColor = texel;
+				}
+			}
+
+			if (maskPreserve && (vram.readPixel(pixelX, pixelY) & 0x8000)) {
+				continue;
+			}
+			if (maskForceSet) {
+				finalColor |= 0x8000;
+			}
+			vram.writePixel(pixelX, pixelY, finalColor);
+		}
+	}
 }
 
 

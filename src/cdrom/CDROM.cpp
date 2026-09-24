@@ -2,6 +2,17 @@
 #include <iostream>
 #include "../core/Constants.h"
 
+
+
+
+
+
+
+#include <iomanip>
+
+
+
+
 CDROM::CDROM() {
     index = 0;
     interruptEnable = 0;
@@ -14,6 +25,14 @@ bool CDROM::mount(const std::string& cuePath) {
 }
 
 void CDROM::tick(int cycles) {
+    totalCycles += cycles;
+
+
+
+
+
+
+
     // 1. Process pending interrupts
     if (!interruptQueue.empty()) {
         // The hardware can only hold one active interrupt at a time.
@@ -136,6 +155,21 @@ bool CDROM::checkInterrupt() {
 }
 
 void CDROM::executeCommand(uint8_t command) {
+    // std::cout << "CDROM: Command 0x" << std::hex << static_cast<int>(command) << std::dec
+	// 	<< " at " << std::fixed << std::setprecision(3)
+	// 	<< (static_cast<double>(totalCycles) / Hardware::CPU_CLOCK_SPEED_HERTZ) << "s"
+	// 	<< std::defaultfloat << std::endl;
+
+
+
+
+
+
+
+
+
+
+
     // Basic status: 0x02 = Motor On, 0x22 = Motor On + Reading
     uint8_t defaultStat = isReading ? 0x22 : 0x02;
 

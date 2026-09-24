@@ -439,7 +439,7 @@ void GPU::handleMonotonePolygonWord(uint32_t value) {
 
     wordsRemaining--;
 
-    if (wordsRemaining == 0) {   
+    if (wordsRemaining == 0) {
         rasterizer.drawPolygon(primitiveVertices, primitiveVertexCount, primitiveIsTextured, primitiveIsSemiTransparent, primitiveIsRawTexture, primitiveIsGouraud, primitiveColorLookupTableX, primitiveColorLookupTableY);
     }
 }
@@ -657,4 +657,5 @@ void GPU::updateDMARequestBit() {
     }
     gpuStatusRegister = bit ? (gpuStatusRegister | 0x02000000) : (gpuStatusRegister & ~0x02000000);
 }
+
 

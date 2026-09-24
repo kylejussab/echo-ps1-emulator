@@ -3,6 +3,20 @@
 #include <iomanip>
 #include "Bus.h"
 
+
+
+
+
+
+
+#include <chrono>
+
+
+
+
+
+
+
 Bus::Bus() : dma(this) {
     ram.resize(Hardware::RAM_SIZE, 0);
     bios.resize(Hardware::BIOS_SIZE, 0);
@@ -215,6 +229,17 @@ void Bus::write8(uint32_t address, uint8_t value) {
 
     // BIOS POST Register (0x1F802041)
     else if (address == 0x1F802041) { 
+        static const auto wallClockStart = std::chrono::steady_clock::now();
+		double wallSeconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - wallClockStart).count();
+
+
+
+
+
+
+
+
+
         std::cout << "BIOS: " << std::hex;
         switch (value) {
             case 0x00: std::cout << "Booting Shell"; break;
@@ -231,7 +256,18 @@ void Bus::write8(uint32_t address, uint8_t value) {
             case 0x0F: std::cout << "Initializing Coprocessor 0"; break;
             default:   std::cout << "Unknown POST Code"; break;
         }
-        std::cout << " (0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(2) << (int)value << std::dec << std::nouppercase << ")" << std::endl;
+        // std::cout << " (0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(2) << (int)value << std::dec << std::nouppercase << ")" << std::endl;
+        
+        
+        
+        
+        
+        
+        std::cout << " (0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(2) << (int)value << std::dec << std::nouppercase << ")"
+			<< " emulated " << std::fixed << std::setprecision(3)
+			<< (static_cast<double>(totalCycles) / Hardware::CPU_CLOCK_SPEED_HERTZ) << "s"
+			<< ", wall " << wallSeconds << "s"
+			<< std::defaultfloat << std::endl;
     }
     else {
         std::cout << "FATAL: Unhandled write8 at address: 0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << address << "\n";
@@ -410,6 +446,13 @@ void Bus::write32(uint32_t address, uint32_t value) {
 
 
 void Bus::tickHardware(int cycles) {
+    totalCycles += cycles;
+
+
+
+
+
+
     // Feed cycles to the CD-ROM state machine
     cdrom.tick(cycles);
 

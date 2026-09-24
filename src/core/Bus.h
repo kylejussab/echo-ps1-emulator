@@ -84,4 +84,11 @@ private:
     bool lastSio0Int = false;
 
     uint32_t memoryControlRegisters[9] = {};
+
+
+
+
+
+
+    uint64_t totalCycles = 0;
 };

@@ -54,4 +54,16 @@ private:
 
     void queueInterrupt(uint8_t flag, int delayCycles, std::vector<uint8_t> response);
     void executeCommand(uint8_t command);
+
+
+
+
+
+
+
+
+
+
+
+    uint64_t totalCycles = 0;
 };
