@@ -1,16 +1,8 @@
 #include "CDROM.h"
 #include <iostream>
 #include "../core/Constants.h"
-
-
-
-
-
-
-
+#include <cstdlib>
 #include <iomanip>
-
-
 
 
 CDROM::CDROM() {
@@ -24,15 +16,19 @@ bool CDROM::mount(const std::string& cuePath) {
     return disc.loadCue(cuePath);
 }
 
+
+bool CDROM::isDoubleSpeed() const {
+	return (mode & 0x80) != 0;
+}
+
+
+int CDROM::readDelayCycles() const {
+	return isDoubleSpeed() ? Hardware::DELAY_CDROM_READ_DOUBLE_SPEED : Hardware::DELAY_CDROM_READ_SINGLE_SPEED;
+}
+
+
+
 void CDROM::tick(int cycles) {
-    totalCycles += cycles;
-
-
-
-
-
-
-
     // 1. Process pending interrupts
     if (!interruptQueue.empty()) {
         // The hardware can only hold one active interrupt at a time.
@@ -58,9 +54,17 @@ void CDROM::tick(int cycles) {
 		readCycleTimer -= cycles;
 
 		if (readCycleTimer <= 0) {
-			readCycleTimer += Hardware::DELAY_CDROM_READ;
+			readCycleTimer += readDelayCycles();
 
 			if (disc.readSector(currentReadLBA, sectorBuffer)) {
+				// XA-ADPCM (mode bit 6): real-time audio sectors go to the XA decoder, not the data FIFO, and raise no INT1
+				// (from memory of psx-spx, verify)
+				bool isXaAudioSector = (mode & 0x40) != 0 && (sectorBuffer[18] & 0x44) == 0x44;
+				if (isXaAudioSector) {
+					currentReadLBA++;
+					return; // the read block is the last thing tick does
+				}
+
 				// Bit 5 of mode register determines the sector size
 				bool isSectorSize2340 = (mode & 0x20) != 0;
 				int bytesToRead = isSectorSize2340 ? 2340 : 2048;
@@ -85,9 +89,6 @@ void CDROM::tick(int cycles) {
 			}
 		}
 	}
-
-
-    
 }
 
 void CDROM::queueInterrupt(uint8_t flag, int delayCycles, std::vector<uint8_t> response) {
@@ -155,21 +156,6 @@ bool CDROM::checkInterrupt() {
 }
 
 void CDROM::executeCommand(uint8_t command) {
-    // std::cout << "CDROM: Command 0x" << std::hex << static_cast<int>(command) << std::dec
-	// 	<< " at " << std::fixed << std::setprecision(3)
-	// 	<< (static_cast<double>(totalCycles) / Hardware::CPU_CLOCK_SPEED_HERTZ) << "s"
-	// 	<< std::defaultfloat << std::endl;
-
-
-
-
-
-
-
-
-
-
-
     // Basic status: 0x02 = Motor On, 0x22 = Motor On + Reading
     uint8_t defaultStat = isReading ? 0x22 : 0x02;
 
@@ -201,7 +187,7 @@ void CDROM::executeCommand(uint8_t command) {
 
             currentReadLBA = seekTargetLBA;
             isReading = true;
-            readCycleTimer = Hardware::DELAY_CDROM_READ;
+            readCycleTimer = readDelayCycles();
             
             queueInterrupt(0x03, Hardware::DELAY_CDROM_ACK, {0x22}); // Acknowledge with reading flag
             break;
@@ -212,13 +198,19 @@ void CDROM::executeCommand(uint8_t command) {
             break;
         }
         case 0x09: { // Pause
-            while (!dataFIFO.empty()) dataFIFO.pop();
+            bool wasReading = isReading;
 
-            isReading = false;
-            queueInterrupt(0x03, Hardware::DELAY_CDROM_ACK, {0x02}); 
-            // Pause also queues a second INT2 after the motor stops
-            queueInterrupt(0x02, Hardware::DELAY_CDROM_ACK * 2, {0x02});
-            break;
+			while (!dataFIFO.empty()) dataFIFO.pop();
+			isReading = false;
+
+			int secondResponseDelay = Hardware::DELAY_CDROM_PAUSE_WHEN_PAUSED;
+			if (wasReading) {
+				secondResponseDelay = isDoubleSpeed() ? Hardware::DELAY_CDROM_PAUSE_DOUBLE_SPEED : Hardware::DELAY_CDROM_PAUSE_SINGLE_SPEED;
+			}
+
+			queueInterrupt(0x03, Hardware::DELAY_CDROM_ACK, {0x02});
+			queueInterrupt(0x02, secondResponseDelay, {0x02});
+			break;
         }
         case 0x13: { // GetTN (first and last track numbers)
 			if (!disc.isLoaded()) {
@@ -259,8 +251,9 @@ void CDROM::executeCommand(uint8_t command) {
 			break;
 		}
         case 0x0A: { // Init
+            mode = 0x20;
             isReading = false;
-            queueInterrupt(0x03, Hardware::DELAY_CDROM_ACK, {defaultStat});
+            queueInterrupt(0x03, Hardware::DELAY_CDROM_INIT_ACK, {defaultStat});
             queueInterrupt(0x02, Hardware::DELAY_CDROM_MOTOR_SPINUP, {0x02});
             break;
         }
@@ -285,8 +278,18 @@ void CDROM::executeCommand(uint8_t command) {
             else {
                 queueInterrupt(0x03, Hardware::DELAY_CDROM_ACK, {defaultStat});
                 
-                queueInterrupt(0x02, Hardware::DELAY_CDROM_ACK * 2, {0x02, 0x00, 0x20, 0x00, 'S', 'C', 'E', 'A'});
+                queueInterrupt(0x02, Hardware::DELAY_CDROM_GETID_SECOND_RESPONSE, {0x02, 0x00, 0x20, 0x00, 'S', 'C', 'E', 'A'});
             }
+            break;
+        }
+        case 0x1B: { // ReadS
+            while (!dataFIFO.empty()) dataFIFO.pop();
+
+            currentReadLBA = seekTargetLBA;
+            isReading = true;
+            readCycleTimer = readDelayCycles();
+            
+            queueInterrupt(0x03, Hardware::DELAY_CDROM_ACK, {0x22}); // Acknowledge with reading flag
             break;
         }
         case 0x15: { // SeekL
@@ -310,9 +313,8 @@ void CDROM::executeCommand(uint8_t command) {
             break;
         }
         default: {
-            std::cout << "CDROM: Unhandled command 0x" << std::hex << (int)command << std::endl;
-            queueInterrupt(0x05, Hardware::DELAY_CDROM_ACK, {0x11}); // INT5 Error
-            break;
+            std::cout << "FATAL: CDROM: Unhandled command 0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(2) << (int)command << "\n";
+            exit(1);
         }
     }
     

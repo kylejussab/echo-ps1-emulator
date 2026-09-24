@@ -1,8 +1,8 @@
 #include "cpu/CPU.h"
 #include "../core/Constants.h"
 #include <iostream>
-
 #include <cstdio>
+
 
 CPU::CPU(Bus* bus) : bus(bus) {
     programCounter = Hardware::BIOS_STARTING_ADDRESS;
@@ -935,4 +935,3 @@ void CPU::triggerHardwareInterrupt() {
 
     nextProgramCounter = programCounter + Hardware::INSTRUCTION_SIZE;
 }
-

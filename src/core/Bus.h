@@ -25,6 +25,7 @@ public:
     CDROM& getCDROM() { return cdrom; }
     SIO& getSIO() { return sio0; }
     SPU& getSPU() { return spu; }
+    MDEC& getMDEC() { return mdec; }
 
 
     // Memory-Mapped I/O Interface
@@ -84,11 +85,4 @@ private:
     bool lastSio0Int = false;
 
     uint32_t memoryControlRegisters[9] = {};
-
-
-
-
-
-
-    uint64_t totalCycles = 0;
 };

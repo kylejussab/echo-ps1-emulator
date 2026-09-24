@@ -23,6 +23,9 @@ public:
     /// @brief Advances the CD-ROM internal timers and fires pending interrupts.
     void tick(int cycles);
 
+    /// @brief Number of bytes currently waiting in the data FIFO (used by DMA channel 3 to detect over-reads).
+    uint32_t getDataFIFOSize() const { return static_cast<uint32_t>(dataFIFO.size()); }
+
     // BCD (Binary Coded Decimal) helpers for MSF timestamps
     static uint8_t bcdToDec(uint8_t bcd) { return ((bcd >> 4) * 10) + (bcd & 0x0F); }
     static uint8_t decToBcd(uint8_t dec) { return ((dec / 10) << 4) | (dec % 10); }
@@ -56,14 +59,6 @@ private:
     void executeCommand(uint8_t command);
 
 
-
-
-
-
-
-
-
-
-
-    uint64_t totalCycles = 0;
+    bool isDoubleSpeed() const;
+	int readDelayCycles() const;
 };

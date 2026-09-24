@@ -8,16 +8,15 @@ class DMA {
 public:
 	explicit DMA(Bus* bus);
 
+    uint8_t read8(uint32_t address);
 	uint32_t read32(uint32_t address);
+    void write8(uint32_t address, uint8_t value);
 	void write32(uint32_t address, uint32_t value);
 
 	/// @brief Advances delayed completions and services the CD-ROM channel.
 	void tick(int cycles);
 
 private:
-	static constexpr uint32_t REGISTER_BASE_ADDRESS = 0x1F801080;
-	static constexpr uint32_t REGISTER_CONTROL = 0x1F8010F0;
-	static constexpr uint32_t REGISTER_INTERRUPT_CONTROL = 0x1F8010F4;
 	static constexpr uint32_t CHANNEL_COUNT = 7;
 	static constexpr uint32_t START_BIT = 0x01000000;
 
@@ -44,6 +43,7 @@ private:
 	void performOrderingTableClearTransfer();
 	void performCDROMTransfer();
 	uint32_t performSPUTransfer();
+    uint32_t performMDECInTransfer();
 	void setInterruptFlag(uint8_t channel);
 	void updateInterruptLine();
 	void scheduleCompletion(uint8_t channel, uint32_t wordsTransferred);

@@ -13,8 +13,9 @@ namespace Hardware {
     constexpr uint32_t REG_GPU_GP0 = 0x1F801810;
     constexpr uint32_t REG_GPU_GP1 = 0x1F801814;
 
-    constexpr uint32_t REG_DMA_DPCR = 0x1F8010F0;
-    constexpr uint32_t REG_DMA_DICR = 0x1F8010F4;
+    constexpr uint32_t REGISTER_DMA_BASE = 0x1F801080; // 0x1F801080 - 0x1F8010FF
+    constexpr uint32_t REGISTER_DMA_CONTROL = 0x1F8010F0;
+    constexpr uint32_t REGISTER_DMA_INTERRUPT_CONTROL = 0x1F8010F4;
 
 
     // RAM Memory Map 
@@ -67,11 +68,14 @@ namespace Hardware {
     constexpr int CD_SECTORS_PER_SECOND_1X = 75;
     constexpr int CD_SECTORS_PER_SECOND_2X = 150;
     
-    // ~225,792 cycles for a 2x speed sector read
-    constexpr int DELAY_CDROM_READ = static_cast<int>(CPU_CLOCK_SPEED_HERTZ / CD_SECTORS_PER_SECOND_2X); 
-    
-    // General mechanical delay for seek/acknowledge (~10k-50k cycles on real silicon)
-    constexpr int DELAY_CDROM_ACK = 25000; 
+    constexpr int DELAY_CDROM_ACK = 50401;                    // First response, 0xC4E1 (Nop)
+    constexpr int DELAY_CDROM_INIT_ACK = 81102;               // First response of Init, 0x13CCE
+    constexpr int DELAY_CDROM_GETID_SECOND_RESPONSE = 18944;  // 0x4A00
+    constexpr int DELAY_CDROM_PAUSE_SINGLE_SPEED = 2168860;   // 0x21181C, about 5 sectors
+    constexpr int DELAY_CDROM_PAUSE_DOUBLE_SPEED = 1097107;   // 0x10BD93
+    constexpr int DELAY_CDROM_PAUSE_WHEN_PAUSED = 7666;       // 0x1DF2
+    constexpr int DELAY_CDROM_READ_SINGLE_SPEED = 451584;     // CPU clock * 0x930 / 4 / 44100
+    constexpr int DELAY_CDROM_READ_DOUBLE_SPEED = 225792;
 
     // Real mechanical CD motor spin-up time (~1 to 1.6 seconds on real hardware)
     constexpr int DELAY_CDROM_MOTOR_SPINUP = static_cast<int>(CPU_CLOCK_SPEED_HERTZ * 0.005);

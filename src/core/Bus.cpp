@@ -4,19 +4,6 @@
 #include "Bus.h"
 
 
-
-
-
-
-
-#include <chrono>
-
-
-
-
-
-
-
 Bus::Bus() : dma(this) {
     ram.resize(Hardware::RAM_SIZE, 0);
     bios.resize(Hardware::BIOS_SIZE, 0);
@@ -38,6 +25,7 @@ bool Bus::loadBIOS(const std::string& filepath) {
 
 
 uint8_t Bus::read8(uint32_t address) {
+    uint32_t originalAddress = address;
     address &= 0x1FFFFFFF; // KSEG masking
 
     // Main RAM with 8MB Mirroring (0x00000000 - 0x007FFFFF)
@@ -55,6 +43,11 @@ uint8_t Bus::read8(uint32_t address) {
         return sio0.read8(address);
     }
 
+    // Hardware Registers: DMA (0x1F801080 - 0x1F8010FF)
+    else if (address >= 0x1F801080 && address <= 0x1F8010FF) {
+        return dma.read8(address);
+    }
+
     // Hardware Registers: CD-ROM (0x1F801800)
     else if (address >= Hardware::REG_CDROM_BASE && address <= Hardware::REG_CDROM_BASE + 3) {
         return cdrom.read8(address);
@@ -65,7 +58,8 @@ uint8_t Bus::read8(uint32_t address) {
         return bios[address - Hardware::BIOS_STARTING_ADDRESS];
     }
 
-    std::cout << "FATAL: Unhandled read8 at address: 0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << address << "\n";
+    std::cout << "FATAL: Unhandled read8 at address: 0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << address
+              << " (original 0x" << std::setw(8) << originalAddress << ")\n";
     exit(1);
 }
 
@@ -222,6 +216,11 @@ void Bus::write8(uint32_t address, uint8_t value) {
         sio0.write8(address, value);
     }
 
+    // Hardware Registers: DMA (0x1F801080 - 0x1F8010FF)
+    else if (address >= 0x1F801080 && address <= 0x1F8010FF) {
+        dma.write8(address, value);
+    }
+
     // Hardware Registers: CD-ROM (0x1F801800)
     else if (address >= Hardware::REG_CDROM_BASE && address <= Hardware::REG_CDROM_BASE + 3) {
         cdrom.write8(address, value);
@@ -229,17 +228,6 @@ void Bus::write8(uint32_t address, uint8_t value) {
 
     // BIOS POST Register (0x1F802041)
     else if (address == 0x1F802041) { 
-        static const auto wallClockStart = std::chrono::steady_clock::now();
-		double wallSeconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - wallClockStart).count();
-
-
-
-
-
-
-
-
-
         std::cout << "BIOS: " << std::hex;
         switch (value) {
             case 0x00: std::cout << "Booting Shell"; break;
@@ -256,18 +244,7 @@ void Bus::write8(uint32_t address, uint8_t value) {
             case 0x0F: std::cout << "Initializing Coprocessor 0"; break;
             default:   std::cout << "Unknown POST Code"; break;
         }
-        // std::cout << " (0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(2) << (int)value << std::dec << std::nouppercase << ")" << std::endl;
-        
-        
-        
-        
-        
-        
-        std::cout << " (0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(2) << (int)value << std::dec << std::nouppercase << ")"
-			<< " emulated " << std::fixed << std::setprecision(3)
-			<< (static_cast<double>(totalCycles) / Hardware::CPU_CLOCK_SPEED_HERTZ) << "s"
-			<< ", wall " << wallSeconds << "s"
-			<< std::defaultfloat << std::endl;
+        std::cout << " (0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(2) << (int)value << std::dec << std::nouppercase << ")" << std::endl;
     }
     else {
         std::cout << "FATAL: Unhandled write8 at address: 0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << address << "\n";
@@ -342,7 +319,7 @@ void Bus::write32(uint32_t address, uint32_t value) {
     address &= 0x1FFFFFFF; // KSEG masking
 
     // Main RAM with 8MB Mirroring (0x00000000 - 0x007FFFFF)
-    if (address >= Hardware::RAM_STARTING_ADDRESS && address < Hardware::RAM_STARTING_ADDRESS + (8 * 1024 * 1024)) {
+    if (address >= Hardware::RAM_STARTING_ADDRESS && address < Hardware::RAM_STARTING_ADDRESS + (8 * 1024 * 1024)) { 
         uint32_t offset = address & 0x001FFFFF;
         ram[offset + 0] = value & 0xFF;
         ram[offset + 1] = (value >> 8) & 0xFF;
@@ -419,8 +396,7 @@ void Bus::write32(uint32_t address, uint32_t value) {
 		mdec.writeControl(value);
 	}
 	else if (address == 0x1F801820) {
-		std::cout << "FATAL: Unimplemented MDEC command write at 0x1F801820 value 0x" << std::hex << value << "\n";
-		exit(1);
+		mdec.writeCommand(value);
 	}
     
     // Hardware Registers: SIO1 (Memory Card / Serial)
@@ -446,13 +422,6 @@ void Bus::write32(uint32_t address, uint32_t value) {
 
 
 void Bus::tickHardware(int cycles) {
-    totalCycles += cycles;
-
-
-
-
-
-
     // Feed cycles to the CD-ROM state machine
     cdrom.tick(cycles);
 
@@ -543,4 +512,9 @@ void Bus::tickHardware(int cycles) {
         gpu.toggleFrameBit();
     }
 }
+
+
+
+
+
 

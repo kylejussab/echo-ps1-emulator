@@ -1,0 +1,235 @@
+CDROM: Loaded CUE sheet with 52 tracks.
+BIOS: Powering on PlayStation 1
+BIOS: Initializing Coprocessor 0 (0x0F)
+BIOS: Checking Expansion ROM (EXP1) (0x0E)
+BIOS: CPU & ROM Check (0x01)
+BIOS: RAM Setup (0x02)
+BIOS: Initial RAM Test & Clear (0x03)
+BIOS: Installing Device Drivers & Interrupt Handlers (0x04)
+BIOS: CPU & ROM Check (0x01)
+BIOS: Initial RAM Test & Clear (0x03)
+BIOS: Installing Device Drivers & Interrupt Handlers (0x04)
+BIOS: Initializing Serial Comm & Controllers (0x05)
+BIOS: Initializing CD-ROM & Timers (0x06)
+BIOS: RAM Setup (0x02)
+BIOS: Initializing Serial Comm & Controllers (0x05)
+BIOS: Initializing CD-ROM & Timers (0x06)
+BIOS: Configuring Machine Environment & DMA (0x07)
+BIOS: Booting Shell (0x00)
+BIOS: CPU & ROM Check (0x01)
+BIOS: RAM Setup (0x02)
+BIOS: Booting Shell (0x00)
+[DEBUG] CD-ROM read command 0x06, start LBA 4, mode 0x80
+[DEBUG] CD-ROM sector delivered: LBA 4, 2048 bytes, first word 0x20202020
+[DEBUG] Channel 3 MADR store: value 0xa0010000 at PC 0x80059bf0 instruction 0xace40000
+[DEBUG] CD-ROM DMA call 1, total bytes moved so far: 2048, this transfer: dest 0xa0010000 size 0x800
+[DEBUG] CD-ROM read command 0x06, start LBA 5, mode 0x80
+[DEBUG] CD-ROM sector delivered: LBA 5, 2048 bytes, first word 0x41
+[DEBUG] Channel 3 MADR store: value 0xa0010000 at PC 0x80059bf0 instruction 0xace40000
+[DEBUG] CD-ROM sector delivered: LBA 6, 2048 bytes, first word 0xb003b
+[DEBUG] Channel 3 MADR store: value 0xa0010800 at PC 0x80059bf0 instruction 0xace40000
+[DEBUG] CD-ROM sector delivered: LBA 7, 2048 bytes, first word 0x10043
+[DEBUG] Channel 3 MADR store: value 0xa0011000 at PC 0x80059bf0 instruction 0xace40000
+[DEBUG] CD-ROM sector delivered: LBA 8, 2048 bytes, first word 0xf6004b
+[DEBUG] CD-ROM sector delivered: LBA 9, 2048 bytes, first word 0x1460081
+[DEBUG] CD-ROM sector delivered: LBA 10, 2048 bytes, first word 0xe7025d
+[DEBUG] CD-ROM sector delivered: LBA 11, 2048 bytes, first word 0xff010b4b
+BIOS: Initializing Serial Comm & Controllers (0x05)
+BIOS: Loading Auto-Boot Executable from CD-ROM (0x08)
+[DEBUG] CD-ROM read command 0x06, start LBA 16, mode 0x80
+[DEBUG] CD-ROM read command 0x06, start LBA 18, mode 0x80
+BIOS: Jumping to Game Executable (0x09)
+[DEBUG] CD-ROM read command 0x06, start LBA 22, mode 0x80
+[DEBUG] CD-ROM read command 0x06, start LBA 23, mode 0x80
+[DEBUG] CD-ROM read command 0x06, start LBA 24, mode 0x80
+[DEBUG] CD-ROM read command 0x06, start LBA 25, mode 0x80
+[DEBUG] CD-ROM read command 0x06, start LBA 16, mode 0xA0
+[DEBUG] CD-ROM read command 0x06, start LBA 18, mode 0xA0
+[DEBUG] CD-ROM read command 0x06, start LBA 22, mode 0xA0
+[DEBUG] CD-ROM read command 0x06, start LBA 82, mode 0xA0
+[DEBUG] CD-ROM read command 0x06, start LBA 88, mode 0xA0
+[DEBUG] CD-ROM DMA call 100, total bytes moved so far: 174260, this transfer: dest 0x80152800 size 0x800
+[DEBUG] CD-ROM DMA call 200, total bytes moved so far: 277260, this transfer: dest 0x8016b800 size 0x800
+[DEBUG] CD-ROM DMA call 300, total bytes moved so far: 380260, this transfer: dest 0x80184800 size 0x800
+[DEBUG] CD-ROM DMA call 400, total bytes moved so far: 483260, this transfer: dest 0x8019d800 size 0x800
+[DEBUG] CD-ROM DMA call 500, total bytes moved so far: 586260, this transfer: dest 0x801b6800 size 0x800
+[DEBUG] CD-ROM read command 0x06, start LBA 318, mode 0xA0
+[DEBUG] CD-ROM read command 0x06, start LBA 319, mode 0xA0
+[DEBUG] CD-ROM DMA call 600, total bytes moved so far: 689260, this transfer: dest 0x800a0000 size 0x800
+[DEBUG] CD-ROM DMA landed on table at 0xaa248: 0x0 0x0 0x0 0x0
+[DEBUG] CD-ROM DMA call 700, total bytes moved so far: 792260, this transfer: dest 0x800b9000 size 0x800
+[DEBUG] CD-ROM DMA landed on table at 0xba248: 0x0 0x0 0x0 0x0
+[DEBUG] CD-ROM read command 0x06, start LBA 16, mode 0xA0
+[DEBUG] CD-ROM read command 0x06, start LBA 18, mode 0xA0
+[DEBUG] CD-ROM read command 0x06, start LBA 22, mode 0xA0
+[DEBUG] CD-ROM read command 0x1B, start LBA 401, mode 0xC0
+[DEBUG] Decoder hit 1: source $4 = 0x801129b2 output $5 = 0x800e4b52
+[DEBUG] CD-ROM stream sector: LBA 401, file 0x1, channel 0x1, submode 0x42, coding 0x80, first words 0x80010160 0x50000 0x1 0x1f18
+[DEBUG] CD-ROM stream sector: LBA 402, file 0x1, channel 0x1, submode 0x42, coding 0x80, first words 0x80010160 0x50001 0x1 0x1f18
+[DEBUG] CD-ROM stream sector: LBA 403, file 0x1, channel 0x1, submode 0x42, coding 0x80, first words 0x80010160 0x50002 0x1 0x1f18
+[DEBUG] CD-ROM stream sector: LBA 404, file 0x1, channel 0x1, submode 0x42, coding 0x80, first words 0x80010160 0x50003 0x1 0x1f18
+[DEBUG] CD-ROM stream sector: LBA 405, file 0x1, channel 0x1, submode 0x42, coding 0x80, first words 0x80010160 0x50004 0x1 0x1f18
+[DEBUG] CD-ROM stream sector: LBA 406, file 0x1, channel 0x1, submode 0x42, coding 0x80, first words 0x80010160 0x50000 0x2 0x1ea8
+[DEBUG] CD-ROM stream sector: LBA 407, file 0x1, channel 0x1, submode 0x42, coding 0x80, first words 0x80010160 0x50001 0x2 0x1ea8
+[DEBUG] Decoder hit 50000: source $4 = 0x8011ed00 output $5 = 0x800fd1f0
+[DEBUG] CD-ROM stream sector: LBA 408, file 0x1, channel 0x1, submode 0x42, coding 0x80, first words 0x80010160 0x50002 0x2 0x1ea8
+[DEBUG] CD-ROM stream sector: LBA 409, file 0x1, channel 0x1, submode 0x42, coding 0x80, first words 0x80010160 0x50003 0x2 0x1ea8
+[DEBUG] CD-ROM stream sector: LBA 410, file 0x1, channel 0x1, submode 0x42, coding 0x80, first words 0x80010160 0x50004 0x2 0x1ea8
+[DEBUG] CD-ROM stream sector: LBA 411, file 0x1, channel 0x1, submode 0x42, coding 0x80, first words 0x80010160 0x50000 0x3 0x205c
+[DEBUG] CD-ROM stream sector: LBA 412, file 0x1, channel 0x1, submode 0x42, coding 0x80, first words 0x80010160 0x50001 0x3 0x205c
+[DEBUG] CD-ROM stream sector: LBA 413, file 0x1, channel 0x1, submode 0x42, coding 0x80, first words 0x80010160 0x50002 0x3 0x205c
+[DEBUG] CD-ROM stream sector: LBA 414, file 0x1, channel 0x1, submode 0x42, coding 0x80, first words 0x80010160 0x50003 0x3 0x205c
+[DEBUG] CD-ROM stream sector: LBA 415, file 0x1, channel 0x1, submode 0x42, coding 0x80, first words 0x80010160 0x50004 0x3 0x205c
+[DEBUG] CD-ROM header words (PC 0x8009d73c): 0x80010160 0x50004 0x3 0x205c 0xf00140 0x380014a0 0x30002 0x0
+[DEBUG] Decoder hit 100000: source $4 = 0x8012b050 output $5 = 0x80115890
+[DEBUG] CD-ROM stream sector: LBA 417, file 0x1, channel 0x1, submode 0x42, coding 0x80, first words 0x80010160 0x40000 0x4 0x1bb8
+[DEBUG] CD-ROM header words (PC 0x8009d73c): 0x80010160 0x40000 0x4 0x1bb8 0xf00140 0x380012c0 0x30003 0x0
+[DEBUG] CD-ROM stream sector: LBA 418, file 0x1, channel 0x1, submode 0x42, coding 0x80, first words 0x80010160 0x40001 0x4 0x1bb8
+[DEBUG] CD-ROM header words (PC 0x8009d73c): 0x80010160 0x40001 0x4 0x1bb8 0xf00140 0x380012c0 0x30003 0x0
+[DEBUG] CD-ROM stream sector: LBA 419, file 0x1, channel 0x1, submode 0x42, coding 0x80, first words 0x80010160 0x40002 0x4 0x1bb8
+[DEBUG] CD-ROM header words (PC 0x8009d73c): 0x80010160 0x40002 0x4 0x1bb8 0xf00140 0x380012c0 0x30003 0x0
+[DEBUG] CD-ROM stream sector: LBA 420, file 0x1, channel 0x1, submode 0x42, coding 0x80, first words 0x80010160 0x40003 0x4 0x1bb8
+[DEBUG] CD-ROM header words (PC 0x8009d73c): 0x80010160 0x40003 0x4 0x1bb8 0xf00140 0x380012c0 0x30003 0x0
+[DEBUG] CD-ROM stream sector: LBA 421, file 0x1, channel 0x1, submode 0x42, coding 0x80, first words 0x80010160 0x50000 0x5 0x2220
+[DEBUG] CD-ROM header words (PC 0x8009d73c): 0x80010160 0x50000 0x5 0x2220 0xf00140 0x380014e0 0x30002 0x0
+[DEBUG] CD-ROM stream sector: LBA 422, file 0x1, channel 0x1, submode 0x42, coding 0x80, first words 0x80010160 0x50001 0x5 0x2220
+[DEBUG] CD-ROM stream sector: LBA 423, file 0x1, channel 0x1, submode 0x42, coding 0x80, first words 0x80010160 0x50002 0x5 0x2220
+[DEBUG] Decoder hit 150000: source $4 = 0x80137780 output $5 = 0x8012e75a
+[DEBUG] CD-ROM stream sector: LBA 424, file 0x1, channel 0x1, submode 0x42, coding 0x80, first words 0x80010160 0x50003 0x5 0x2220
+[DEBUG] CD-ROM stream sector: LBA 425, file 0x1, channel 0x1, submode 0x42, coding 0x80, first words 0x80010160 0x50004 0x5 0x2220
+[DEBUG] Decoder hit 200000: source $4 = 0x80143ad0 output $5 = 0x80146dfa
+[DEBUG] Decoder hit 250000: source $4 = 0x8014fe20 output $5 = 0x8015f49a
+[DEBUG] Decoder hit 300000: source $4 = 0x8015c170 output $5 = 0x80177b3a
+[DEBUG] Decoder hit 350000: source $4 = 0x801684c0 output $5 = 0x801901da
+[DEBUG] Decoder hit 400000: source $4 = 0x80174810 output $5 = 0x801a887a
+[DEBUG] Decoder hit 450000: source $4 = 0x80180b60 output $5 = 0x801c0f1a
+[DEBUG] Decoder hit 500000: source $4 = 0x8018ceb0 output $5 = 0x801d95ba
+[DEBUG] Decoder hit 550000: source $4 = 0x80199200 output $5 = 0x801f1c5a
+[DEBUG] FIFO byte reads so far: 1 (latest value 0x60)
+[DEBUG] Channel 3 MADR store: value 0x0 at PC 0x8009d6fc instruction 0xacb20000
+[DEBUG] $ 0 = 0x00000000   [DEBUG] $ 1 = 0x1f800030   [DEBUG] $ 2 = 0x00000008   [DEBUG] $ 3 = 0x00008000
+[DEBUG] $ 4 = 0x1f8010f0   [DEBUG] $ 5 = 0x1f8010b0   [DEBUG] $ 6 = 0x333bbbbb   [DEBUG] $ 7 = 0x00000008
+[DEBUG] $ 8 = 0x11000000   [DEBUG] $ 9 = 0x00000000   [DEBUG] $10 = 0x0000fe00   [DEBUG] $11 = 0x00000000
+[DEBUG] $12 = 0x00000000   [DEBUG] $13 = 0x00000000   [DEBUG] $14 = 0x820e4b4a   [DEBUG] $15 = 0x00000000
+[DEBUG] $16 = 0x00000003   [DEBUG] $17 = 0x00000000   [DEBUG] $18 = 0x00000000   [DEBUG] $19 = 0x00000000
+[DEBUG] $20 = 0x00000008   [DEBUG] $21 = 0x11000000   [DEBUG] $22 = 0x00000000   [DEBUG] $23 = 0x00000000
+[DEBUG] $24 = 0x00000000   [DEBUG] $25 = 0x00000000   [DEBUG] $26 = 0x00000008   [DEBUG] $27 = 0x00000f1c
+[DEBUG] $28 = 0x800bcb04   [DEBUG] $29 = 0x800bbf94   [DEBUG] $30 = 0x801fc000   [DEBUG] $31 = 0x8009ce84
+[DEBUG] Register last-writer PCs:
+[DEBUG] $ 0 last written at PC 0x00000000   [DEBUG] $ 1 last written at PC 0x8009d5f8   [DEBUG] $ 2 last written at PC 0x8009d6f0   [DEBUG] $ 3 last written at PC 0x8009d6cc
+[DEBUG] $ 4 last written at PC 0x8009d6e8   [DEBUG] $ 5 last written at PC 0x8009d6dc   [DEBUG] $ 6 last written at PC 0x8009d6f4   [DEBUG] $ 7 last written at PC 0x8009ce70
+[DEBUG] $ 8 last written at PC 0x8009ce30   [DEBUG] $ 9 last written at PC 0x8009602c   [DEBUG] $10 last written at PC 0x00000fa8   [DEBUG] $11 last written at PC 0x8009602c
+[DEBUG] $12 last written at PC 0x00000fb0   [DEBUG] $13 last written at PC 0x00000fb4   [DEBUG] $14 last written at PC 0x00000fb8   [DEBUG] $15 last written at PC 0x00000fbc
+[DEBUG] $16 last written at PC 0x8009d5c0   [DEBUG] $17 last written at PC 0x8009d608   [DEBUG] $18 last written at PC 0x8009d5c8   [DEBUG] $19 last written at PC 0x8009d5d0
+[DEBUG] $20 last written at PC 0x8009d5d8   [DEBUG] $21 last written at PC 0x8009d604   [DEBUG] $22 last written at PC 0x8009bf74   [DEBUG] $23 last written at PC 0x8009bf70
+[DEBUG] $24 last written at PC 0x00000fe0   [DEBUG] $25 last written at PC 0x00000fe4   [DEBUG] $26 last written at PC 0x80000e60   [DEBUG] $27 last written at PC 0x00000fe8
+[DEBUG] $28 last written at PC 0x80000e6c   [DEBUG] $29 last written at PC 0x8009d5b8   [DEBUG] $30 last written at PC 0x80000e74   [DEBUG] $31 last written at PC 0x8009ce7c
+[DEBUG] Code around $18's last writer:
+[DEBUG] RAM[0x8009d5b8] = 0x27bdffc8
+[DEBUG] RAM[0x8009d5bc] = 0xafb00018
+[DEBUG] RAM[0x8009d5c0] = 0x00808021
+[DEBUG] RAM[0x8009d5c4] = 0xafb20020
+[DEBUG] RAM[0x8009d5c8] = 0x00a09021
+[DEBUG] RAM[0x8009d5cc] = 0xafb30024
+[DEBUG] RAM[0x8009d5d0] = 0x00c09821
+[DEBUG] RAM[0x8009d5d4] = 0xafb40028
+[DEBUG] RAM[0x8009d5d8] = 0x00e0a021
+[DEBUG] RAM[0x8009d5dc] = 0x00002021
+[DEBUG] RAM[0x8009d5e0] = 0x00102900
+[DEBUG] RAM[0x8009d5e4] = 0x3c020100
+[DEBUG] Code before the store:
+[DEBUG] RAM[0x8009d69c] = 0x00021027
+[DEBUG] RAM[0x8009d6a0] = 0x00822024
+[DEBUG] RAM[0x8009d6a4] = 0xa0640002
+[DEBUG] RAM[0x8009d6a8] = 0x3c02800c
+[DEBUG] RAM[0x8009d6ac] = 0x8c42afd0
+[DEBUG] RAM[0x8009d6b0] = 0x00000000
+[DEBUG] RAM[0x8009d6b4] = 0x8c420000
+[DEBUG] RAM[0x8009d6b8] = 0x00000000
+[DEBUG] RAM[0x8009d6bc] = 0xafa20010
+[DEBUG] RAM[0x8009d6c0] = 0x00103080
+[DEBUG] RAM[0x8009d6c4] = 0x24c60003
+[DEBUG] RAM[0x8009d6c8] = 0x34030001
+[DEBUG] RAM[0x8009d6cc] = 0x00c31804
+[DEBUG] RAM[0x8009d6d0] = 0x3c051f80
+[DEBUG] RAM[0x8009d6d4] = 0x34a51080
+[DEBUG] RAM[0x8009d6d8] = 0x00101100
+[DEBUG] RAM[0x8009d6dc] = 0x00452821
+[DEBUG] RAM[0x8009d6e0] = 0x3c04800c
+[DEBUG] RAM[0x8009d6e4] = 0x8c84afcc
+[DEBUG] RAM[0x8009d6e8] = 0x00131400
+[DEBUG] RAM[0x8009d6ec] = 0x8c860000
+[DEBUG] RAM[0x8009d6f0] = 0x00541025
+[DEBUG] RAM[0x8009d6f4] = 0x00c33025
+[DEBUG] RAM[0x8009d6f8] = 0xac860000
+[DEBUG] Caller code before return address $31:
+[DEBUG] RAM[0x8009ce54] = 0x00a22821
+[DEBUG] RAM[0x8009ce58] = 0x080273a1
+[DEBUG] RAM[0x8009ce5c] = 0x00000000
+[DEBUG] RAM[0x8009ce60] = 0x34040003
+[DEBUG] RAM[0x8009ce64] = 0x00003021
+[DEBUG] RAM[0x8009ce68] = 0x3c058013
+[DEBUG] RAM[0x8009ce6c] = 0x8ca54b08
+[DEBUG] RAM[0x8009ce70] = 0x34070008
+[DEBUG] RAM[0x8009ce74] = 0xafa80010
+[DEBUG] RAM[0x8009ce78] = 0xafa00014
+[DEBUG] RAM[0x8009ce7c] = 0x0c02756e
+[DEBUG] RAM[0x8009ce80] = 0xafa00018
+[DEBUG] RAM[0x8009ce84] = 0x3c04800c
+[DEBUG] RAM[0x8009ce88] = 0x8c84afe4
+[DEBUG] RAM[0x8009ce8c] = 0x00000000
+[DEBUG] RAM[0x8009ce90] = 0x8c820000
+[DEBUG] MADR write: channel 3 memory address set to 0x0 from PC 0x8009d6fc
+[DEBUG] Hit trap address at PC 0xdf8
+[DEBUG] $ 0 = 0x00000000   [DEBUG] $ 1 = 0x800c0000   [DEBUG] $ 2 = 0x00000000   [DEBUG] $ 3 = 0x0000000d
+[DEBUG] $ 4 = 0x00000000   [DEBUG] $ 5 = 0x00000400   [DEBUG] $ 6 = 0x1f801074   [DEBUG] $ 7 = 0x00000008
+[DEBUG] $ 8 = 0x11000000   [DEBUG] $ 9 = 0x00000017   [DEBUG] $10 = 0x000000b0   [DEBUG] $11 = 0x00000000
+[DEBUG] $12 = 0x00000000   [DEBUG] $13 = 0x00000000   [DEBUG] $14 = 0x820e4b4a   [DEBUG] $15 = 0x00000000
+[DEBUG] $16 = 0x00000000   [DEBUG] $17 = 0x00000003   [DEBUG] $18 = 0x800bb064   [DEBUG] $19 = 0x00000008
+[DEBUG] $20 = 0x00000020   [DEBUG] $21 = 0x00000000   [DEBUG] $22 = 0x38001580   [DEBUG] $23 = 0x00000000
+[DEBUG] $24 = 0x00000000   [DEBUG] $25 = 0x00000000   [DEBUG] $26 = 0x00000008   [DEBUG] $27 = 0x00000f1c
+[DEBUG] $28 = 0x0000f450   [DEBUG] $29 = 0x000085d8   [DEBUG] $30 = 0x000085d8   [DEBUG] $31 = 0x8009de6c
+[DEBUG] Code around the faulting instruction:
+[DEBUG] RAM[0x00000dd8] = 0x3c1c0001
+[DEBUG] RAM[0x00000ddc] = 0x279cf450
+[DEBUG] RAM[0x00000de0] = 0x03a0f021
+[DEBUG] RAM[0x00000de4] = 0x22740020
+[DEBUG] RAM[0x00000de8] = 0x8e760000
+[DEBUG] RAM[0x00000dec] = 0x00000000
+[DEBUG] RAM[0x00000df0] = 0x12c00011
+[DEBUG] RAM[0x00000df4] = 0x00000000
+[DEBUG] RAM[0x00000df8] = 0x8ed10008
+[DEBUG] RAM[0x00000dfc] = 0x8ed00004
+[DEBUG] RAM[0x00000e00] = 0x12200009
+[DEBUG] RAM[0x00000e04] = 0x00000000
+[DEBUG] Low RAM 0x00 to 0x2F:
+[DEBUG] RAM[0x00000000] = 0x00000000
+[DEBUG] RAM[0x00000004] = 0x00f00140
+[DEBUG] RAM[0x00000008] = 0x38001580
+[DEBUG] RAM[0x0000000c] = 0x00030002
+[DEBUG] RAM[0x00000010] = 0x00000000
+[DEBUG] RAM[0x00000014] = 0x02b00190
+[DEBUG] RAM[0x00000018] = 0x00000000
+[DEBUG] RAM[0x0000001c] = 0x1f801070
+[DEBUG] RAM[0x00000020] = 0x1f801074
+[DEBUG] RAM[0x00000024] = 0x00000008
+[DEBUG] RAM[0x00000028] = 0x11000000
+[DEBUG] RAM[0x0000002c] = 0x00000017
+[DEBUG] Caller code before return address $31:
+[DEBUG] RAM[0x8009de3c] = 0x8c42c0e0
+[DEBUG] RAM[0x8009de40] = 0x3c01800c
+[DEBUG] RAM[0x8009de44] = 0xac20c0ec
+[DEBUG] RAM[0x8009de48] = 0xa4400000
+[DEBUG] RAM[0x8009de4c] = 0x08027797
+[DEBUG] RAM[0x8009de50] = 0x00000000
+[DEBUG] RAM[0x8009de54] = 0x3c01800c
+[DEBUG] RAM[0x8009de58] = 0xac20c0ec
+[DEBUG] RAM[0x8009de5c] = 0x3c01800c
+[DEBUG] RAM[0x8009de60] = 0xa420b056
+[DEBUG] RAM[0x8009de64] = 0x0c027865
+[DEBUG] RAM[0x8009de68] = 0x00000000
+[DEBUG] RAM[0x8009de6c] = 0x8fbf0024
+[DEBUG] RAM[0x8009de70] = 0x8fb40020
+[DEBUG] RAM[0x8009de74] = 0x8fb3001c
+[DEBUG] RAM[0x8009de78] = 0x8fb20018
+FATAL: Unhandled read32 at address: 0x18001588
