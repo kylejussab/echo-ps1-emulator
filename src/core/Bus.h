@@ -47,8 +47,8 @@ public:
     /// @brief Checks if any unmasked hardware interrupts are pending.
     /// @return True if an interrupt needs to be serviced by the CPU.
     bool hasPendingInterrupts() const { return (interruptStatus & interruptMask) != 0; }
-    
-    
+
+
     /// @brief Flags a specific hardware interrupt to be processed.
     /// @param interruptBit The bitmask corresponding to the hardware component (e.g., IRQ_VBLANK).
     void triggerHardwareInterrupt(uint16_t interruptBit)  { interruptStatus |= interruptBit; };
@@ -57,6 +57,7 @@ private:
     // Memory & Devices
     std::vector<uint8_t> ram;
     std::vector<uint8_t> bios;
+    uint8_t scratchpad[1024] = {0};
     GPU gpu;
     CDROM cdrom;
     SIO sio0;
@@ -71,11 +72,11 @@ private:
     uint32_t vblankCounter = 0;
 
     uint16_t timer0 = 0;
-    
+
     uint16_t timer1 = 0;
     uint32_t timer1Mode = 0;
     uint16_t timer1Target = 0xFFFF;
-    
+
     uint16_t timer2 = 0;
     uint16_t timer2Target = 0xFFFF;
     uint32_t timer2Mode = 0;

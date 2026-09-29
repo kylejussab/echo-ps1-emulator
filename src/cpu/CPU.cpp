@@ -1,7 +1,6 @@
 #include "cpu/CPU.h"
 #include "../core/Constants.h"
 #include <iostream>
-#include <cstdio>
 
 
 CPU::CPU(Bus* bus) : bus(bus) {
@@ -71,12 +70,6 @@ void CPU::step() {
 
     bus->tickHardware(1);
     instructionCount++; 
-
-    // static uint32_t lastHeartbeatPC = 0xFFFFFFFF;
-    // if (instructionCount % 5000000 == 0 && programCounter != lastHeartbeatPC) {
-    //     std::cout << "[Heartbeat] PC: 0x" << std::hex << programCounter << std::endl;
-    //     lastHeartbeatPC = programCounter;
-    // }
 }
 
 
@@ -154,9 +147,6 @@ void CPU::execute(uint32_t instruction) {
                     break;
                 }
                 case 0x0C: { // SYSCALL (System Call)
-                    uint32_t t1 = getRegister(9); 
-                    uint32_t a0 = getRegister(4); 
-                    
                     // 0x08 is the standard MIPS hardware cause code for a Syscall
                     triggerException(0x08); 
                     break;
@@ -869,7 +859,6 @@ void CPU::execute(uint32_t instruction) {
 // Register 0 is hardwired to 0 in physical silicon
 void CPU::setRegister(uint32_t index, uint32_t value) {
     if (index == 0) return;
-
     registers[index] = value;
     lastWrittenRegister = index;
 }

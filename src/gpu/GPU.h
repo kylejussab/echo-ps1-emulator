@@ -149,6 +149,7 @@ private:
     void handleMonotonePolygonWord(uint32_t value);
     void handleCopyCPUToVRAMWord(uint32_t value);
     void handleCopyVRAMToCPUParameters(uint32_t value);
+    void handleCopyVRAMToVRAMWord(uint32_t value);
     void handleRectangleWord(uint32_t value);
     void handleTexturedPolygonWord(uint32_t value);
     void handleGouraudPolygonWord(uint32_t value);

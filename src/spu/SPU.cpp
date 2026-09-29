@@ -1,5 +1,4 @@
 #include "SPU.h"
-#include <iostream>
 #include <iomanip>
 
 SPU::SPU() {

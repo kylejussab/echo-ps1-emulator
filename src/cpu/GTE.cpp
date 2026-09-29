@@ -95,6 +95,10 @@ void GTE::executeCommand(uint32_t instruction) {
             commandNCLIP(instruction);
             break;
         }
+        case 0x12: { // MVMVA (Multiply Vector by Matrix and Vector Addition)
+            commandMVMVA(instruction);
+            break;
+        }
         case 0x13: { // NCDS (Normal Color Depth Cue, Single vector)
             commandNCDS(instruction);
             break;
@@ -380,3 +384,127 @@ void GTE::commandRTPT(uint32_t instruction) {
     if (flags & FLAG_ERROR_MASK) flags |= FLAG_ERROR;
     controlRegisters[31] = flags; // FLAG register
 }
+
+
+void GTE::commandMVMVA(uint32_t instruction) {
+    uint32_t flags = 0;
+
+    // Extract instruction configuration
+    const bool sf = (instruction >> 19) & 1;
+    const uint32_t mx = (instruction >> 17) & 3;
+    const uint32_t v  = (instruction >> 15) & 3;
+    const uint32_t cv = (instruction >> 13) & 3;
+    const bool lm = (instruction >> 10) & 1;
+    
+    const int shift = sf ? 12 : 0;
+    const int32_t irLo = lm ? 0 : -32768;
+
+    // --- 1. Matrix Selection (mx) ---
+    int16_t m11, m12, m13, m21, m22, m23, m31, m32, m33;
+    if (mx == 0) { // RT (Rotation Matrix)
+        m11 = (int16_t)(controlRegisters[0] & 0xFFFF); m12 = (int16_t)(controlRegisters[0] >> 16);
+        m13 = (int16_t)(controlRegisters[1] & 0xFFFF); m21 = (int16_t)(controlRegisters[1] >> 16);
+        m22 = (int16_t)(controlRegisters[2] & 0xFFFF); m23 = (int16_t)(controlRegisters[2] >> 16);
+        m31 = (int16_t)(controlRegisters[3] & 0xFFFF); m32 = (int16_t)(controlRegisters[3] >> 16);
+        m33 = (int16_t)(controlRegisters[4] & 0xFFFF);
+    } 
+    else if (mx == 1) { // LLM (Light Source Matrix)
+        m11 = (int16_t)(controlRegisters[8] & 0xFFFF); m12 = (int16_t)(controlRegisters[8] >> 16);
+        m13 = (int16_t)(controlRegisters[9] & 0xFFFF); m21 = (int16_t)(controlRegisters[9] >> 16);
+        m22 = (int16_t)(controlRegisters[10] & 0xFFFF); m23 = (int16_t)(controlRegisters[10] >> 16);
+        m31 = (int16_t)(controlRegisters[11] & 0xFFFF); m32 = (int16_t)(controlRegisters[11] >> 16);
+        m33 = (int16_t)(controlRegisters[12] & 0xFFFF);
+    } 
+    else { // 2 = LCM (Light Color Matrix), 3 is undefined/reserved but hardware defaults to LCM
+        m11 = (int16_t)(controlRegisters[16] & 0xFFFF); m12 = (int16_t)(controlRegisters[16] >> 16);
+        m13 = (int16_t)(controlRegisters[17] & 0xFFFF); m21 = (int16_t)(controlRegisters[17] >> 16);
+        m22 = (int16_t)(controlRegisters[18] & 0xFFFF); m23 = (int16_t)(controlRegisters[18] >> 16);
+        m31 = (int16_t)(controlRegisters[19] & 0xFFFF); m32 = (int16_t)(controlRegisters[19] >> 16);
+        m33 = (int16_t)(controlRegisters[20] & 0xFFFF);
+    }
+
+    // --- 2. Input Vector Selection (v) ---
+    int32_t vx, vy, vz;
+    if (v == 0) { // V0
+        vx = (int16_t)(dataRegisters[0] & 0xFFFF);
+        vy = (int16_t)(dataRegisters[0] >> 16);
+        vz = (int16_t)(dataRegisters[1] & 0xFFFF);
+    } 
+    else if (v == 1) { // V1
+        vx = (int16_t)(dataRegisters[2] & 0xFFFF);
+        vy = (int16_t)(dataRegisters[2] >> 16);
+        vz = (int16_t)(dataRegisters[3] & 0xFFFF);
+    } 
+    else if (v == 2) { // V2
+        vx = (int16_t)(dataRegisters[4] & 0xFFFF);
+        vy = (int16_t)(dataRegisters[4] >> 16);
+        vz = (int16_t)(dataRegisters[5] & 0xFFFF);
+    } 
+    else { // 3 = IR (Intermediate Result registers)
+        vx = (int16_t)(dataRegisters[9] & 0xFFFF);  // IR1
+        vy = (int16_t)(dataRegisters[10] & 0xFFFF); // IR2
+        vz = (int16_t)(dataRegisters[11] & 0xFFFF); // IR3
+    }
+
+    // --- 3. Translation Control Vector Selection (cv) ---
+    int64_t tx = 0, ty = 0, tz = 0;
+    if (cv == 0) { // TR
+        tx = (int32_t)controlRegisters[5];
+        ty = (int32_t)controlRegisters[6];
+        tz = (int32_t)controlRegisters[7];
+    } 
+    else if (cv == 1) { // BK
+        tx = (int32_t)controlRegisters[13];
+        ty = (int32_t)controlRegisters[14];
+        tz = (int32_t)controlRegisters[15];
+    } 
+    else if (cv == 2) { // FC
+        tx = (int32_t)controlRegisters[21];
+        ty = (int32_t)controlRegisters[22];
+        tz = (int32_t)controlRegisters[23];
+    } 
+    // cv == 3 means "None", translation remains 0
+
+    // Hardware pushes the translation registers straight into the high bits 
+    // of the 44-bit accumulator prior to multiplication
+    tx <<= 12; 
+    ty <<= 12; 
+    tz <<= 12;
+
+    // --- 4. Matrix Multiplication & Accumulation ---
+    int64_t mac1 = tx + ((int64_t)m11 * vx) + ((int64_t)m12 * vy) + ((int64_t)m13 * vz);
+    int64_t mac2 = ty + ((int64_t)m21 * vx) + ((int64_t)m22 * vy) + ((int64_t)m23 * vz);
+    int64_t mac3 = tz + ((int64_t)m31 * vx) + ((int64_t)m32 * vy) + ((int64_t)m33 * vz);
+
+    // Hardware 44-bit overflow assertions
+    if (mac1 > MAC_44BIT_MAX) flags |= FLAG_MAC1_POS_OVF;
+    if (mac1 < MAC_44BIT_MIN) flags |= FLAG_MAC1_NEG_OVF;
+    if (mac2 > MAC_44BIT_MAX) flags |= FLAG_MAC2_POS_OVF;
+    if (mac2 < MAC_44BIT_MIN) flags |= FLAG_MAC2_NEG_OVF;
+    if (mac3 > MAC_44BIT_MAX) flags |= FLAG_MAC3_POS_OVF;
+    if (mac3 < MAC_44BIT_MIN) flags |= FLAG_MAC3_NEG_OVF;
+
+    // --- 5. Downshift into 32-bit Multiplier Accumulators ---
+    int32_t MAC1 = (int32_t)(mac1 >> shift);
+    int32_t MAC2 = (int32_t)(mac2 >> shift);
+    int32_t MAC3 = (int32_t)(mac3 >> shift);
+
+    // --- 6. Saturate into 16-bit Intermediate Results ---
+    int32_t IR1 = clampSFlag(MAC1, irLo, 32767, FLAG_IR1_SAT, flags);
+    int32_t IR2 = clampSFlag(MAC2, irLo, 32767, FLAG_IR2_SAT, flags);
+    int32_t IR3 = clampSFlag(MAC3, irLo, 32767, FLAG_IR3_SAT, flags);
+
+    // Commit hardware registers
+    dataRegisters[9]  = (uint32_t)IR1;
+    dataRegisters[10] = (uint32_t)IR2;
+    dataRegisters[11] = (uint32_t)IR3;
+    dataRegisters[25] = (uint32_t)MAC1;
+    dataRegisters[26] = (uint32_t)MAC2;
+    dataRegisters[27] = (uint32_t)MAC3;
+
+    if (flags & FLAG_ERROR_MASK) flags |= FLAG_ERROR;
+    controlRegisters[31] = flags;
+}
+
+
+

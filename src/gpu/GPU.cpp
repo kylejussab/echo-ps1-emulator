@@ -1,7 +1,6 @@
 #include "GPU.h"
 #include <iostream>
 
-#include <iomanip>
 
 GPU::GPU() : rasterizer(vram) {}
 
@@ -180,8 +179,8 @@ void GPU::continuePendingCommand(uint32_t value) {
             break;
         }
         case 0x80: { // Copy VRAM to VRAM
-            std::cout << "FATAL: Multi-word Copy VRAM to VRAM (0x80) is not implemented!\n";
-            exit(1);
+            handleCopyVRAMToVRAMWord(value);
+            break;
         }
         case 0xA0: { // Copy CPU to VRAM
             handleCopyCPUToVRAMWord(value);
@@ -506,6 +505,53 @@ void GPU::handleCopyVRAMToCPUParameters(uint32_t value) {
 		parametersRemaining--;
 		return;
 	}
+}
+
+
+void GPU::handleCopyVRAMToVRAMWord(uint32_t value) {
+    if (parametersRemaining == 3) {
+        // Word 1: Source Coordinates
+        readTransferX = value & 0xFFFF;
+        readTransferY = (value >> 16) & 0xFFFF;
+        parametersRemaining--;
+        return;
+    }
+
+    if (parametersRemaining == 2) {
+        // Word 2: Destination Coordinates
+        transferX = value & 0xFFFF;
+        transferY = (value >> 16) & 0xFFFF;
+        parametersRemaining--;
+        return;
+    }
+
+    if (parametersRemaining == 1) {
+        // Word 3: Dimensions
+        transferWidth = value & 0xFFFF;
+        transferHeight = (value >> 16) & 0xFFFF;
+
+        // Hardware quirk: 0 translates to maximum dimension bounds
+        if (transferWidth == 0) transferWidth = 1024;
+        if (transferHeight == 0) transferHeight = 512;
+
+        // Execute the copy
+        for (uint32_t y = 0; y < transferHeight; y++) {
+            for (uint32_t x = 0; x < transferWidth; x++) {
+                // Strict 1024x512 hardware wrapping
+                uint32_t srcX = (readTransferX + x) & 0x3FF;
+                uint32_t srcY = (readTransferY + y) & 0x1FF;
+                
+                uint32_t dstX = (transferX + x) & 0x3FF;
+                uint32_t dstY = (transferY + y) & 0x1FF;
+                
+                uint16_t pixel = vram.readPixel(srcX, srcY);
+                vram.writePixel(dstX, dstY, pixel);
+            }
+        }
+
+        parametersRemaining--;
+        return;
+    }
 }
 
 

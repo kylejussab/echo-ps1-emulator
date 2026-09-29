@@ -20,22 +20,6 @@ uint32_t DMA::read32(uint32_t address) {
 	}
 
 	if (address == Hardware::REGISTER_DMA_INTERRUPT_CONTROL) {
-		static int deadLockCounter = 0;
-		static uint32_t lastInterruptControlValue = 0xFFFFFFFF;
-
-		if (interruptControlRegister == lastInterruptControlValue) {
-			deadLockCounter++;
-			if (deadLockCounter == 50000) {
-				std::cout << "[TEST] TRAPPED: Executable has polled DICR 50,000 times in a row. It is deadlocked waiting for a flag.\n"
-					<< "Current DICR Value: 0x" << std::hex << interruptControlRegister << std::dec << "\n";
-				deadLockCounter = 0; // Reset so it pulses a warning instead of spamming
-			}
-		}
-		else {
-			lastInterruptControlValue = interruptControlRegister;
-			deadLockCounter = 0;
-		}
-
 		return interruptControlRegister;
 	}
 
@@ -113,10 +97,13 @@ void DMA::write32(uint32_t address, uint32_t value) {
 			exit(1);
 		}
 
-		switch (address & 0xF) {
-			case 0x0: channels[channelIndex].memoryAddress = value; return;
-			case 0x4: channels[channelIndex].blockControl = value; return;
-			case 0x8: writeChannelControl(channelIndex, value); return;
+		switch (address & 0x0F) {
+			case 0x00: {
+				channels[channelIndex].memoryAddress = value;
+				return;
+			}
+			case 0x04: channels[channelIndex].blockControl = value; return;
+			case 0x08: writeChannelControl(channelIndex, value); return;
 		}
 	}
 
@@ -391,13 +378,6 @@ void DMA::updateInterruptLine() {
 
 
 void DMA::scheduleCompletion(uint8_t channel, uint32_t wordsTransferred) {
-	for (const auto& pending : pendingCompletions) {
-		if (pending.channel == channel) {
-			std::cout << "[WARN] BIOS triggered DMA channel " << static_cast<int>(channel) << " while a delayed completion was ALREADY in flight! Desync caught."
-				<< " Cycles remaining on the earlier completion: " << pending.cyclesRemaining << "\n";
-		}
-	}
-
 	// Rough approximation of real DMA bus timing: a couple of cycles per word
 	constexpr int MIN_DELAY_CYCLES = 8;
 

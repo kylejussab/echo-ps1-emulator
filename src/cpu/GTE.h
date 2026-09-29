@@ -22,6 +22,8 @@ private:
     void commandNCLIP(uint32_t instruction);
     void commandAVSZ3(uint32_t instruction);
     void commandNCDS(uint32_t instruction);
+    void commandMVMVA(uint32_t instruction);
+
 
     static int32_t clampS(int64_t val, int32_t lo, int32_t hi);
     static int32_t clampSFlag(int64_t val, int32_t lo, int32_t hi, uint32_t flagBit, uint32_t& flags);

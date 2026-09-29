@@ -1,7 +1,6 @@
 #include "Rasterizer.h"
 #include <algorithm>
 #include <iostream>
-#include <iomanip>
 
 void Rasterizer::setTextureWindow(uint8_t maskX, uint8_t maskY, uint8_t offsetX, uint8_t offsetY) {
     textureWindowMaskX = maskX;
