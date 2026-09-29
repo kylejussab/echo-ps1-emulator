@@ -44,6 +44,7 @@ void CDROM::tick(int cycles) {
                     responseFIFO.push(byte);
                 }
                 interruptFlag = (interruptFlag & ~0x07) | active.flag;
+                interruptWasDelivered = true;
             }
         }
     }
@@ -61,7 +62,6 @@ void CDROM::tick(int cycles) {
 				bool isXaAudioSector = (mode & 0x40) != 0 && (sectorBuffer[18] & 0x44) == 0x44;
 				if (isXaAudioSector) {
 					currentReadLBA++;
-					queueInterrupt(0x01, 0, {0x22}); // CTR needs to know the sector was processed, even if it's audio
                     return; // the read block is the last thing tick does
 				}
 

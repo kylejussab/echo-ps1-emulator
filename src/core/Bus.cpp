@@ -474,11 +474,12 @@ void Bus::tickHardware(int cycles) {
     dma.tick(cycles);
 
 
-    bool currentCdromInt = cdrom.checkInterrupt();
-    if (currentCdromInt && !lastCdromInt) {
+    bool currentCDROMInt = cdrom.checkInterrupt();
+    bool newInterruptDelivered = cdrom.consumeDeliveredInterrupt();
+    if (currentCDROMInt && (!lastCDROMInt || newInterruptDelivered)) {
         interruptStatus |= Hardware::IRQ_CDROM;
     }
-    lastCdromInt = currentCdromInt;
+    lastCDROMInt = currentCDROMInt;
 
     // GPU Interrupt (IRQ1) - Edge Triggered
     if (gpu.consumeInterruptRequest()) {

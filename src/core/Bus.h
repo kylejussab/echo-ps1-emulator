@@ -82,7 +82,7 @@ private:
     uint32_t timer2Mode = 0;
     uint32_t timer2CycleAccumulator = 0;
 
-    bool lastCdromInt = false;
+    bool lastCDROMInt = false;
     bool lastSio0Int = false;
 
     uint32_t memoryControlRegisters[9] = {};

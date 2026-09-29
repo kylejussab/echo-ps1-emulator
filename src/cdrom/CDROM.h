@@ -30,9 +30,13 @@ public:
     static uint8_t bcdToDec(uint8_t bcd) { return ((bcd >> 4) * 10) + (bcd & 0x0F); }
     static uint8_t decToBcd(uint8_t dec) { return ((dec / 10) << 4) | (dec % 10); }
 
+
+    bool consumeDeliveredInterrupt() { bool delivered = interruptWasDelivered; interruptWasDelivered = false; return delivered; }
 private:
     uint8_t mode = 0;
     bool hasSectorInBuffer = false;
+
+    bool interruptWasDelivered = false;
     
     // Hardware Registers
     uint8_t index = 0;
