@@ -1,0 +1,56 @@
+GPUFIFO-START
+IDLE stat=3e800000
+GPUVER idx7=00000002
+COPY stat0=2a800000 busyPolls=6664 dst 7c007c00 -> 001f001f src=001f001f COPIED
+COPY stat0=2a800000 busyPolls=6664 dst 7c007c00 -> 001f001f src=001f001f COPIED
+FIFO A0data OP=a0 notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7385
+FIFO rect60 OP=60 notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7436
+FIFO op     OP=00 notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=01 notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=03 notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=04 notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=05 notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=06 notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=07 notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=08 notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=09 notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=0a notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=0b notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=0c notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=0d notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=0e notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=0f notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=10 notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=11 notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=12 notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=13 notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=14 notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=15 notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=16 notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=17 notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=18 notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=19 notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=1a notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=1b notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=1c notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=1d notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=1e notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=1f notEmptyAt=1 fullAt=-1 endStat=2b800000 readyPolls=7391
+FIFO op     OP=e0 notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=e1 notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=e2 notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=e3 notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=e4 notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=e5 notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=e6 notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=e7 notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=e8 notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=e9 notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=ea notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=eb notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=ec notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=ed notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=ee notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO op     OP=ef notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7391
+FIFO A0data OP=a0 notEmptyAt=1 fullAt=-1 endStat=2a800000 readyPolls=7385
+GPUFIFO-DONE

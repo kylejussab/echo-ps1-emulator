@@ -1,0 +1,41 @@
+DMAPRIO-START dpcr=07777777
+CPU burst6      cpuHi  cpu=0 dma=7 dpcr=0f654321 alone=2049 stall=11 loop=2049 done=2094
+CPU burst6      dmaHi  cpu=7 dma=0 dpcr=78654321 alone=2049 stall=11 loop=2049 done=2094
+CPU burst6      tie3   cpu=3 dma=3 dpcr=3b654321 alone=2049 stall=11 loop=2049 done=2094
+CPU burst6-alu  cpuHi  cpu=0 dma=7 dpcr=0f654321 alone=1801 stall=11 loop=1801 done=1847
+CPU burst6-alu  dmaHi  cpu=7 dma=0 dpcr=78654321 alone=1801 stall=11 loop=1801 done=1847
+CPU burst6-alu  tie3   cpu=3 dma=3 dpcr=3b654321 alone=1801 stall=11 loop=1801 done=1847
+CPU burst6-spad cpuHi  cpu=0 dma=7 dpcr=0f654321 alone=257 stall=11 loop=257 done=305
+CPU burst6-spad dmaHi  cpu=7 dma=0 dpcr=78654321 alone=257 stall=11 loop=257 done=305
+CPU burst6-spad tie3   cpu=3 dma=3 dpcr=3b654321 alone=257 stall=11 loop=257 done=305
+CPU chop6       cpuHi  cpu=0 dma=7 dpcr=0f654321 alone=2049 stall=11 loop=2049 done=2094
+CPU chop6       dmaHi  cpu=7 dma=0 dpcr=78654321 alone=2049 stall=11 loop=2049 done=2094
+CPU chop6       tie3   cpu=3 dma=3 dpcr=3b654321 alone=2049 stall=11 loop=2049 done=2094
+CPU sync1-2     cpuHi  cpu=0 dma=7 dpcr=07654f21 alone=2049 stall=11 loop=2049 done=2094
+CPU sync1-2     dmaHi  cpu=7 dma=0 dpcr=77654821 alone=2049 stall=11 loop=2049 done=2094
+CPU sync1-2     tie3   cpu=3 dma=3 dpcr=37654b21 alone=2049 stall=11 loop=2049 done=2094
+RACE nops=0  cpu=0 dma6=7 2/2049/2091 2/2049/2091 2/2049/2091 2/2049/2091 2/2049/2091 2/2049/2091 2/2049/2091 2/2049/2091
+RACE nops=1  cpu=0 dma6=7 3/2049/2092 3/2049/2092 3/2049/2092 3/2049/2092 3/2049/2092 3/2049/2092 3/2049/2092 3/2049/2092
+RACE nops=2  cpu=0 dma6=7 4/2049/2093 4/2049/2093 4/2049/2093 4/2049/2093 4/2049/2093 4/2049/2093 4/2049/2093 4/2049/2093
+RACE nops=3  cpu=0 dma6=7 5/2049/2094 5/2049/2094 5/2049/2094 5/2049/2094 5/2049/2094 5/2049/2094 5/2049/2094 5/2049/2094
+RACE nops=4  cpu=0 dma6=7 6/2049/2095 6/2049/2095 6/2049/2095 6/2049/2095 6/2049/2095 6/2049/2095 6/2049/2095 6/2049/2095
+RACE nops=6  cpu=0 dma6=7 8/2049/2097 8/2049/2097 8/2049/2097 8/2049/2097 8/2049/2097 8/2049/2097 8/2049/2097 8/2049/2097
+RACE nops=8  cpu=0 dma6=7 10/2049/2099 10/2049/2099 10/2049/2099 10/2049/2099 10/2049/2099 10/2049/2099 10/2049/2099 10/2049/2099
+RACE nops=12 cpu=0 dma6=7 14/2049/2103 14/2049/2103 14/2049/2103 14/2049/2103 14/2049/2103 14/2049/2103 14/2049/2103 14/2049/2103
+RACE nops=0  cpu=7 dma6=0 2/2049/2091 2/2049/2091 2/2049/2091 2/2049/2091 2/2049/2091 2/2049/2091 2/2049/2091 2/2049/2091
+RACE nops=1  cpu=7 dma6=0 3/2049/2092 3/2049/2092 3/2049/2092 3/2049/2092 3/2049/2092 3/2049/2092 3/2049/2092 3/2049/2092
+RACE nops=2  cpu=7 dma6=0 4/2049/2093 4/2049/2093 4/2049/2093 4/2049/2093 4/2049/2093 4/2049/2093 4/2049/2093 4/2049/2093
+RACE nops=3  cpu=7 dma6=0 5/2049/2094 5/2049/2094 5/2049/2094 5/2049/2094 5/2049/2094 5/2049/2094 5/2049/2094 5/2049/2094
+RACE nops=4  cpu=7 dma6=0 6/2049/2095 6/2049/2095 6/2049/2095 6/2049/2095 6/2049/2095 6/2049/2095 6/2049/2095 6/2049/2095
+RACE nops=6  cpu=7 dma6=0 8/2049/2097 8/2049/2097 8/2049/2097 8/2049/2097 8/2049/2097 8/2049/2097 8/2049/2097 8/2049/2097
+RACE nops=8  cpu=7 dma6=0 10/2049/2099 10/2049/2099 10/2049/2099 10/2049/2099 10/2049/2099 10/2049/2099 10/2049/2099 10/2049/2099
+RACE nops=12 cpu=7 dma6=0 14/2049/2103 14/2049/2103 14/2049/2103 14/2049/2103 14/2049/2103 14/2049/2103 14/2049/2103 14/2049/2103
+DMA alone2   dma2=3 dma6=7 held2=1 held6=-1 touchedWhileHeld=0 done2=1 done6=-1 otc=0 gpu=1024 poison=0 other=0 changes=0 firstGpu=0 firstOtc=-1
+DMA alone6   dma2=3 dma6=7 held2=-1 held6=1 touchedWhileHeld=0 done2=-1 done6=1 otc=1024 gpu=0 poison=0 other=0 changes=0 firstGpu=-1 firstOtc=0
+DMA default  dma2=3 dma6=7 held2=1 held6=1 touchedWhileHeld=0 done2=1 done6=1 otc=1024 gpu=0 poison=0 other=0 changes=0 firstGpu=-1 firstOtc=0
+DMA dma2hi   dma2=0 dma6=7 held2=1 held6=1 touchedWhileHeld=0 done2=1 done6=1 otc=1024 gpu=0 poison=0 other=0 changes=0 firstGpu=-1 firstOtc=0
+DMA dma6hi   dma2=7 dma6=0 held2=1 held6=1 touchedWhileHeld=0 done2=1 done6=1 otc=1024 gpu=0 poison=0 other=0 changes=0 firstGpu=-1 firstOtc=0
+DMA tie3     dma2=3 dma6=3 held2=1 held6=1 touchedWhileHeld=0 done2=1 done6=1 otc=1024 gpu=0 poison=0 other=0 changes=0 firstGpu=-1 firstOtc=0
+DMA tie0     dma2=0 dma6=0 held2=1 held6=1 touchedWhileHeld=0 done2=1 done6=1 otc=1024 gpu=0 poison=0 other=0 changes=0 firstGpu=-1 firstOtc=0
+DMA alone2   dma2=3 dma6=7 held2=1 held6=-1 touchedWhileHeld=0 done2=1 done6=-1 otc=0 gpu=1024 poison=0 other=0 changes=0 firstGpu=0 firstOtc=-1
+DMAPRIO-DONE

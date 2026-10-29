@@ -1,8 +1,9 @@
 #pragma once
 #include <string>
 #include <SDL2/SDL.h>
+#include <vector>
 #include "Bus.h"
-#include "cpu/CPU.h"
+#include "../cpu/CPU.h"
 
 class PlayStation {
 public:
@@ -28,4 +29,8 @@ private:
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
     SDL_Texture* vramTexture = nullptr;
+    SDL_Texture* displayTexture24Bit = nullptr;
+	std::vector<uint8_t> frameBuffer24Bit;
+    SDL_AudioDeviceID audioDevice = 0;
+    std::vector<int16_t> audioScratch; 
 };

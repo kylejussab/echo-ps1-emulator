@@ -9,7 +9,8 @@ struct Vertex {
 	int16_t  y = 0;
 	uint8_t  u = 0;
 	uint8_t  v = 0;
-	uint16_t color = 0; // 15-bit PS1 color (5-5-5-1 format)
+	uint32_t color = 0; // RAW 24-bit GP0 color, 0x00BBGGRR. Do NOT truncate to 15-bit before passing it in:
+	                    // the GPU shades/modulates at 8 bits per channel and only truncates on write.
 };
 
 class Rasterizer {
@@ -19,6 +20,10 @@ public:
 
     void setTextureWindow(uint8_t maskX, uint8_t maskY, uint8_t offsetX, uint8_t offsetY);
     void setMaskSettings(bool setMask, bool preserveMask);
+
+    /// @brief GP0(E1h) bit 9. Applies the 4x4 ordered dither to Gouraud / texture-modulated polygons and to ALL lines (flat and Gouraud).
+	/// Rectangles, flat polygons and raw-texture draws are never dithered on hardware.
+    void setDither(bool enabled);
 
 
 
@@ -83,14 +88,14 @@ public:
     /// @param y Raw pre-offset Y coordinate.
     /// @param width Width of the rectangle.
     /// @param height Height of the rectangle.
-    /// @param flatColor The base color (if untextured) or tint (if textured).
+    /// @param flatColor RAW 24-bit command color 0x00BBGGRR (the base color if untextured, the tint if textured).
     /// @param isTextured True if the rectangle maps a texture.
     /// @param isRawTexture True if texture colors bypass illumination/shading.
     /// @param textureCoordinateU The base U coordinate of the texture.
     /// @param textureCoordinateV The base V coordinate of the texture.
     /// @param colorLookupTableX The CLUT X base coordinate in VRAM.
     /// @param colorLookupTableY The CLUT Y base coordinate in VRAM.
-	void drawRectangle(int16_t x, int16_t y, uint16_t width, uint16_t height, uint16_t flatColor, bool isTextured, bool isRawTexture, uint8_t textureCoordinateU, uint8_t textureCoordinateV, uint16_t colorLookupTableX, uint16_t colorLookupTableY);
+	void drawRectangle(int16_t x, int16_t y, uint16_t width, uint16_t height, uint32_t flatColor, bool isTextured, bool isSemiTransparent, bool isRawTexture, uint8_t textureCoordinateU, uint8_t textureCoordinateV, uint16_t colorLookupTableX, uint16_t colorLookupTableY);
 
 	
 	/// @brief Fills a block of VRAM with a solid color. Unlike standard drawing commands, 
@@ -101,6 +106,20 @@ public:
     /// @param height Height of the fill block.
     /// @param color 15-bit color to fill the region with.
 	void fillRectangle(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t color);
+
+
+
+    void drawLine(const Vertex& v0, const Vertex& v1, bool isSemiTransparent, bool isGouraud);
+
+    void invalidateCache() {
+        cachedClutTag = 0xFFFFFFFF;
+        cachedClut4BitValid = false;
+        cachedClut8BitValid = false;
+    }
+
+    /// @brief Returns the estimated GPU clocks spent since the last call, then resets the counter.
+    double takeDrawCost() { double cost = drawCost; drawCost = 0.0; return cost; }
+
 
 private:
 	VRAM& vram;
@@ -113,6 +132,13 @@ private:
 
     bool maskForceSet = false;
     bool maskPreserve = false;
+    bool ditherEnabled = false;
+
+    uint16_t activeCLUT[256] = {0};
+    uint32_t cachedClutTag = 0xFFFFFFFF;
+    bool     cachedClut4BitValid = false;
+    bool     cachedClut8BitValid = false;
+    void loadCLUT(uint16_t clutX, uint16_t clutY);
 
 
 
@@ -135,11 +161,18 @@ private:
 	int16_t  drawingOffsetY = 0;
 
 
+
+    double drawCost = 0.0;
+
+
 	// Internal rendering helpers
 
-	void drawTriangle(const Vertex& vertex0, const Vertex& vertex1, const Vertex& vertex2, bool isTextured, bool isRawTexture, bool isGouraud, uint16_t colorLookupTableX, uint16_t colorLookupTableY);
+	void drawTriangle(const Vertex& vertex0, const Vertex& vertex1, const Vertex& vertex2, bool isTextured, bool isSemiTransparent, bool isRawTexture, bool isGouraud, uint16_t colorLookupTableX, uint16_t colorLookupTableY);
 	
 	
+    uint16_t blendSemiTransparent(uint16_t backgroundColor, uint16_t foregroundColor) const;
+
+
 	void clipToDrawingArea(int16_t& minX, int16_t& maxX, int16_t& minY, int16_t& maxY);
 	
 	

@@ -1,0 +1,10 @@
+cdrom/timing
+psxcd: Init Ok!
+init ack: min 81200, max 81200, average 81200
+init complete: min 166024, max 168232, average 167922
+CdlNop: min 50504, max 50504, average 50504 over 100 runs
+CdlMute: min 50504, max 50504, average 50504 over 100 runs
+CdlDemute: min 50504, max 50504, average 50504 over 100 runs
+CdlSetloc: min 50504, max 50504, average 50504 over 100 runs
+CdlSetmode: min 50504, max 50504, average 50504 over 100 runs
+Unexpected INT5! 0x22

@@ -1,5 +1,9 @@
-#include "cpu/CPU.h"
+#include "CPU.h"
 #include "../core/Constants.h"
+#include <algorithm>
+#include <cctype>
+#include <vector>
+#include <cstdio>
 #include <iostream>
 
 
@@ -33,7 +37,6 @@ void CPU::step() {
 
             triggerHardwareInterrupt();
             bus->tickHardware(1);
-            instructionCount++;
             return; 
         }
     }
@@ -55,7 +58,29 @@ void CPU::step() {
     uint32_t cacheTag = physicalProgramCounter & 0xFFFFF000;         
     bool isUncachedRegion = (programCounter & 0xE0000000) == 0xA0000000;
     
+    // Bus Error on Instruction fetch (ExcCode 6). Hardware-verified by ps1-tests cpu/code-in-io for exactly these three places:
+    // scratchpad, the interrupt registers and MDEC. Fetching from the SPU registers, DMA0 and the DMA control register does NOT
+    // fault on real hardware (the registers read back whatever was written and the CPU just executes it).
+    // TODO: the test only samples a few ports, so the rule for the other I/O registers (timers, GPU, CD-ROM, SIO) is unknown.
+    uint32_t fetchAddress = programCounter & 0x1FFFFFFF;
+    bool busErrorOnFetch = (fetchAddress >= 0x1F800000 && fetchAddress < 0x1F800400)   // scratchpad
+                        || (fetchAddress >= 0x1F801070 && fetchAddress < 0x1F801078)   // I_STAT / I_MASK
+                        || (fetchAddress >= 0x1F801820 && fetchAddress < 0x1F801828);  // MDEC
+    if (busErrorOnFetch) {
+        triggerException(0x06); // IBE
+        if (registerToUpdate != 0 && registerToUpdate != pendingLoadRegister) {
+            setRegister(registerToUpdate, valueToUpdate); // the load that was in flight still completes
+        }
+        bus->tickHardware(1);
+        return;
+    }
+
     uint32_t instruction = bus->read32(programCounter);
+
+    //Extra cycles to simulate time it would take to read from ROM
+    if (fetchAddress >= Hardware::BIOS_ROM_START && fetchAddress < Hardware::BIOS_ROM_END) {
+        bus->tickHardware(Hardware::BIOS_ROM_FETCH_CYCLES - 1);
+    }
 
     programCounter = nextProgramCounter;
     nextProgramCounter += Hardware::INSTRUCTION_SIZE;
@@ -69,7 +94,6 @@ void CPU::step() {
     }
 
     bus->tickHardware(1);
-    instructionCount++; 
 }
 
 
@@ -298,7 +322,6 @@ void CPU::execute(uint32_t instruction) {
                 }
                 default: {
                     std::cout << "Unimplemented R-Type function: 0x" << std::hex << function << " at PC: 0x" << (programCounter - Hardware::INSTRUCTION_SIZE) << std::endl;
-                    std::cout << "\nTotal Instructions Executed: " << std::dec << instructionCount << std::endl; // Temporary tracking
                     exit(1);
                 }
             }
@@ -348,8 +371,7 @@ void CPU::execute(uint32_t instruction) {
                     break;
                 }
                 default: {
-                    triggerException(0x0A);
-                    exit(1);
+                    triggerException(0x0A);                
                 }
             }
             break;
@@ -504,6 +526,12 @@ void CPU::execute(uint32_t instruction) {
             break;
         }
         case 0x10: { // Coprocessor 0 
+            // Kernel mode (Status.KUc = bit 1 clear) can always use COP0; user mode needs Status.CU0
+            if ((coprocessor0Registers[12] & 0x2) && !isCoprocessorEnabled(0)) {
+                triggerCoprocessorUnusable(0);
+                break;
+            }
+
             uint32_t coprocessorOopcode = (instruction >> 21) & 0x1F;
 
             switch (coprocessorOopcode) {
@@ -531,13 +559,23 @@ void CPU::execute(uint32_t instruction) {
                     break;
                 }
                 default: {
+                    // Hardware-verified (ps1-tests cpu/cop): unknown COP0 "CO" commands (rs >= 0x10) do nothing
+                    if (coprocessorOopcode >= 0x10) break;
+
                     std::cout << "Unimplemented COP0 instruction: " << std::hex << coprocessorOopcode << " at PC: 0x" << std::hex << (programCounter - Hardware::INSTRUCTION_SIZE) << std::endl;
                     exit(1);
                 }
             }
             break;
         }
+        case 0x11: // COP1 (doesn't exist on the PS1): no-op when enabled, CpU when disabled
+        case 0x13: { // COP3 (same)
+            uint32_t coprocessorNumber = (instruction >> 26) & 0x3;
+            if (!isCoprocessorEnabled(coprocessorNumber)) triggerCoprocessorUnusable(coprocessorNumber);
+            break;
+        }
         case 0x12: { // Coprocessor 2 (Geometry Transformation Engine)
+            if (!isCoprocessorEnabled(2)) { triggerCoprocessorUnusable(2); break; }
             if (instruction & 0x02000000) { // Bit 25
                 gte.executeCommand(instruction);
                 break;
@@ -583,6 +621,8 @@ void CPU::execute(uint32_t instruction) {
             uint32_t registerTarget = (instruction >> 16) & 0x1F;
             int32_t immediate = signExtend16(instruction & 0xFFFF);
 
+            chargeLoad(getRegister(registerSource) + immediate);
+
             uint8_t byte = bus->read8(getRegister(registerSource) + immediate);
 
             pendingLoadRegister = registerTarget;
@@ -600,6 +640,8 @@ void CPU::execute(uint32_t instruction) {
                 break;
             }
 
+            chargeLoad(getRegister(registerSource) + immediate);
+
             uint16_t halfword = bus->read16(getRegister(registerSource) + immediate);
             int32_t signExtendedHalfword = static_cast<int32_t>(static_cast<int16_t>(halfword));
 
@@ -614,6 +656,9 @@ void CPU::execute(uint32_t instruction) {
             uint32_t address = getRegister(registerSource) + immediate;
 
             uint32_t alignedAddress = address & 0xFFFFFFFC;
+
+            chargeLoad(alignedAddress);
+
             uint32_t alignedWord = bus->read32(alignedAddress);
             uint32_t shift = (address & 3) * 8; 
 
@@ -640,6 +685,8 @@ void CPU::execute(uint32_t instruction) {
                 break;
             }
 
+            chargeLoad(getRegister(registerSource) + immediate);
+
             pendingLoadRegister = registerTarget;
             pendingLoadValue = bus->read32(getRegister(registerSource) + immediate);
 
@@ -649,6 +696,8 @@ void CPU::execute(uint32_t instruction) {
             uint32_t registerSource = (instruction >> 21) & 0x1F;
             uint32_t registerTarget = (instruction >> 16) & 0x1F;
             int32_t immediate = signExtend16(instruction & 0xFFFF);
+
+            chargeLoad(getRegister(registerSource) + immediate);
 
             uint8_t byte = bus->read8(getRegister(registerSource) + immediate);
 
@@ -660,6 +709,8 @@ void CPU::execute(uint32_t instruction) {
             uint32_t registerSource = (instruction >> 21) & 0x1F;
             uint32_t registerTarget = (instruction >> 16) & 0x1F;
             int32_t immediate = signExtend16(instruction & 0xFFFF);
+
+            chargeLoad(getRegister(registerSource) + immediate);
 
             uint32_t address = getRegister(registerSource) + immediate;
 
@@ -681,6 +732,9 @@ void CPU::execute(uint32_t instruction) {
             uint32_t address = getRegister(registerSource) + immediate;
 
             uint32_t alignedAddress = address & 0xFFFFFFFC;
+
+            chargeLoad(alignedAddress);
+
             uint32_t alignedWord = bus->read32(alignedAddress);
             uint32_t shift = (address & 3) * 8; 
 
@@ -789,7 +843,14 @@ void CPU::execute(uint32_t instruction) {
             bus->write32(alignedAddress, newValue);
             break;
         }
+        case 0x30: case 0x31: case 0x33:   // LWC0/1/3
+        case 0x38: case 0x39: case 0x3B: { // SWC0/1/3
+            uint32_t coprocessorNumber = (instruction >> 26) & 0x3;
+            if (!isCoprocessorEnabled(coprocessorNumber)) triggerCoprocessorUnusable(coprocessorNumber);
+            break; // enabled: hardware raises nothing; the transfer itself isn't modelled
+        }
         case 0x32: { // LWC2 (Load Word to Coprocessor 2)
+            if (!isCoprocessorEnabled(2)) { triggerCoprocessorUnusable(2); break; }
             uint32_t registerSource = (instruction >> 21) & 0x1F;
             uint32_t coprocessor2RegisterTarget = (instruction >> 16) & 0x1F;
             int32_t immediate = signExtend16(instruction & 0xFFFF);
@@ -804,6 +865,7 @@ void CPU::execute(uint32_t instruction) {
             break;
         }
         case 0x3A: { // SWC2 (Store Word from Coprocessor 2)
+            if (!isCoprocessorEnabled(2)) { triggerCoprocessorUnusable(2); break; }
             uint32_t registerSource = (instruction >> 21) & 0x1F;
             uint32_t coprocessor2RegisterSource = (instruction >> 16) & 0x1F;
             int32_t immediate = signExtend16(instruction & 0xFFFF);
@@ -839,16 +901,12 @@ void CPU::execute(uint32_t instruction) {
             }
 
             if (isGarbage) {
-                std::cout << "\n---------------------------------------ERROR!---------------------------------------" << std::endl;
-                std::cout << "CPU: Executed garbage memory!" << std::endl;
-                std::cout << "Unknown hardware Opcode (0x" << std::hex << opcode << ") found in instruction 0x" << instruction << " at PC: 0x" << (programCounter - Hardware::INSTRUCTION_SIZE) << std::endl;
-                std::cout << "------------------------------------------------------------------------------------" << std::endl;
+                std::cout << "FATAL: CPU executed garbage memory. Unknown opcode 0x" << std::hex << opcode << " in instruction 0x" << instruction << " at PC: 0x" << (programCounter - Hardware::INSTRUCTION_SIZE) << std::endl;
             } 
             else {
                 std::cout << "Unimplemented valid instruction: 0x" << std::hex << instruction << " (Opcode 0x" << opcode << ") at PC: 0x" << (programCounter - Hardware::INSTRUCTION_SIZE) << std::endl;
             }
 
-            std::cout << "\nTotal Instructions Executed: " << std::dec << instructionCount << std::endl;
             exit(1); 
         }
     }
@@ -867,6 +925,16 @@ void CPU::setRegister(uint32_t index, uint32_t value) {
 uint32_t CPU::getRegister(uint32_t index) const {
     if (index == 0) return 0;
     return registers[index];
+}
+
+
+void CPU::jumpTo(uint32_t address) {
+    programCounter = address;
+    nextProgramCounter = address + Hardware::INSTRUCTION_SIZE;
+    pendingLoadRegister = 0;
+    pendingLoadValue = 0;
+    nextIsDelaySlot = false;
+    isDelaySlot = false;
 }
 
 
@@ -896,12 +964,20 @@ void CPU::triggerException(uint32_t cause) {
 
     // Hijack the Program Counter based on the BEV bit (Bit 22)
     if (status & 0x00400000) {
-        programCounter = 0x1FC00180;
-    } else {
+        programCounter = 0xBFC00180;
+    } 
+    else {
         programCounter = 0x80000080;
     }
     
     nextProgramCounter = programCounter + Hardware::INSTRUCTION_SIZE;
+
+}
+
+
+void CPU::triggerCoprocessorUnusable(uint32_t coprocessorNumber) {
+    triggerException(0x0B); // CpU
+    coprocessor0Registers[13] = (coprocessor0Registers[13] & ~0x30000000u) | (coprocessorNumber << 28); // Cause.CE
 }
 
 
@@ -923,4 +999,13 @@ void CPU::triggerHardwareInterrupt() {
     }
 
     nextProgramCounter = programCounter + Hardware::INSTRUCTION_SIZE;
+
+}
+
+
+
+void CPU::chargeLoad(uint32_t address) {
+    // Empirical: 7 was the smallest value that made RE2's second movie start. Not a measured RAM latency.
+    constexpr int RAM_LOAD_EXTRA_CYCLES = 7;
+    if ((address & 0x1FFFFFFF) < 0x00800000) bus->tickHardware(RAM_LOAD_EXTRA_CYCLES);   // RAM and mirrors only; scratchpad and I/O untouched
 }

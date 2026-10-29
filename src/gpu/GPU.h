@@ -40,7 +40,14 @@ public:
 
 
     /// @brief Toggles the odd/even frame bit (Bit 31) in the Status Register during VBlank.
-    void toggleFrameBit() { gpuStatusRegister ^= 0x80000000; }
+    void toggleFrameBit() { 
+        gpuStatusRegister ^= 0x80000000; 
+
+        // Check Bit 22 to see if the display is currently in Interlaced mode
+        if (gpuStatusRegister & 0x00400000) { 
+            gpuStatusRegister ^= 0x00002000;  // Toggle Bit 13 (Interlace Field)
+        }
+    }
 
 
     /// @brief Gets a direct read-only pointer to the raw VRAM buffer.
@@ -62,14 +69,33 @@ public:
     /// @brief Gets the configured height of the active display area.
     /// @return The display height in pixels.
     uint16_t getDisplayHeight() const { return vram.getDisplayHeight(); }
+
+
+
+
+
+    uint16_t getVerticalDisplayStart() const { return verticalDisplayRangeY1; }
+    uint16_t getVerticalDisplayEnd() const { return verticalDisplayRangeY2; }
+
+    bool isDisplay24Bit() const { return (gpuStatusRegister & 0x00200000) != 0; }
+
+    
+    /// @brief Drains the GPU's outstanding draw work. Called once per CPU instruction.
+    void advanceClock(int cycles) {
+        if (busyCycles > 0) {
+            busyCycles -= cycles;
+            if (busyCycles < 0) busyCycles = 0;
+        }
+    }
+    
 private:
+    bool textureDisableAllowed = false; // GP1(0x09). TODO: GPUSTAT must mirror GP0(E1) bits 0-10, and bit 15 when allowed
+    bool forceSetMaskBit = false;
+    bool preserveMaskedPixels = false;
     uint16_t horizontalDisplayRangeX1 = 0;
     uint16_t horizontalDisplayRangeX2 = 0;
     uint16_t verticalDisplayRangeY1 = 0;
     uint16_t verticalDisplayRangeY2 = 0;
-
-
-
 
     // Core Hardware State
     VRAM       vram;
@@ -133,6 +159,16 @@ private:
     uint16_t primitiveColorLookupTableY = 0;
 
 
+    // Line State
+    bool lineIsPolyline = false;
+    bool lineIsGouraud = false;
+    bool lineIsSemiTransparent = false;
+    Vertex lineVertices[2];
+    int lineWordStep = 0;
+
+    void handleLineWord(uint32_t value);
+
+
     // Specifically for Gouraud parsing order
     enum class GouraudPolygonWordRole { Color, Position, Texture };
     std::vector<GouraudPolygonWordRole> gouraudPolygonWordSequence;
@@ -158,4 +194,10 @@ private:
 
     // Misc
     void updateDMARequestBit();
+
+
+
+
+    int64_t busyCycles = 0;      // CPU cycles of drawing still outstanding
+    void chargeDrawCost();
 };

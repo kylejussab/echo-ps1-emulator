@@ -1,0 +1,45 @@
+SPUENDMUTE: start
+SPUENDMUTE: A toggle 01 envx1=7fff envx3=7fff
+SPUENDMUTE: A toggle 02 envx1=7fff envx3=7fff
+SPUENDMUTE: A toggle 03 envx1=7fff envx3=7fff
+SPUENDMUTE: A toggle 04 envx1=7fff envx3=7fff
+SPUENDMUTE: A toggle 05 envx1=7fff envx3=7fff
+SPUENDMUTE: A toggle 06 envx1=7fff envx3=7fff
+SPUENDMUTE: A toggle 07 envx1=7fff envx3=7fff
+SPUENDMUTE: A toggle 08 envx1=7fff envx3=7fff
+SPUENDMUTE: A toggle 09 envx1=7fff envx3=7fff
+SPUENDMUTE: A toggle 10 envx1=7fff envx3=7fff
+SPUENDMUTE: A toggle 11 envx1=7fff envx3=7fff
+SPUENDMUTE: A toggle 12 envx1=7fff envx3=7fff
+SPUENDMUTE: A toggle 13 envx1=7fff envx3=7fff
+SPUENDMUTE: A toggle 14 envx1=0000 envx3=7fff
+SPUENDMUTE: A toggle 15 envx1=0000 envx3=7fff
+SPUENDMUTE: A toggle 16 envx1=0000 envx3=7fff
+SPUENDMUTE: A toggle 17 envx1=0000 envx3=7fff
+SPUENDMUTE: A toggle 18 envx1=0000 envx3=7fff
+SPUENDMUTE: A toggle 19 envx1=0000 envx3=7fff
+SPUENDMUTE: A toggle 20 envx1=0000 envx3=7fff
+SPUENDMUTE: A FAIL - voice 1 first read 0 at toggle 14, expected 6..9
+SPUENDMUTE: A firstZero=14 FAIL
+SPUENDMUTE: B toggle 01 envx1=ffff envx3=ffff
+SPUENDMUTE: B toggle 02 envx1=ffff envx3=ffff
+SPUENDMUTE: B toggle 03 envx1=ffff envx3=ffff
+SPUENDMUTE: B toggle 04 envx1=ffff envx3=ffff
+SPUENDMUTE: B toggle 05 envx1=7fff envx3=7fff
+SPUENDMUTE: B toggle 06 envx1=7fff envx3=7fff
+SPUENDMUTE: B toggle 07 envx1=0000 envx3=7fff
+SPUENDMUTE: B toggle 08 envx1=0000 envx3=7fff
+SPUENDMUTE: B toggle 09 envx1=0000 envx3=7fff
+SPUENDMUTE: B toggle 10 envx1=0000 envx3=7fff
+SPUENDMUTE: B toggle 11 envx1=0000 envx3=7fff
+SPUENDMUTE: B toggle 12 envx1=0000 envx3=7fff
+SPUENDMUTE: B toggle 13 envx1=0000 envx3=7fff
+SPUENDMUTE: B toggle 14 envx1=0000 envx3=7fff
+SPUENDMUTE: B toggle 15 envx1=0000 envx3=7fff
+SPUENDMUTE: B toggle 16 envx1=0000 envx3=7fff
+SPUENDMUTE: B toggle 17 envx1=0000 envx3=7fff
+SPUENDMUTE: B toggle 18 envx1=0000 envx3=7fff
+SPUENDMUTE: B toggle 19 envx1=0000 envx3=7fff
+SPUENDMUTE: B toggle 20 envx1=0000 envx3=7fff
+SPUENDMUTE: B firstZero=7 ok
+SPUENDMUTE: FAILURE

@@ -1,5 +1,7 @@
 #pragma once
 #include <cstdint>
+#include <string>
+#include <unordered_map>
 #include "../core/Bus.h"
 #include "GTE.h"
 
@@ -24,7 +26,25 @@ public:
     void requestInterrupt() { interruptPending = true; }
 
 
+    /// @brief Reads or writes a general purpose register ($0 always reads as zero).
+    uint32_t getRegister(uint32_t index) const;
+    void setRegister(uint32_t index, uint32_t value);
 
+
+    // For unit tests 
+
+    /// @brief Gets the address of the next instruction step() will execute.
+    uint32_t getNextInstructionAddress() const { return programCounter; }
+
+
+    /// @brief Redirects execution to an address, discarding any pending load or delay slot.
+    void jumpTo(uint32_t address);
+
+    // For unit tests 
+
+
+
+    
     // DEBUG
     uint64_t instructionCount = 0; // Temporary tracker
 
@@ -78,12 +98,38 @@ private:
     // Internal Execution Engine
     void execute(uint32_t instruction);
 
-    void setRegister(uint32_t index, uint32_t value);
-    uint32_t getRegister(uint32_t index) const;
+    // BIOS call peeking (kernel log + TTY text for the tracer's --trace-after-tty / --stop-on-tty). Never changes emulation.
+    bool logKernelCalls = false;
+    bool insidePrintf = false;
+    uint32_t printfReturnAddress = 0;
+    uint64_t printfStartInstruction = 0;
+
+    // Coprocessor usability (Status.CU0-CU3 = bits 28-31)
+    bool isCoprocessorEnabled(uint32_t coprocessorNumber) const { return (coprocessor0Registers[12] >> (28 + coprocessorNumber)) & 1; }
+    void triggerCoprocessorUnusable(uint32_t coprocessorNumber);
+
+    bool pcSamplingEnabled = false;
+    uint32_t pcSampleCounter = 0;
+    std::unordered_map<uint32_t, uint32_t> pcSamples;
+    void traceCPUEvent(const char* what, uint32_t code);
+
+    void handleKernelCallHook(uint32_t vector, uint32_t function);
+    void captureGuestPrintf();
+    std::string readGuestString(uint32_t address);
+    uint32_t safeReadGuest32(uint32_t address);
+    bool isSafeGuestAddress(uint32_t address) const;
 
     void triggerException(uint32_t cause);
     void triggerHardwareInterrupt();
     
     /// @brief Extends a 16-bit signed integer to a 32-bit signed integer.
     int32_t signExtend16(uint32_t value) const { return static_cast<int32_t>(static_cast<int16_t>(value)); }
+
+
+
+
+
+
+    void chargeLoad(uint32_t address);
+
 };

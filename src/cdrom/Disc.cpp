@@ -1,29 +1,19 @@
-#include "Disc.h"
-#include <sstream>
-#include <iostream>
+#include <cstring>
 #include <filesystem>
+#include <iostream>
+#include <sstream>
+#include "Disc.h"
 
-namespace fs = std::filesystem;
-
-Disc::~Disc() {
-
-}
-
-uint32_t Disc::msfToLba(int minutes, int seconds, int frames) {
-    return (minutes * 60 + seconds) * 75 + frames;
-}
-
-std::string Disc::trim(const std::string& str) {
-    size_t first = str.find_first_not_of(" \t\r\n");
-    if (first == std::string::npos) return "";
-    size_t last = str.find_last_not_of(" \t\r\n");
-    return str.substr(first, (last - first + 1));
-}
 
 bool Disc::loadCue(const std::string& cuePath) {
+    if (cuePath.empty()) {
+        std::cout << "CDROM: Drive is empty. Booting to BIOS shell." << std::endl;
+        return false;
+    }
+    
     std::ifstream cueFile(cuePath);
     if (!cueFile.is_open()) {
-        std::cerr << "CDROM: Could not open CUE sheet: " << cuePath << std::endl;
+        std::cout << "CDROM: Could not open CUE sheet: " << cuePath << std::endl;
         return false;
     }
 
@@ -32,8 +22,8 @@ bool Disc::loadCue(const std::string& cuePath) {
     Track currentTrack;
     bool inTrack = false;
 
-    fs::path basePath = fs::path(cuePath).parent_path();
-    std::string currentBinFilename; // Consolidated to a single tracking variable
+    std::filesystem::path basePath = std::filesystem::path(cuePath).parent_path();
+    std::string currentBinFilename;
 
     while (std::getline(cueFile, line)) {
         std::string trimmed = trim(line);
@@ -49,7 +39,8 @@ bool Disc::loadCue(const std::string& cuePath) {
             size_t lastQuote = trimmed.rfind('"');
             if (firstQuote != std::string::npos && lastQuote != std::string::npos && firstQuote != lastQuote) {
                 currentBinFilename = trimmed.substr(firstQuote + 1, lastQuote - firstQuote - 1);
-            } else {
+            } 
+            else {
                 ss >> currentBinFilename;
             }
         }
@@ -63,35 +54,37 @@ bool Disc::loadCue(const std::string& cuePath) {
             // Store the absolute path so readSector() can open it directly
             currentTrack.filename = (basePath / currentBinFilename).string();
 
-            int trackNum = 0;
-            std::string typeStr;
-            ss >> trackNum >> typeStr;
+            int trackNumber = 0;
+            std::string typeString;
+            ss >> trackNumber >> typeString;
 
-            currentTrack.number = trackNum;
-            if (typeStr == "MODE2/2352") {
+            currentTrack.number = trackNumber;
+            if (typeString == "MODE2/2352") {
                 currentTrack.type = TrackType::Mode2_2352;
-            } else if (typeStr == "AUDIO") {
+            } 
+            else if (typeString == "AUDIO") {
                 currentTrack.type = TrackType::Audio;
-            } else {
+            } 
+            else {
                 currentTrack.type = TrackType::Unknown;
             }
         }
         else if (command == "INDEX") {
-            int indexNum = 0;
-            std::string msfStr;
-            ss >> indexNum >> msfStr;
+            int indexNumber = 0;
+            std::string minuteSecondFrameString;
+            ss >> indexNumber >> minuteSecondFrameString;
 
-            // We care primarily about INDEX 01 (track data start)
-            if (indexNum == 1 && inTrack) {
-                int mm = 0, ss_val = 0, ff = 0;
+            // INDEX 01 designates the start of the actual track data.
+            if (indexNumber == 1 && inTrack) {
+                int minutes = 0, seconds = 0, frames = 0;
                 char colon1 = 0, colon2 = 0;
-                std::stringstream msfStream(msfStr);
-                msfStream >> mm >> colon1 >> ss_val >> colon2 >> ff;
+                std::stringstream minuteSecondFrameStream(minuteSecondFrameString);
+                minuteSecondFrameStream >> minutes >> colon1 >> seconds >> colon2 >> frames;
 
-                currentTrack.startLBA = msfToLba(mm, ss_val, ff);
+                currentTrack.indexLogicalBlockAddress = minuteSecondFrameToLogicalBlockAddress(minutes, seconds, frames);
                 
-                // For Multi-BIN rips, the local file offset is almost always 0.
-                // We will handle the LBA math dynamically in readSector.
+                // For Multi-BIN rips, the local file offset is strictly initialized to 0.
+                // Logical Block Address offsets are calculated dynamically during sector reads.
                 currentTrack.fileByteOffset = 0; 
             }
         }
@@ -101,80 +94,93 @@ bool Disc::loadCue(const std::string& cuePath) {
         tracks.push_back(currentTrack);
     }
 
-
-    uint32_t globalLBA = 0;
+    uint32_t globalLogicalBlockAddress = 0;
+    uint32_t currentFileStartLogicalBlockAddress = 0;
     std::string lastFilename;
     for (auto& track : tracks) {
         if (track.filename != lastFilename) {
-            track.startLBA = globalLBA;
+            currentFileStartLogicalBlockAddress = globalLogicalBlockAddress;
             lastFilename = track.filename;
 
-            uintmax_t fileSize = fs::file_size(track.filename);
-            globalLBA += static_cast<uint32_t>(fileSize / 2352);
-        } else {
-            track.startLBA = globalLBA;
+            uintmax_t fileSize = std::filesystem::file_size(track.filename);
+            globalLogicalBlockAddress += static_cast<uint32_t>(fileSize / 2352);
         }
+        track.fileStartLogicalBlockAddress = currentFileStartLogicalBlockAddress;
+
+        // INDEX 01 is relative to the start of the track's file. In a single-BIN image that is the real track start,
+        // in a multi-BIN image it is the pregap length when the file includes the pregap (usually 00:02:00 for audio).
+        track.startLogicalBlockAddress = currentFileStartLogicalBlockAddress + track.indexLogicalBlockAddress;
     }
 
-    totalSectors = globalLBA;
+    totalSectors = globalLogicalBlockAddress;
 
     cueFile.close();
 
-    std::cout << "CDROM: Loaded CUE sheet with " << tracks.size() << " tracks." << std::endl;
+     // Read Sector 16 (ISO 9660 Primary Volume Descriptor) to get the game name
+    uint8_t sector[2352];
+
+    if (readSector(16, sector)) {
+        // Mode 2 Form 1 sector: Data starts at byte 24. 
+        // Volume Identifier is a 32-byte string at offset 40 of the data payload (24 + 40 = 64).
+        char volumeID[33] = {0};
+        std::memcpy(volumeID, &sector[64], 32);
+
+        std::string gameName(volumeID);
+        
+        // Trim trailing spaces and null characters
+        size_t lastChar = gameName.find_last_not_of(" \t\r\n\0");
+        if (lastChar != std::string::npos) {
+            gameName.erase(lastChar + 1);
+        } 
+        else {
+            gameName.clear();
+        }
+
+        if (!gameName.empty()) {
+            std::cout << "CDROM: Inserted Disc - " << gameName << " (" << tracks.size() << " tracks)" << std::endl;
+        } 
+        else {
+            std::cout << "CDROM: Inserted Disc - Unknown Title (" << tracks.size() << " tracks)" << std::endl;
+        }
+    } 
+    else {
+        std::cout << "CDROM: Loaded CUE sheet with " << tracks.size() << " tracks." << std::endl;
+    }
 
     return true;
 }
 
 
-
-const Track* Disc::getTrack(int trackNumber) const {
-    for (const auto& track : tracks) {
-        if (track.number == trackNumber) return &track;
-    }
-    return nullptr;
-}
-
-
-
-
-
-
-bool Disc::readSector(uint32_t lba, uint8_t* destination2352) {
+bool Disc::readSector(uint32_t logicalBlockAddress, uint8_t* destination2352) {
     const Track* targetTrack = nullptr;
 
-    // 1. Find which track contains this LBA
+    // Find which track contains this Logical Block Address
     for (size_t i = 0; i < tracks.size(); ++i) {
-        if (lba >= tracks[i].startLBA) {
+        if (logicalBlockAddress >= tracks[i].fileStartLogicalBlockAddress) {
             targetTrack = &tracks[i];
-        } else {
+        } 
+        else {
             break;
         }
     }
 
     if (!targetTrack) {
-        std::cerr << "CDROM: LBA " << lba << " is out of bounds." << std::endl;
+        std::cerr << "CDROM: Logical Block Address " << logicalBlockAddress << " is out of bounds." << std::endl;
         return false;
     }
 
-    // 2. Find the LBA where this specific file physically begins
-    uint32_t fileStartLBA = 0;
-    for (const auto& track : tracks) {
-        if (track.filename == targetTrack->filename) {
-            fileStartLBA = track.startLBA;
-            break; // Found the very first track that lives in this file
-        }
-    }
+    // The Logical Block Address where this specific file physically begins
+    uint32_t fileStartLogicalBlockAddress = targetTrack->fileStartLogicalBlockAddress;
 
-    // 3. Open the file
     std::ifstream trackFile(targetTrack->filename, std::ios::binary);
     if (!trackFile.is_open()) {
         std::cerr << "CDROM: Could not open track file: " << targetTrack->filename << std::endl;
         return false;
     }
 
-    // 4. Calculate offset relative to the start of THIS file
-    uint32_t lbaOffsetWithinFile = lba - fileStartLBA;
-    uint64_t byteOffset = static_cast<uint64_t>(lbaOffsetWithinFile) * 2352;
+    // Calculate offset relative to the start of THIS file
+    uint32_t logicalBlockAddressOffsetWithinFile = logicalBlockAddress - fileStartLogicalBlockAddress;
+    uint64_t byteOffset = static_cast<uint64_t>(logicalBlockAddressOffsetWithinFile) * 2352;
 
     trackFile.seekg(byteOffset, std::ios::beg);
     trackFile.read(reinterpret_cast<char*>(destination2352), 2352);
@@ -183,4 +189,22 @@ bool Disc::readSector(uint32_t lba, uint8_t* destination2352) {
     trackFile.close();
     
     return success;
+}
+
+
+const Disc::Track* Disc::getTrack(int trackNumber) const {
+    for (const auto& track : tracks) {
+        if (track.number == trackNumber) return &track;
+    }
+    return nullptr;
+}
+
+
+
+//Privates
+std::string Disc::trim(const std::string& stringToTrim) {
+    size_t first = stringToTrim.find_first_not_of(" \t\r\n");
+    if (first == std::string::npos) return "";
+    size_t last = stringToTrim.find_last_not_of(" \t\r\n");
+    return stringToTrim.substr(first, (last - first + 1));
 }

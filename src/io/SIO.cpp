@@ -1,174 +1,239 @@
 #include "SIO.h"
 
-SIO::SIO() {}
-
-SIO::~SIO() {}
-
 
 uint8_t SIO::read8(uint32_t address) {
-    if (address == 0x1F801040) {
-        // CPU is reading the received byte. Clear the "Receive Not Empty" flag.
-        statusRegister &= ~0x0002; 
+    if (address == 0x1F801040) { // SIO_DATA
+        statusRegister &= ~(1 << 1); // RX FIFO not empty (Receive Not Empty)
         return receiveFIFO;
     }
-    return 0; // Unhandled 8-bit read
+    return 0;
 }
 
 
 uint16_t SIO::read16(uint32_t address) {
-    if (address == 0x1F801044) return statusRegister;
-    if (address == 0x1F801048) return modeRegister;
-    if (address == 0x1F80104A) return controlRegister;
-    if (address == 0x1F80104E) return baudRegister;
-    return 0;
+    switch (address) {
+        case 0x1F801044: { // SIO_STAT (Status)
+            return statusRegister;
+        }
+        case 0x1F801048: { // SIO_MODE
+            return modeRegister;
+        }
+        case 0x1F80104A: { // SIO_CTRL (Control)
+            return controlRegister;
+        }
+        case 0x1F80104E: { // SIO_BAUD
+            return baudRegister;
+        }
+        default: {
+            return 0;
+        }
+    }
 }
 
 
 uint32_t SIO::read32(uint32_t address) {
-    if (address == 0x1F801040) return read8(address);
-    if (address == 0x1F801044) return read16(address);
-    return 0;
+    switch (address) {
+		case 0x1F801040: { // SIO_DATA
+			return read8(address);
+        }	
+		case 0x1F801044: { // SIO_STAT (Status)
+			return statusRegister;
+        }	
+		case 0x1F801048: { // SIO_MODE (lower 16) & SIO_CTRL (upper 16)
+			return modeRegister | (static_cast<uint32_t>(controlRegister) << 16);
+        }	
+		case 0x1F80104C: { // SIO_BAUD (upper 16 bits, lower 16 unused/zero)
+			return static_cast<uint32_t>(baudRegister) << 16;
+        }	
+		default: {
+			return 0;
+        }
+	}
 }
 
 
 void SIO::write8(uint32_t address, uint8_t value) {
-    if (address == 0x1F801040) {
+    if (address == 0x1F801040) { // SIO_DATA
         transmitFIFO = value;
-        // Transmit is no longer empty, Receive is not ready yet
-        statusRegister &= ~0x0005; 
-        processTransmit(value);
+        if (controlRegister & (1 << 0)) { // Transmit Enable
+            processTransmit(value);
+        }
     }
 }
 
 
 void SIO::write16(uint32_t address, uint16_t value) {
-    if (address == 0x1F801048) {
-        modeRegister = value;
-    } 
-    else if (address == 0x1F80104A) {
-        controlRegister = value;
-        
-        // Bit 4: Acknowledge SIO Interrupt
-        if (value & 0x0010) {
-            statusRegister &= ~0x0200; // Clear the SIO Interrupt Request flag (Status Register Bit 9)
-            controlRegister &= ~0x0010; // Clear the ACK bit itself
+    switch (address) {
+        case 0x1F801048: { // SIO_MODE
+            modeRegister = value;
+            break;
         }
-        
-        // Bit 1: DTR (Data Terminal Ready). If this goes low, controller is deselected.
-        if ((value & 0x0002) == 0) {
-            currentState = State::Idle;
+        case 0x1F80104A: { // SIO_CTRL (Control)
+             // Bit 6: Reset
+            if (value & (1 << 6)) { // Reset (Write-only, self-clearing)
+                softReset();
+                return;
+            }
+
+            // Bits 4 (ACK) and 6 (RESET) are write-only and never read back as set
+            controlRegister = value & ~((1 << 4) | (1 << 6));
+
+            // Bit 4: Acknowledge, clears the IRQ flag (and error flags)
+            if (value & (1 << 4)) {
+                statusRegister &= ~0x0238; // Acknowledge clears bits 3, 4, 5, 9
+            }
+
+            // Bit 1: DTR. If this goes low, the pad is deselected and any packet is aborted.
+            if ((value & (1 << 1)) == 0) { // Data Terminal Ready (Chip Select)
+                deselect();
+            }
+            break;
         }
-    } 
-    else if (address == 0x1F80104E) {
-        baudRegister = value;
+        case 0x1F80104E: { // SIO_BAUD
+            baudRegister = value;
+            break;
+        }
     }
 }
 
 
 void SIO::write32(uint32_t address, uint32_t value) {
-    if (address == 0x1F801040) write8(address, value & 0xFF);
-    else write16(address, value & 0xFFFF);
-}
-
-
-bool SIO::tick() {
-    if (ackPending && ackDelay > 0) {
-        ackDelay--;
-        if (ackDelay == 0) {
-            ackPending = false;
-            // Set bit 9 (Interrupt Request) in the Status Register
-            statusRegister |= 0x0200; 
-            return true; // Tells the Bus to fire the actual CPU IRQ
+    switch (address) {
+        case 0x1F801040: { // SIO_DATA
+            write8(address, value & 0xFF);
+            break;
+        }
+        case 0x1F801048: { // SIO_MODE
+            // 32-bit store covers MODE (low half) and CTRL (high half)
+            write16(0x1F801048, value & 0xFFFF);
+            write16(0x1F80104A, value >> 16);
+            break;
+        }
+        case 0x1F80104C: {
+            write16(0x1F80104E, value >> 16);
+            break;
+        }
+        default: {
+            write16(address, value & 0xFFFF);
+            break;
         }
     }
-    return false;
 }
 
 
+bool SIO::advanceClock() {
+    if (transferCyclesRemaining <= 0 && !acknowledgePending && dataSetReadyPulseCycles <= 0) return false;
+    return advanceClockSlowly();
+}
+
+
+
+// Privates
+bool SIO::advanceClockSlowly() {
+    bool fireInterruptRequest = false;
+
+    // The byte has finished shifting: the reply becomes readable and the pad may now pull /ACK
+    if (transferCyclesRemaining > 0 && --transferCyclesRemaining == 0) {
+        receiveFIFO = pendingReply;
+        statusRegister |= ((1 << 2) | (1 << 1));
+        if (pendingAcknowledge) {
+            pendingAcknowledge = false;
+            acknowledgePending = true;
+            acknowledgeDelayCycles = kAcknowledgeDelayCycles;
+        }
+    }
+
+    if (acknowledgePending && --acknowledgeDelayCycles <= 0) {
+        acknowledgePending = false;
+
+        // The controller pulls /ACK low: DSR goes active...
+        statusRegister |= (1 << 7);
+        dataSetReadyPulseCycles = kDataSetReadyPulseCycles;
+
+        // ...and that edge raises IRQ7, but only if the game enabled DSR interrupts
+        if (controlRegister & (1 << 12)) {
+            statusRegister |= (1 << 9);
+            fireInterruptRequest = true;
+        }
+    }
+
+    if (dataSetReadyPulseCycles > 0 && --dataSetReadyPulseCycles == 0) {
+        statusRegister &= ~(1 << 7);
+    }
+
+    return fireInterruptRequest;
+}
 
 
 void SIO::processTransmit(uint8_t data) {
-    // Controller must be selected (DTR bit 1 must be high)
-    if ((controlRegister & 0x0002) == 0) {
-        receiveFIFO = 0xFF; // No connection
-        return;
-    }
+    uint8_t reply = 0xFF; // High-Z / nothing connected
+    bool acknowledgeSignalPulled = false;
 
-    bool queueAck = false;
+    const bool selected = (controlRegister & (1 << 1)) != 0;
+    const bool port2    = (controlRegister & (1 << 13)) != 0;
 
-    switch (currentState) {
-        case State::Idle:
-            if (data == 0x01) { // CPU is addressing a controller
-                currentState = State::Command;
-                receiveFIFO = 0xFF;
-                queueAck = true;
+    // Only a selected device on port 1 can answer (port 2 has no pad yet)
+    if (selected && !port2) {
+        if (activeDevice == Device::None) {
+            if (data == 0x01) {
+                // CPU is addressing a controller
+                activeDevice = Device::Pad;
+                controller.resetTransfer();
+                acknowledgeSignalPulled = true;
             }
-            // TODO: Handle 0x81 (Memory Card Addressing)
-            break;
-            
-        case State::Addressing:
-            // Unused in our simplified flow, included to silence -Wswitch
-            break;
-
-        case State::Command:
-            if (data == 0x42) { // Read Controller Data
-                currentState = State::Ready;
-                receiveFIFO = controller.isAnalogMode() ? 0x73 : 0x41;
-                expectedPayloadSize = controller.isAnalogMode() ? 6 : 2;
-                payloadIndex = 0;
-                
-                // Force a live read of SDL state exactly when the CPU asks for it
-                controller.updateState(); 
-                
-                queueAck = true;
-            } else {
-                // TODO: Handle Rumble Configuration commands (0x43, 0x4D)
-                // Not a recognized command, abort
-                currentState = State::Idle;
-                receiveFIFO = 0xFF;
-            }
-            break;
-
-        case State::Ready:
-            currentState = State::Payload;
-            receiveFIFO = 0x5A; // Controller says "Ready!"
-            queueAck = true;
-            break;
-
-        case State::Payload: { 
-            uint16_t controllerState = controller.getButtons();
-            
-            if (payloadIndex == 0) receiveFIFO = controllerState & 0xFF;
-            else if (payloadIndex == 1) receiveFIFO = (controllerState >> 8) & 0xFF;
-            else if (payloadIndex == 2) receiveFIFO = controller.getRightX();
-            else if (payloadIndex == 3) receiveFIFO = controller.getRightY();
-            else if (payloadIndex == 4) receiveFIFO = controller.getLeftX();
-            else if (payloadIndex == 5) receiveFIFO = controller.getLeftY();
-
-            payloadIndex++;
-
-            // The PS1 controller does NOT send an ACK on the final byte of the payload
-            if (payloadIndex < expectedPayloadSize) {
-                queueAck = true;
-            } 
-            else {
-                currentState = State::Done;
-            }
-            break;
+            /// @todo 0x81 (Memory Card addressing). No device answers, so no ACK.
         }
-
-        case State::Done:
-            receiveFIFO = 0xFF;
-            break;
+        else if (activeDevice == Device::Pad) {
+            acknowledgeSignalPulled = controller.transfer(data, reply);
+        }
     }
 
-    // Set Transmit Idle and Receive Not Empty flags in Status
-    statusRegister |= 0x0005; 
-    statusRegister |= 0x0002; 
+    receiveFIFO = reply;
 
-    if (queueAck) {
-        ackPending = true;
-        // ~250-300 CPU cycles gives the hardware a realistic timeframe to pull the DSR line low
-        ackDelay = 300; 
+    pendingReply = reply;
+    pendingAcknowledge = acknowledgeSignalPulled;
+    transferCyclesRemaining = calculateByteCycles();
+    statusRegister |= (1 << 0);
+    statusRegister &= ~((1 << 2) | (1 << 1));
+}
+
+
+void SIO::deselect() {
+    activeDevice = Device::None;
+    controller.resetTransfer();
+    acknowledgePending = false;
+    acknowledgeDelayCycles = 0;
+    transferCyclesRemaining = 0;
+    pendingAcknowledge = false;
+}
+
+
+void SIO::softReset() {
+    statusRegister = (1 << 0) | (1 << 2);
+    modeRegister = 0;
+    controlRegister = 0;
+    receiveFIFO = 0xFF;
+    dataSetReadyPulseCycles = 0;
+    deselect();
+}
+
+
+int SIO::calculateByteCycles() const {
+    int baudMultiplier = 1; 
+
+    // The baud rate factor is defined by the lowest 2 bits of the mode register.
+    // 01 = x1 multiplier, 10 = x16 multiplier, 11 = x64 multiplier.
+    const uint16_t baudRateFactor = modeRegister & 0x03;
+    if (baudRateFactor == 2) {
+        baudMultiplier = 16;
+    } 
+    else if (baudRateFactor == 3) {
+        baudMultiplier = 64;
     }
+
+    // If the baud register has not been explicitly programmed yet, fall back to the default Basic Input/Output System value of 0x88.
+    const int baudReload = (baudRegister != 0) ? baudRegister : 0x88;
+    
+    // 8 bits per byte * reload factor * baud multiplier
+    return 8 * baudReload * baudMultiplier;
 }

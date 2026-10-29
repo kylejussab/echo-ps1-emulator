@@ -14,7 +14,6 @@ cmake_install.cmake
 # Executables
 *.out
 *.app
-x1fc
 
 # PS1 Binaries
 assets/*.BIN
@@ -27,3 +26,7 @@ games/
 
 # macOS specific
 .DS_Store
+
+# PS1 test suite: third-party test programs and generated output
+ps1-unit-tester/public-tests/
+ps1-unit-tester/results/

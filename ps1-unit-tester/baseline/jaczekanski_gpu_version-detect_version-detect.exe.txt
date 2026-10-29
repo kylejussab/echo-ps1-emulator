@@ -1,0 +1,3 @@
+gpu/version-detect
+> GPUREAD = 0x00000002
+* GPU version 2 [New 208pin GPU (LATE-PU-8 and up)]
