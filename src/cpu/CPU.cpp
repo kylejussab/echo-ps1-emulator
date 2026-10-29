@@ -1,9 +1,5 @@
 #include "CPU.h"
 #include "../core/Constants.h"
-#include <algorithm>
-#include <cctype>
-#include <vector>
-#include <cstdio>
 #include <iostream>
 
 
@@ -36,7 +32,7 @@ void CPU::step() {
             }
 
             triggerHardwareInterrupt();
-            bus->tickHardware(1);
+            bus->advanceClock(1);
             return; 
         }
     }
@@ -45,23 +41,17 @@ void CPU::step() {
     uint32_t valueToUpdate = pendingLoadValue;
 
     inFlightLoadRegister = registerToUpdate;
-	inFlightLoadValue = valueToUpdate;
+    inFlightLoadValue = valueToUpdate;
 
     pendingLoadRegister = 0;
     pendingLoadValue = 0;
 
     currentProgramCounter = programCounter;
-
-    // Cache calculation variables (staged for future I-Cache implementation)
-    uint32_t physicalProgramCounter = programCounter & 0x1FFFFFFF;
-    uint32_t cacheIndex = (physicalProgramCounter >> 2) & 0x3FF; 
-    uint32_t cacheTag = physicalProgramCounter & 0xFFFFF000;         
-    bool isUncachedRegion = (programCounter & 0xE0000000) == 0xA0000000;
     
     // Bus Error on Instruction fetch (ExcCode 6). Hardware-verified by ps1-tests cpu/code-in-io for exactly these three places:
     // scratchpad, the interrupt registers and MDEC. Fetching from the SPU registers, DMA0 and the DMA control register does NOT
     // fault on real hardware (the registers read back whatever was written and the CPU just executes it).
-    // TODO: the test only samples a few ports, so the rule for the other I/O registers (timers, GPU, CD-ROM, SIO) is unknown.
+    /// @todo the test only samples a few ports, so the rule for the other I/O registers (timers, GPU, CD-ROM, SIO) is unknown.
     uint32_t fetchAddress = programCounter & 0x1FFFFFFF;
     bool busErrorOnFetch = (fetchAddress >= 0x1F800000 && fetchAddress < 0x1F800400)   // scratchpad
                         || (fetchAddress >= 0x1F801070 && fetchAddress < 0x1F801078)   // I_STAT / I_MASK
@@ -71,15 +61,15 @@ void CPU::step() {
         if (registerToUpdate != 0 && registerToUpdate != pendingLoadRegister) {
             setRegister(registerToUpdate, valueToUpdate); // the load that was in flight still completes
         }
-        bus->tickHardware(1);
+        bus->advanceClock(1);
         return;
     }
 
     uint32_t instruction = bus->read32(programCounter);
 
-    //Extra cycles to simulate time it would take to read from ROM
+    // Extra cycles to simulate time it would take to read from ROM
     if (fetchAddress >= Hardware::BIOS_ROM_START && fetchAddress < Hardware::BIOS_ROM_END) {
-        bus->tickHardware(Hardware::BIOS_ROM_FETCH_CYCLES - 1);
+        bus->advanceClock(Hardware::BIOS_ROM_FETCH_CYCLES - 1);
     }
 
     programCounter = nextProgramCounter;
@@ -93,10 +83,35 @@ void CPU::step() {
         setRegister(registerToUpdate, valueToUpdate);
     }
 
-    bus->tickHardware(1);
+    bus->advanceClock(1);
 }
 
 
+uint32_t CPU::getRegister(uint32_t index) const {
+    if (index == 0) return 0;
+    return registers[index];
+}
+
+
+void CPU::setRegister(uint32_t index, uint32_t value) {
+    if (index == 0) return;
+    registers[index] = value;
+    lastWrittenRegister = index;
+}
+
+
+void CPU::jumpTo(uint32_t address) {
+    programCounter = address;
+    nextProgramCounter = address + Hardware::INSTRUCTION_SIZE;
+    pendingLoadRegister = 0;
+    pendingLoadValue = 0;
+    nextIsDelaySlot = false;
+    isDelaySlot = false;
+}
+
+
+
+//Privates
 bool CPU::isInstructionCacheIsolated() const {
     uint32_t statusRegister = coprocessor0Registers[12];
     // Sony's custom CPU isolates the I-Cache using ONLY Bit 16
@@ -568,8 +583,7 @@ void CPU::execute(uint32_t instruction) {
             }
             break;
         }
-        case 0x11: // COP1 (doesn't exist on the PS1): no-op when enabled, CpU when disabled
-        case 0x13: { // COP3 (same)
+        case 0x11: { // Coprocessor 1 (doesn't exist on the PS1): no-op when enabled, CpU when disabled
             uint32_t coprocessorNumber = (instruction >> 26) & 0x3;
             if (!isCoprocessorEnabled(coprocessorNumber)) triggerCoprocessorUnusable(coprocessorNumber);
             break;
@@ -614,6 +628,11 @@ void CPU::execute(uint32_t instruction) {
                     exit(1);
                 }  
             }
+            break;
+        }
+        case 0x13: { // Coprocessor 3 (doesn't exist on the PS1): no-op when enabled, CpU when disabled
+            uint32_t coprocessorNumber = (instruction >> 26) & 0x3;
+            if (!isCoprocessorEnabled(coprocessorNumber)) triggerCoprocessorUnusable(coprocessorNumber);
             break;
         }
         case 0x20: { // LB (Load Byte)
@@ -913,37 +932,16 @@ void CPU::execute(uint32_t instruction) {
 }
 
 
-
-// Register 0 is hardwired to 0 in physical silicon
-void CPU::setRegister(uint32_t index, uint32_t value) {
-    if (index == 0) return;
-    registers[index] = value;
-    lastWrittenRegister = index;
-}
-
-
-uint32_t CPU::getRegister(uint32_t index) const {
-    if (index == 0) return 0;
-    return registers[index];
-}
-
-
-void CPU::jumpTo(uint32_t address) {
-    programCounter = address;
-    nextProgramCounter = address + Hardware::INSTRUCTION_SIZE;
-    pendingLoadRegister = 0;
-    pendingLoadValue = 0;
-    nextIsDelaySlot = false;
-    isDelaySlot = false;
+void CPU::triggerCoprocessorUnusable(uint32_t coprocessorNumber) {
+    triggerException(0x0B); // CpU
+    coprocessor0Registers[13] = (coprocessor0Registers[13] & ~0x30000000u) | (coprocessorNumber << 28); // Cause.CE (Coprocessor Exception field, bits 28-29: logs which COP failed)
 }
 
 
 void CPU::triggerException(uint32_t cause) {
     if (isDelaySlot) {
-        // The exception happened in a delay slot. Save the branch's address.
         coprocessor0Registers[14] = currentProgramCounter - Hardware::INSTRUCTION_SIZE; 
         
-        // Clear old cause (bits 2-6) and BD bit, set new cause, set BD bit
         coprocessor0Registers[13] = (coprocessor0Registers[13] & ~0x8000007C) | (cause << 2) | 0x80000000; 
     } 
     else {
@@ -958,11 +956,10 @@ void CPU::triggerException(uint32_t cause) {
     isDelaySlot = false;
     nextIsDelaySlot = false;
 
-    // Shift the Status Register (COP0 Reg 12)
+    // Push the exception stack: Shift the KU/IE (Kernel/User and Interrupt Enable) bits left by 2
     uint32_t status = coprocessor0Registers[12];
     coprocessor0Registers[12] = (status & 0xFFFFFFC0) | ((status << 2) & 0x0000003F);
 
-    // Hijack the Program Counter based on the BEV bit (Bit 22)
     if (status & 0x00400000) {
         programCounter = 0xBFC00180;
     } 
@@ -975,22 +972,18 @@ void CPU::triggerException(uint32_t cause) {
 }
 
 
-void CPU::triggerCoprocessorUnusable(uint32_t coprocessorNumber) {
-    triggerException(0x0B); // CpU
-    coprocessor0Registers[13] = (coprocessor0Registers[13] & ~0x30000000u) | (coprocessorNumber << 28); // Cause.CE
-}
-
-
 void CPU::triggerHardwareInterrupt() {
+    // Save the current instruction's address to EPC
     coprocessor0Registers[14] = programCounter; 
     
     // Preserve IP bits (8-15), clear ExcCode (2-6) and BD (31), and hard-assert IP2 (Bit 10)
     coprocessor0Registers[13] = (coprocessor0Registers[13] & 0x0000FF00) | (1 << 10); 
 
-    // Shift the Status Register (COP0 Reg 12)
+    // Push the exception stack: Shift the KU/IE (Kernel/User and Interrupt Enable) bits left by 2
     uint32_t status = coprocessor0Registers[12];
     coprocessor0Registers[12] = (status & 0xFFFFFFC0) | ((status << 2) & 0x0000003F);
 
+    // Hijack the Program Counter based on the BEV bit (Bit 22)
     if (status & 0x00400000) {
         programCounter = 0x1FC00180;
     } 
@@ -999,13 +992,11 @@ void CPU::triggerHardwareInterrupt() {
     }
 
     nextProgramCounter = programCounter + Hardware::INSTRUCTION_SIZE;
-
 }
-
 
 
 void CPU::chargeLoad(uint32_t address) {
     // Empirical: 7 was the smallest value that made RE2's second movie start. Not a measured RAM latency.
     constexpr int RAM_LOAD_EXTRA_CYCLES = 7;
-    if ((address & 0x1FFFFFFF) < 0x00800000) bus->tickHardware(RAM_LOAD_EXTRA_CYCLES);   // RAM and mirrors only; scratchpad and I/O untouched
+    if ((address & 0x1FFFFFFF) < 0x00800000) bus->advanceClock(RAM_LOAD_EXTRA_CYCLES); // RAM and mirrors only; scratchpad and I/O untouched
 }

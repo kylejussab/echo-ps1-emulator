@@ -1,31 +1,7 @@
-#include "cpu/GTE.h"
-#include <iostream>
 #include <algorithm>
 #include <cstdint>
-
-// FLAG register (Control Register 31) bit positions
-static constexpr uint32_t FLAG_IR0_SAT      = 1u << 12;
-static constexpr uint32_t FLAG_SY2_SAT      = 1u << 13;
-static constexpr uint32_t FLAG_SX2_SAT      = 1u << 14;
-static constexpr uint32_t FLAG_MAC0_NEG_OVF = 1u << 15;
-static constexpr uint32_t FLAG_MAC0_POS_OVF = 1u << 16;
-static constexpr uint32_t FLAG_DIVIDE_OVF   = 1u << 17;
-static constexpr uint32_t FLAG_SZ3_SAT      = 1u << 18;
-static constexpr uint32_t FLAG_COLOR_B_SAT  = 1u << 19;
-static constexpr uint32_t FLAG_COLOR_G_SAT  = 1u << 20;
-static constexpr uint32_t FLAG_COLOR_R_SAT  = 1u << 21;
-static constexpr uint32_t FLAG_IR3_SAT      = 1u << 22;
-static constexpr uint32_t FLAG_IR2_SAT      = 1u << 23;
-static constexpr uint32_t FLAG_IR1_SAT      = 1u << 24;
-static constexpr uint32_t FLAG_MAC3_NEG_OVF = 1u << 25;
-static constexpr uint32_t FLAG_MAC2_NEG_OVF = 1u << 26;
-static constexpr uint32_t FLAG_MAC1_NEG_OVF = 1u << 27;
-static constexpr uint32_t FLAG_MAC3_POS_OVF = 1u << 28;
-static constexpr uint32_t FLAG_MAC2_POS_OVF = 1u << 29;
-static constexpr uint32_t FLAG_MAC1_POS_OVF = 1u << 30;
-static constexpr uint32_t FLAG_ERROR        = 1u << 31;
-
-static constexpr uint32_t FLAG_ERROR_MASK = (0xFFu << 23) | (0x3Fu << 13);
+#include <iostream>
+#include "cpu/GTE.h"
 
 
 GTE::GTE() {
@@ -34,6 +10,29 @@ GTE::GTE() {
         controlRegisters[i] = 0;
     }
     buildReciprocalSeedTable();
+}
+
+
+uint32_t GTE::readDataRegister(uint32_t index) const {
+    switch (index) {
+        case 1: case 3: case 5: case 8: case 9: case 10: case 11: {
+            return (uint32_t)(int32_t)(int16_t)dataRegisters[index];
+        }
+        case 7: case 16: case 17: case 18: case 19: {
+            return dataRegisters[index] & 0xFFFF;
+        }
+        case 15: {
+            return dataRegisters[14];
+        }
+        case 28: case 29: {
+            auto c = [](int16_t v) { return (uint32_t)std::clamp((int)v >> 7, 0, 0x1F); };
+            return c((int16_t)dataRegisters[9]) | (c((int16_t)dataRegisters[10]) << 5)
+                | (c((int16_t)dataRegisters[11]) << 10);
+        }
+        default: {
+            return dataRegisters[index];
+        }
+    }
 }
 
 
@@ -65,24 +64,13 @@ void GTE::writeDataRegister(uint32_t index, uint32_t value) {
 }
 
 
-uint32_t GTE::readDataRegister(uint32_t index) const {
+uint32_t GTE::readControlRegister(uint32_t index) const {
     switch (index) {
-        case 1: case 3: case 5: case 8: case 9: case 10: case 11: {
-            return (uint32_t)(int32_t)(int16_t)dataRegisters[index];
-        }
-        case 7: case 16: case 17: case 18: case 19: {
-            return dataRegisters[index] & 0xFFFF;
-        }
-        case 15: {
-            return dataRegisters[14];
-        }
-        case 28: case 29: {
-            auto c = [](int16_t v) { return (uint32_t)std::clamp((int)v >> 7, 0, 0x1F); };
-            return c((int16_t)dataRegisters[9]) | (c((int16_t)dataRegisters[10]) << 5)
-                | (c((int16_t)dataRegisters[11]) << 10);
+        case 4: case 12: case 20: case 26: case 27: case 29: case 30: {
+            return (uint32_t)(int32_t)(int16_t)controlRegisters[index];
         }
         default: {
-            return dataRegisters[index];
+            return controlRegisters[index];
         }
     }
 }
@@ -97,18 +85,6 @@ void GTE::writeControlRegister(uint32_t index, uint32_t value) {
         }
     }
     controlRegisters[index] = value;
-}
-
-
-uint32_t GTE::readControlRegister(uint32_t index) const {
-    switch (index) {
-        case 4: case 12: case 20: case 26: case 27: case 29: case 30: {
-            return (uint32_t)(int32_t)(int16_t)controlRegisters[index];
-        }
-        default: {
-            return controlRegisters[index];
-        }
-    }
 }
 
 
@@ -215,15 +191,14 @@ void GTE::executeCommand(uint32_t instruction) {
 }
 
 
-// Fills the table of starting guesses for the reciprocal. Entry N is the starting guess
-// used when the top bits of the (normalized) depth select position N.
+
+//Privates
 void GTE::buildReciprocalSeedTable() {
     for (uint32_t tableIndex = 0; tableIndex < RECIPROCAL_SEED_TABLE_SIZE; tableIndex++) {
         int32_t seed = (0x40000 / (int32_t)(tableIndex + 0x100) + 1) / 2 - 0x101;
         reciprocalSeedTable[tableIndex] = (seed < 0) ? 0 : (uint32_t)seed;
     }
 }
-
 
 
 void GTE::commandRTPS(uint32_t instruction) {
@@ -300,13 +275,13 @@ void GTE::commandOP(uint32_t instruction) {
 }
 
 
-
 void GTE::commandDPCS(uint32_t instruction) {
     const int shift = shiftFromInstruction(instruction);
     uint32_t flags = 0;
 
     // Start from the primary color scaled to MAC format (color << 16), then blend toward the far color
     const uint32_t rgbc = dataRegisters[6];
+
     int64_t accumulator[3] = {
         (int64_t)(rgbc & 0xFF) << 16,
         (int64_t)((rgbc >> 8) & 0xFF) << 16,
@@ -328,7 +303,6 @@ void GTE::commandINTPL(uint32_t instruction) {
 }
 
 
-
 void GTE::commandMVMVA(uint32_t instruction) {
     uint32_t flags = 0;
 
@@ -337,7 +311,7 @@ void GTE::commandMVMVA(uint32_t instruction) {
     const uint32_t cv = (instruction >> 13) & 3;
     const int shift = shiftFromInstruction(instruction);
 
-    // --- 1. Matrix selection (mx) ---
+    // 1. Matrix selection (mx)
     int32_t m[3][3];
     switch (mx) {
         case 0: readMatrix(controlRegisters, 0,  m); break; // RT  (rotation)
@@ -357,23 +331,24 @@ void GTE::commandMVMVA(uint32_t instruction) {
         }
     }
 
-    // --- 2. Input vector selection (v) ---
+    // Input vector selection (v)
     int32_t vec[3];
     if (v == 3) { // IR1..IR3
         vec[0] = (int16_t)(dataRegisters[9]  & 0xFFFF);
         vec[1] = (int16_t)(dataRegisters[10] & 0xFFFF);
         vec[2] = (int16_t)(dataRegisters[11] & 0xFFFF);
-    } else {      // V0..V2 live in data registers (2v, 2v+1)
+    } 
+    else { // V0..V2 live in data registers (2v, 2v+1)
         vec[0] = (int16_t)(dataRegisters[v * 2] & 0xFFFF);
         vec[1] = (int16_t)(dataRegisters[v * 2] >> 16);
         vec[2] = (int16_t)(dataRegisters[v * 2 + 1] & 0xFFFF);
     }
 
-    // --- 3. Translation vector selection (cv): TR, BK, FC, or none ---
+    // Translation vector selection (cv): TR, BK, FC, or none
     static constexpr uint32_t translationBase[3] = { 5, 13, 21 };
     static constexpr uint32_t irFlags[3]  = { FLAG_IR1_SAT, FLAG_IR2_SAT, FLAG_IR3_SAT };
 
-    // --- 4. Matrix multiply + translation (overflow checked after every addition) ---
+    // Matrix multiply + translation (overflow checked after every addition)
     int64_t accumulator[3];
     for (int row = 0; row < 3; row++) {
         const int64_t translation = (cv == 3) ? 0 : (int64_t)(int32_t)controlRegisters[translationBase[cv] + row] * 4096;
@@ -398,11 +373,9 @@ void GTE::commandMVMVA(uint32_t instruction) {
         }
     }
 
-    // --- 5. Overflow flags, shift, store MAC/IR ---
     storeAccumulators(accumulator, shift, irLowerBoundFromInstruction(instruction), flags);
     commitFlags(flags);
 }
-
 
 
 void GTE::commandNCDS(uint32_t instruction) {
@@ -475,14 +448,12 @@ void GTE::commandNCT(uint32_t instruction) {
 }
 
 
-
 void GTE::commandDPCT(uint32_t instruction) {
     const int shift = shiftFromInstruction(instruction);
     uint32_t flags = 0; // accumulates across all 3 color FIFO pushes
 
     for (int i = 0; i < 3; i++) {
-        // DPCT always reads the OLDEST FIFO entry (RGB0). The push at the end of each pass
-        // shifts the next entry into RGB0, so three passes walk the whole FIFO.
+        // DPCT always reads the OLDEST FIFO entry (RGB0). The push at the end of each pass shifts the next entry into RGB0, so three passes walk the whole FIFO.
         // The pushed CODE byte comes from RGBC (data register 6), not from the FIFO entry.
         const uint32_t rgb0 = dataRegisters[20];
         int64_t accumulator[3] = {
@@ -557,12 +528,10 @@ void GTE::commandSQR(uint32_t instruction) {
 
     uint32_t flags = 0;
 
-    // Read current IR1-IR3 (Data Registers 9-11)
     int16_t ir1 = (int16_t)(dataRegisters[9] & 0xFFFF);
     int16_t ir2 = (int16_t)(dataRegisters[10] & 0xFFFF);
     int16_t ir3 = (int16_t)(dataRegisters[11] & 0xFFFF);
 
-    // Square the vectors
     int64_t mac1 = (int64_t)ir1 * ir1;
     int64_t mac2 = (int64_t)ir2 * ir2;
     int64_t mac3 = (int64_t)ir3 * ir3;
@@ -571,12 +540,10 @@ void GTE::commandSQR(uint32_t instruction) {
     int32_t MAC2 = (int32_t)(mac2 >> shift);
     int32_t MAC3 = (int32_t)(mac3 >> shift);
 
-    // Clamp into 16-bit Intermediate Results
     int32_t IR1 = clampSFlag(MAC1, irLo, 32767, FLAG_IR1_SAT, flags);
     int32_t IR2 = clampSFlag(MAC2, irLo, 32767, FLAG_IR2_SAT, flags);
     int32_t IR3 = clampSFlag(MAC3, irLo, 32767, FLAG_IR3_SAT, flags);
 
-    // Commit to hardware registers
     dataRegisters[9]  = (uint32_t)IR1;
     dataRegisters[10] = (uint32_t)IR2;
     dataRegisters[11] = (uint32_t)IR3;
@@ -597,9 +564,9 @@ void GTE::commandDCPL(uint32_t instruction) {
 }
 
 
-
 void GTE::commandRTPT(uint32_t instruction) {
     uint32_t flags = 0; // accumulates across all 3 vertices, committed once at the end
+
     for (uint32_t vertexIndex = 0; vertexIndex < 3; vertexIndex++) {
         stepPerspectiveTransform(instruction, vertexIndex, vertexIndex == 2, flags);
     }
@@ -615,7 +582,6 @@ void GTE::commandGPF(uint32_t instruction) {
 
     uint32_t flags = 0;
 
-    // Read IR0-IR3
     int16_t IR0 = (int16_t)(dataRegisters[8] & 0xFFFF);
     int16_t IR1 = (int16_t)(dataRegisters[9] & 0xFFFF);
     int16_t IR2 = (int16_t)(dataRegisters[10] & 0xFFFF);
@@ -626,15 +592,10 @@ void GTE::commandGPF(uint32_t instruction) {
     int64_t mac2 = (int64_t)IR0 * IR2;
     int64_t mac3 = (int64_t)IR0 * IR3;
 
-    // Hardware 44-bit overflow assertions
-    if (mac1 > MAC_44BIT_MAX) flags |= FLAG_MAC1_POS_OVF;
-    if (mac1 < MAC_44BIT_MIN) flags |= FLAG_MAC1_NEG_OVF;
-    if (mac2 > MAC_44BIT_MAX) flags |= FLAG_MAC2_POS_OVF;
-    if (mac2 < MAC_44BIT_MIN) flags |= FLAG_MAC2_NEG_OVF;
-    if (mac3 > MAC_44BIT_MAX) flags |= FLAG_MAC3_POS_OVF;
-    if (mac3 < MAC_44BIT_MIN) flags |= FLAG_MAC3_NEG_OVF;
+    flagMac44BitOverflow(mac1, FLAG_MAC1_POS_OVF, FLAG_MAC1_NEG_OVF, flags);
+    flagMac44BitOverflow(mac2, FLAG_MAC2_POS_OVF, FLAG_MAC2_NEG_OVF, flags);
+    flagMac44BitOverflow(mac3, FLAG_MAC3_POS_OVF, FLAG_MAC3_NEG_OVF, flags);
 
-    // Shift and saturate to IR
     int32_t MAC1 = (int32_t)(mac1 >> shift);
     int32_t MAC2 = (int32_t)(mac2 >> shift);
     int32_t MAC3 = (int32_t)(mac3 >> shift);
@@ -650,15 +611,7 @@ void GTE::commandGPF(uint32_t instruction) {
     dataRegisters[26] = (uint32_t)MAC2;
     dataRegisters[27] = (uint32_t)MAC3;
 
-    // Color FIFO push
-    uint32_t CODE = (dataRegisters[6] >> 24) & 0xFF;
-    uint32_t outR = (uint32_t)clampSFlag(MAC1 >> 4, 0, 255, FLAG_COLOR_R_SAT, flags);
-    uint32_t outG = (uint32_t)clampSFlag(MAC2 >> 4, 0, 255, FLAG_COLOR_G_SAT, flags);
-    uint32_t outB = (uint32_t)clampSFlag(MAC3 >> 4, 0, 255, FLAG_COLOR_B_SAT, flags);
-
-    dataRegisters[20] = dataRegisters[21];
-    dataRegisters[21] = dataRegisters[22];
-    dataRegisters[22] = (CODE << 24) | (outB << 16) | (outG << 8) | outR;
+    pushColorFifo(flags);
 
     if (flags & FLAG_ERROR_MASK) flags |= FLAG_ERROR;
     controlRegisters[31] = flags;
@@ -673,12 +626,10 @@ void GTE::commandGPL(uint32_t instruction) {
 
     uint32_t flags = 0;
 
-    // Read existing MAC values
     int32_t MAC1_in = (int32_t)dataRegisters[25];
     int32_t MAC2_in = (int32_t)dataRegisters[26];
     int32_t MAC3_in = (int32_t)dataRegisters[27];
 
-    // Read IR0-IR3
     int16_t IR0 = (int16_t)(dataRegisters[8] & 0xFFFF);
     int16_t IR1 = (int16_t)(dataRegisters[9] & 0xFFFF);
     int16_t IR2 = (int16_t)(dataRegisters[10] & 0xFFFF);
@@ -689,15 +640,10 @@ void GTE::commandGPL(uint32_t instruction) {
     int64_t mac2 = ((int64_t)MAC2_in << shift) + ((int64_t)IR0 * IR2);
     int64_t mac3 = ((int64_t)MAC3_in << shift) + ((int64_t)IR0 * IR3);
 
-    // Hardware 44-bit overflow assertions
-    if (mac1 > MAC_44BIT_MAX) flags |= FLAG_MAC1_POS_OVF;
-    if (mac1 < MAC_44BIT_MIN) flags |= FLAG_MAC1_NEG_OVF;
-    if (mac2 > MAC_44BIT_MAX) flags |= FLAG_MAC2_POS_OVF;
-    if (mac2 < MAC_44BIT_MIN) flags |= FLAG_MAC2_NEG_OVF;
-    if (mac3 > MAC_44BIT_MAX) flags |= FLAG_MAC3_POS_OVF;
-    if (mac3 < MAC_44BIT_MIN) flags |= FLAG_MAC3_NEG_OVF;
+    flagMac44BitOverflow(mac1, FLAG_MAC1_POS_OVF, FLAG_MAC1_NEG_OVF, flags);
+    flagMac44BitOverflow(mac2, FLAG_MAC2_POS_OVF, FLAG_MAC2_NEG_OVF, flags);
+    flagMac44BitOverflow(mac3, FLAG_MAC3_POS_OVF, FLAG_MAC3_NEG_OVF, flags);
 
-    // Shift and saturate to IR
     int32_t MAC1 = (int32_t)(mac1 >> shift);
     int32_t MAC2 = (int32_t)(mac2 >> shift);
     int32_t MAC3 = (int32_t)(mac3 >> shift);
@@ -713,15 +659,7 @@ void GTE::commandGPL(uint32_t instruction) {
     dataRegisters[26] = (uint32_t)MAC2;
     dataRegisters[27] = (uint32_t)MAC3;
 
-    // Color FIFO push
-    uint32_t CODE = (dataRegisters[6] >> 24) & 0xFF;
-    uint32_t outR = (uint32_t)clampSFlag(MAC1 >> 4, 0, 255, FLAG_COLOR_R_SAT, flags);
-    uint32_t outG = (uint32_t)clampSFlag(MAC2 >> 4, 0, 255, FLAG_COLOR_G_SAT, flags);
-    uint32_t outB = (uint32_t)clampSFlag(MAC3 >> 4, 0, 255, FLAG_COLOR_B_SAT, flags);
-
-    dataRegisters[20] = dataRegisters[21];
-    dataRegisters[21] = dataRegisters[22];
-    dataRegisters[22] = (CODE << 24) | (outB << 16) | (outG << 8) | outR;
+    pushColorFifo(flags);
 
     if (flags & FLAG_ERROR_MASK) flags |= FLAG_ERROR;
     controlRegisters[31] = flags;
@@ -741,7 +679,7 @@ void GTE::commandNCCT(uint32_t instruction) {
 
 
 
-// Helpers
+//Privates:: Internal Pipeline
 uint32_t GTE::divideProjection(uint16_t projectionPlaneDistance, uint16_t screenZ, uint32_t& flags) {
     // If the result would be 2.0 or more (or screenZ is 0), the hardware saturates and flags it.
     if (projectionPlaneDistance >= (uint32_t)screenZ * 2) {
@@ -771,73 +709,6 @@ uint32_t GTE::divideProjection(uint16_t projectionPlaneDistance, uint16_t screen
 }
 
 
-void GTE::commitFlags(uint32_t flags) {
-    if (flags & FLAG_ERROR_MASK) flags |= FLAG_ERROR;
-    controlRegisters[31] = flags;
-}
-
-
-void GTE::storeAccumulators(const int64_t accumulator[3], int shift, int32_t irLowerBound, uint32_t& flags) {
-    flagMac44BitOverflow(accumulator[0], FLAG_MAC1_POS_OVF, FLAG_MAC1_NEG_OVF, flags);
-    flagMac44BitOverflow(accumulator[1], FLAG_MAC2_POS_OVF, FLAG_MAC2_NEG_OVF, flags);
-    flagMac44BitOverflow(accumulator[2], FLAG_MAC3_POS_OVF, FLAG_MAC3_NEG_OVF, flags);
-
-    const int32_t mac1 = (int32_t)(accumulator[0] >> shift);
-    const int32_t mac2 = (int32_t)(accumulator[1] >> shift);
-    const int32_t mac3 = (int32_t)(accumulator[2] >> shift);
-
-    dataRegisters[25] = (uint32_t)mac1;
-    dataRegisters[26] = (uint32_t)mac2;
-    dataRegisters[27] = (uint32_t)mac3;
-
-    dataRegisters[9]  = (uint32_t)clampSFlag(mac1, irLowerBound, 32767, FLAG_IR1_SAT, flags);
-    dataRegisters[10] = (uint32_t)clampSFlag(mac2, irLowerBound, 32767, FLAG_IR2_SAT, flags);
-    dataRegisters[11] = (uint32_t)clampSFlag(mac3, irLowerBound, 32767, FLAG_IR3_SAT, flags);
-}
-
-
-void GTE::pushColorFifo(uint32_t& flags) {
-    const int32_t mac1 = (int32_t)dataRegisters[25];
-    const int32_t mac2 = (int32_t)dataRegisters[26];
-    const int32_t mac3 = (int32_t)dataRegisters[27];
-    const uint32_t code = (dataRegisters[6] >> 24) & 0xFF;
-
-    const uint32_t red   = (uint32_t)clampSFlag(mac1 >> 4, 0, 255, FLAG_COLOR_R_SAT, flags);
-    const uint32_t green = (uint32_t)clampSFlag(mac2 >> 4, 0, 255, FLAG_COLOR_G_SAT, flags);
-    const uint32_t blue  = (uint32_t)clampSFlag(mac3 >> 4, 0, 255, FLAG_COLOR_B_SAT, flags);
-
-    dataRegisters[20] = dataRegisters[21];
-    dataRegisters[21] = dataRegisters[22];
-    dataRegisters[22] = (code << 24) | (blue << 16) | (green << 8) | red;
-}
-
-
-void GTE::applyDepthCue(int64_t accumulator[3], int shift, uint32_t& flags) const {
-    const int64_t farColor[3] = {
-        (int32_t)controlRegisters[21],
-        (int32_t)controlRegisters[22],
-        (int32_t)controlRegisters[23]
-    };
-    const uint32_t positiveOverflowFlags[3] = { FLAG_MAC1_POS_OVF, FLAG_MAC2_POS_OVF, FLAG_MAC3_POS_OVF };
-    const uint32_t negativeOverflowFlags[3] = { FLAG_MAC1_NEG_OVF, FLAG_MAC2_NEG_OVF, FLAG_MAC3_NEG_OVF };
-    const uint32_t irSaturationFlags[3]     = { FLAG_IR1_SAT, FLAG_IR2_SAT, FLAG_IR3_SAT };
-
-    const int32_t interpolationFactor = (int16_t)(dataRegisters[8] & 0xFFFF); // IR0
-
-    for (int channel = 0; channel < 3; channel++) {
-        const int64_t difference = farColor[channel] * 4096 - accumulator[channel];
-        flagMac44BitOverflow(difference, positiveOverflowFlags[channel], negativeOverflowFlags[channel], flags);
-
-        const int32_t saturatedDifference =
-            clampSFlag((int32_t)(difference >> shift), -32768, 32767, irSaturationFlags[channel], flags);
-
-        accumulator[channel] = (int64_t)saturatedDifference * interpolationFactor + accumulator[channel];
-    }
-}
-
-
-// One RTPS pass for vertex `vertexIndex` (RTPT runs this three times with the flags carried across).
-// The depth-cue term (MAC0/IR0 from DQA/DQB) only affects flags on the LAST vertex of an RTPT.
 void GTE::stepPerspectiveTransform(uint32_t instruction, uint32_t vertexIndex, bool isLastVertex, uint32_t& flags) {
     const int shift = shiftFromInstruction(instruction);
     const int32_t irLo = irLowerBoundFromInstruction(instruction);
@@ -874,8 +745,7 @@ void GTE::stepPerspectiveTransform(uint32_t instruction, uint32_t vertexIndex, b
     const int32_t IR1 = clampSFlag(MAC1, irLo, 32767, FLAG_IR1_SAT, flags);
     const int32_t IR2 = clampSFlag(MAC2, irLo, 32767, FLAG_IR2_SAT, flags);
 
-    // Hardware quirk: IR3's *value* saturates from MAC3 as usual (honouring lm), but its *flag*
-    // is raised from (accumulator >> 12) against the full signed 16-bit range, ignoring sf and lm.
+    // Hardware quirk: IR3's *value* saturates from MAC3 as usual (honouring lm), but its *flag* is raised from (accumulator >> 12) against the full signed 16-bit range, ignoring sf and lm.
     // That 12-bit-shifted value is also what feeds SZ3.
     const int32_t z = (int32_t)(accumulator[2] >> 12);
     const int32_t IR3 = std::clamp(MAC3, irLo, 32767);
@@ -889,7 +759,6 @@ void GTE::stepPerspectiveTransform(uint32_t instruction, uint32_t vertexIndex, b
     dataRegisters[18] = dataRegisters[19];
     dataRegisters[19] = SZ3;
 
-    // Perspective divide
     const uint32_t n = divideProjection(H, (uint16_t)SZ3, flags);
 
     const int64_t mac0X = (int64_t)n * IR1 + OFX;
@@ -995,3 +864,133 @@ void GTE::stepInterpolateIR(uint32_t instruction, uint32_t& flags) {
     applyDepthCue(accumulator, shift, flags);
     storeAccumulators(accumulator, shift, irLowerBoundFromInstruction(instruction), flags);
 }
+
+
+void GTE::applyDepthCue(int64_t accumulator[3], int shift, uint32_t& flags) const {
+    const int64_t farColor[3] = {
+        (int32_t)controlRegisters[21],
+        (int32_t)controlRegisters[22],
+        (int32_t)controlRegisters[23]
+    };
+
+    const uint32_t positiveOverflowFlags[3] = { FLAG_MAC1_POS_OVF, FLAG_MAC2_POS_OVF, FLAG_MAC3_POS_OVF };
+    const uint32_t negativeOverflowFlags[3] = { FLAG_MAC1_NEG_OVF, FLAG_MAC2_NEG_OVF, FLAG_MAC3_NEG_OVF };
+    const uint32_t irSaturationFlags[3]     = { FLAG_IR1_SAT, FLAG_IR2_SAT, FLAG_IR3_SAT };
+
+    const int32_t interpolationFactor = (int16_t)(dataRegisters[8] & 0xFFFF); // IR0
+
+    for (int channel = 0; channel < 3; channel++) {
+        const int64_t difference = farColor[channel] * 4096 - accumulator[channel];
+        flagMac44BitOverflow(difference, positiveOverflowFlags[channel], negativeOverflowFlags[channel], flags);
+
+        const int32_t saturatedDifference =
+            clampSFlag((int32_t)(difference >> shift), -32768, 32767, irSaturationFlags[channel], flags);
+
+        accumulator[channel] = (int64_t)saturatedDifference * interpolationFactor + accumulator[channel];
+    }
+}
+
+
+void GTE::storeAccumulators(const int64_t accumulator[3], int shift, int32_t irLowerBound, uint32_t& flags) {
+    flagMac44BitOverflow(accumulator[0], FLAG_MAC1_POS_OVF, FLAG_MAC1_NEG_OVF, flags);
+    flagMac44BitOverflow(accumulator[1], FLAG_MAC2_POS_OVF, FLAG_MAC2_NEG_OVF, flags);
+    flagMac44BitOverflow(accumulator[2], FLAG_MAC3_POS_OVF, FLAG_MAC3_NEG_OVF, flags);
+
+    const int32_t mac1 = (int32_t)(accumulator[0] >> shift);
+    const int32_t mac2 = (int32_t)(accumulator[1] >> shift);
+    const int32_t mac3 = (int32_t)(accumulator[2] >> shift);
+
+    dataRegisters[25] = (uint32_t)mac1;
+    dataRegisters[26] = (uint32_t)mac2;
+    dataRegisters[27] = (uint32_t)mac3;
+
+    dataRegisters[9]  = (uint32_t)clampSFlag(mac1, irLowerBound, 32767, FLAG_IR1_SAT, flags);
+    dataRegisters[10] = (uint32_t)clampSFlag(mac2, irLowerBound, 32767, FLAG_IR2_SAT, flags);
+    dataRegisters[11] = (uint32_t)clampSFlag(mac3, irLowerBound, 32767, FLAG_IR3_SAT, flags);
+}
+
+
+void GTE::pushColorFifo(uint32_t& flags) {
+    const int32_t mac1 = (int32_t)dataRegisters[25];
+    const int32_t mac2 = (int32_t)dataRegisters[26];
+    const int32_t mac3 = (int32_t)dataRegisters[27];
+    const uint32_t code = (dataRegisters[6] >> 24) & 0xFF;
+
+    const uint32_t red   = (uint32_t)clampSFlag(mac1 >> 4, 0, 255, FLAG_COLOR_R_SAT, flags);
+    const uint32_t green = (uint32_t)clampSFlag(mac2 >> 4, 0, 255, FLAG_COLOR_G_SAT, flags);
+    const uint32_t blue  = (uint32_t)clampSFlag(mac3 >> 4, 0, 255, FLAG_COLOR_B_SAT, flags);
+
+    dataRegisters[20] = dataRegisters[21];
+    dataRegisters[21] = dataRegisters[22];
+    dataRegisters[22] = (code << 24) | (blue << 16) | (green << 8) | red;
+}
+
+
+void GTE::commitFlags(uint32_t flags) {
+    if (flags & FLAG_ERROR_MASK) flags |= FLAG_ERROR;
+    controlRegisters[31] = flags;
+}
+
+
+//Privates: Helpers
+uint32_t GTE::countLeadingZeros(uint32_t value) {
+    uint32_t count = 0;
+
+    for (uint32_t mask = 0x80000000u; mask != 0 && (value & mask) == 0; mask >>= 1) {
+        count++;
+    }
+
+    return count;
+}
+
+
+int32_t GTE::clampSFlag(int64_t val, int32_t lo, int32_t hi, uint32_t flagBit, uint32_t& flags) {
+    if (val < lo) { flags |= flagBit; return lo; }
+    if (val > hi) { flags |= flagBit; return hi; }
+    return (int32_t)val;
+}
+
+
+void GTE::checkMac0Overflow(int64_t value, uint32_t& flags) {
+    if (value > INT32_MAX) flags |= (1u << 16); // FLAG_MAC0_POS_OVF
+    if (value < INT32_MIN) flags |= (1u << 15); // FLAG_MAC0_NEG_OVF
+}
+
+
+void GTE::flagMac44BitOverflow(int64_t value, uint32_t positiveFlag, uint32_t negativeFlag, uint32_t& flags) {
+    if (value > MAC_44BIT_MAX) flags |= positiveFlag;
+    if (value < MAC_44BIT_MIN) flags |= negativeFlag;
+}
+
+
+int64_t GTE::accumulate44(int64_t accumulator, int64_t term, int channel, uint32_t& flags) {
+    const int64_t sum = accumulator + term;
+    if (sum > MAC_44BIT_MAX) flags |= (1u << (30 - channel)); // MAC1/2/3 positive overflow: bits 30/29/28
+    if (sum < MAC_44BIT_MIN) flags |= (1u << (27 - channel)); // MAC1/2/3 negative overflow: bits 27/26/25
+    return (int64_t)((uint64_t)sum << 20) >> 20; // sign-extend from 44 bits
+}
+
+
+void GTE::readMatrix(const uint32_t* ctrlRegs, uint32_t firstRegister, int32_t matrix[3][3]) {
+    matrix[0][0] = (int16_t)(ctrlRegs[firstRegister] & 0xFFFF);
+    matrix[0][1] = (int16_t)(ctrlRegs[firstRegister] >> 16);
+    matrix[0][2] = (int16_t)(ctrlRegs[firstRegister + 1] & 0xFFFF);
+    matrix[1][0] = (int16_t)(ctrlRegs[firstRegister + 1] >> 16);
+    matrix[1][1] = (int16_t)(ctrlRegs[firstRegister + 2] & 0xFFFF);
+    matrix[1][2] = (int16_t)(ctrlRegs[firstRegister + 2] >> 16);
+    matrix[2][0] = (int16_t)(ctrlRegs[firstRegister + 3] & 0xFFFF);
+    matrix[2][1] = (int16_t)(ctrlRegs[firstRegister + 3] >> 16);
+    matrix[2][2] = (int16_t)(ctrlRegs[firstRegister + 4] & 0xFFFF);
+}
+
+
+void GTE::multiplyColorByIntermediate(const uint32_t* regs, int64_t accumulator[3]) {
+    const uint32_t rgbc = regs[6];
+    const int64_t color[3] = { (int64_t)(rgbc & 0xFF), (int64_t)((rgbc >> 8) & 0xFF), (int64_t)((rgbc >> 16) & 0xFF) };
+
+    for (int channel = 0; channel < 3; channel++) {
+        const int64_t intermediate = (int16_t)(regs[9 + channel] & 0xFFFF);
+        accumulator[channel] = color[channel] * intermediate * 16;
+    }
+}
+

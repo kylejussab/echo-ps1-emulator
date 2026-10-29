@@ -712,7 +712,10 @@ def report_against_baseline(results, options, elapsed):
 	if counts.get("SKIPPED"):
 		parts.append("%d skipped" % counts["SKIPPED"])
 	if regressions:
-		print("%d REGRESSIONS in %.0fs: %s." % (regressions, elapsed, ", ".join(parts)))
+		headline = ", ".join(piece for piece in (
+			"%d REGRESSIONS" % counts["REGRESSION"] if counts.get("REGRESSION") else "",
+			"%d NEW FAILING (not in the baseline yet)" % counts["NEW-FAILING"] if counts.get("NEW-FAILING") else "") if piece)
+		print("%s in %.0fs: %s." % (headline, elapsed, ", ".join(parts)))
 	else:
 		print("NO REGRESSIONS in %.0fs: %s." % (elapsed, ", ".join(parts)))
 	if counts.get("IMPROVED") or counts.get("NEW") or counts.get("CHANGED") or counts.get("OUTPUT-CHANGED"):

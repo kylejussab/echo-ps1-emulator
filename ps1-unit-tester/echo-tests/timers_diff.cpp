@@ -48,9 +48,9 @@ int main() {
 				totalCycles += cycleCount;
 				elapsedCycles += cycleCount;
 				history.push_back("tick " + std::to_string(cycleCount) + " (t=" + std::to_string(elapsedCycles) + ")");
-				batched.tick(cycleCount);
+				batched.advanceClock(cycleCount);
 				for (int cycle = 0; cycle < cycleCount; cycle++) {
-					stepped.tick(1);
+					stepped.advanceClock(1);
 					(void)readRegister(stepped, TIMER_SYSTEM_CLOCK, COUNTER); // reading forces a one-cycle catch-up
 				}
 			} else if (kind < 6) { // mode write

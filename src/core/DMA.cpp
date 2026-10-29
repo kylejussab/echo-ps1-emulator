@@ -1,16 +1,52 @@
-#include "DMA.h"
+#include <algorithm>
+#include <iostream>
 #include "Bus.h"
 #include "Constants.h"
-#include <iostream>
-#include <algorithm>
+#include "DMA.h"
 
 DMA::DMA(Bus* bus) : bus(bus) {}
 
 
 uint8_t DMA::read8(uint32_t address) {
 	uint32_t alignedAddress = address & ~0x3u;
-	uint32_t byteShift = (address & 0x3) * 8;
+	uint32_t byteShift = (address & 0x03) * 8;
 	return (read32(alignedAddress) >> byteShift) & 0xFF;
+}
+
+
+void DMA::write8(uint32_t address, uint8_t value) {
+    bool isInterruptControlByte = address >= Hardware::REGISTER_DMA_INTERRUPT_CONTROL && address < Hardware::REGISTER_DMA_INTERRUPT_CONTROL + 4;
+
+    if (isInterruptControlByte) {
+        uint32_t byteIndex = address - Hardware::REGISTER_DMA_INTERRUPT_CONTROL;
+
+        switch (byteIndex) {
+            case 0x00:
+                // Bits 0-5 are writable, bits 6-7 are always 0
+                interruptControlRegister = (interruptControlRegister & ~0x0000003Fu) | (value & 0x3Fu);
+                break;
+            case 0x01:
+                // Only bit 15 (force IRQ) is writable, bits 8-14 are always 0
+                interruptControlRegister = (interruptControlRegister & ~0x00008000u) | ((value & 0x80u) << 8);
+                break;
+            case 0x02:
+                // Bits 16-23 (channel IRQ enables + master enable) are plain read/write
+                interruptControlRegister = (interruptControlRegister & ~0x00FF0000u) | (static_cast<uint32_t>(value) << 16);
+                break;
+            case 0x03: {
+                // Byte 3 holds the flags (bits 24-30), which are write-1-to-clear. Bit 31 is read-only.
+                uint32_t flagsToClear = static_cast<uint32_t>(value & 0x7F) << 24;
+                interruptControlRegister &= ~flagsToClear;
+                break;
+            }
+        }
+
+        updateInterruptLine();
+        return;
+    }
+
+    std::cout << "FATAL: Unhandled DMA write8 at: 0x" << std::hex << address << "\n";
+    exit(1);
 }
 
 
@@ -30,9 +66,9 @@ uint32_t DMA::read32(uint32_t address) {
 
 		const Channel& channel = channels[channelIndex];
 		switch (address & 0xF) {
-			case 0x0: return channel.memoryAddress;
-			case 0x4: return channel.blockControl;
-			case 0x8: return channel.channelControl;
+			case 0x00: return channel.memoryAddress;
+			case 0x04: return channel.blockControl;
+			case 0x08: return channel.channelControl;
 		}
 	}
 
@@ -41,76 +77,108 @@ uint32_t DMA::read32(uint32_t address) {
 }
 
 
-void DMA::write8(uint32_t address, uint8_t value) {
-	bool isInterruptControlByte = address >= Hardware::REGISTER_DMA_INTERRUPT_CONTROL && address < Hardware::REGISTER_DMA_INTERRUPT_CONTROL + 4;
+void DMA::write32(uint32_t address, uint32_t value) {
+    // DPCR: DMA Control Register (0x1F8010F0)
+    // Globally enables/disables individual DMA channels. Enabling a channel can immediately start a pending transfer.
+    if (address == Hardware::REGISTER_DMA_CONTROL) {
+        controlRegister = value;
+        for (uint32_t channelIndex = 0; channelIndex < CHANNEL_COUNT; channelIndex++) {
+            // CD-ROM (Channel 3) transfers are paced by the drive's sector delivery timing in advanceClock(), not instantly on register write
+            if (channelIndex == 3) continue; 
+            if (channels[channelIndex].transferActive) continue; // writing DPCR must not restart a transfer that is already running
+            
+            tryStartChannel(channelIndex);
+        }
+        return;
+    }
 
-	if (isInterruptControlByte) {
-		uint32_t byteIndex = address - Hardware::REGISTER_DMA_INTERRUPT_CONTROL;
+    // DICR: DMA Interrupt Control Register (0x1F8010F4)
+    if (address == Hardware::REGISTER_DMA_INTERRUPT_CONTROL) {
+        // Bits 24-30 are ACK flags: Writing a 1 clears the bit, writing a 0 leaves it unchanged
+        uint32_t flagsToClear = value & 0x7F000000;
+        interruptControlRegister &= ~flagsToClear;
+        
+        // Bits 6-14 are hardwired to 0
+        interruptControlRegister = (interruptControlRegister & 0xFF000000) | (value & 0x00FF803F); 
+        updateInterruptLine();
+        return;
+    }
 
-		if (byteIndex == 0x00) {
-			// Bits 0-5 are writable, bits 6-7 are always 0
-			interruptControlRegister = (interruptControlRegister & ~0x0000003Fu) | (value & 0x3Fu);
-		}
-		else if (byteIndex == 0x01) {
-			// Only bit 15 (force IRQ) is writable, bits 8-14 are always 0
-			interruptControlRegister = (interruptControlRegister & ~0x00008000u) | ((value & 0x80u) << 8);
-		}
-		else if (byteIndex == 0x03) {
-			// Byte 3 holds the flags (bits 24-30), which are write-1-to-clear. Bit 31 is read-only.
-			uint32_t flagsToClear = static_cast<uint32_t>(value & 0x7F) << 24;
-			interruptControlRegister &= ~flagsToClear;
-		}
-		else {
-			// Bits 16-23 (channel IRQ enables + master enable) are plain read/write
-			interruptControlRegister = (interruptControlRegister & ~0x00FF0000u) | (static_cast<uint32_t>(value) << 16);
-		}
+    // Per-Channel Registers (0x1F801080 - 0x1F8010E8)
+    bool isChannelRegister = address >= Hardware::REGISTER_DMA_BASE && address < Hardware::REGISTER_DMA_CONTROL
+        && (address & 0x3) == 0 && (address & 0xF) <= 0x8;
 
-		updateInterruptLine();
-		return;
-	}
+    if (isChannelRegister) {
+        uint32_t channelIndex = (address - Hardware::REGISTER_DMA_BASE) >> 4;
 
-	std::cout << "FATAL: Unhandled DMA write8 at: 0x" << std::hex << address << "\n";
-	exit(1);
+        switch (address & 0x0F) {
+            case 0x00: { // MADR: Base Address Register (24-bit)
+                channels[channelIndex].memoryAddress = value & 0x00FFFFFF; 
+                return;
+			} 
+            case 0x04: { // BCR: Block Control Register (Word count / Block size)
+				channels[channelIndex].blockControl = value; 
+                return;
+			} 
+            case 0x08: { // CHCR: Channel Control Register (Direction, Sync Mode, Start Trigger)
+				writeChannelControl(channelIndex, value); 
+                return;
+			}  
+        }
+    }
+
+    std::cout << "FATAL: Unhandled DMA write32 at: 0x" << std::hex << address << "\n";
+    exit(1);
 }
 
 
-void DMA::write32(uint32_t address, uint32_t value) {
-	if (address == Hardware::REGISTER_DMA_CONTROL) {
-		controlRegister = value;
-		for (uint32_t channelIndex = 0; channelIndex < CHANNEL_COUNT; channelIndex++) {
-			if (channelIndex == 3) continue; // channel 3 is serviced by tick()
-			if (channels[channelIndex].transferActive) continue; // writing DPCR must not restart a transfer that is already running
-			tryStartChannel(channelIndex);
-		}
-		return;
-	}
+void DMA::advanceClock(int cycles) {
+	if (pendingCompletions.empty() && ((channels[1].channelControl | channels[3].channelControl | channels[4].channelControl) & START_BIT) == 0) return;
+	advanceClockSlow(cycles);
+}
 
-	if (address == Hardware::REGISTER_DMA_INTERRUPT_CONTROL) {
-		uint32_t flagsToClear = value & 0x7F000000;
-		interruptControlRegister &= ~flagsToClear;
-		interruptControlRegister = (interruptControlRegister & 0xFF000000) | (value & 0x00FF803F); // bits 6-14 are always 0
-		updateInterruptLine();
-		return;
-	}
 
-	bool isChannelRegister = address >= Hardware::REGISTER_DMA_BASE && address < Hardware::REGISTER_DMA_CONTROL
-		&& (address & 0x3) == 0 && (address & 0xF) <= 0x8;
 
-	if (isChannelRegister) {
-		uint32_t channelIndex = (address - Hardware::REGISTER_DMA_BASE) >> 4;
+//Privates
+void DMA::advanceClockSlow(int cycles) {
+	// Fire any completions whose delay has elapsed
+	for (size_t index = 0; index < pendingCompletions.size(); ) {
+		pendingCompletions[index].cyclesRemaining -= cycles;
+		if (pendingCompletions[index].cyclesRemaining <= 0) {
+			uint8_t completedChannel = pendingCompletions[index].channel;
+			pendingCompletions.erase(pendingCompletions.begin() + index);
 
-		switch (address & 0x0F) {
-			case 0x00: {
-				channels[channelIndex].memoryAddress = value & 0x00FFFFFF;
-				return;
+			if (completedChannel == 1) {
+				// Deferred MDEC output: the decoded data lands in RAM now, right before the completion interrupt
+				uint8_t syncModeOfChannel = (channels[1].channelControl >> 9) & 0x03;
+				performMDECOutTransfer();
+				if (syncModeOfChannel == 1) channels[1].blockControl &= 0x0000FFFF;
 			}
-			case 0x04: channels[channelIndex].blockControl = value; return;
-			case 0x08: writeChannelControl(channelIndex, value); return;
+
+			completeTransfer(completedChannel);
+		}
+		else {
+			index++;
 		}
 	}
 
-	std::cout << "FATAL: Unhandled DMA write32 at: 0x" << std::hex << address << "\n";
-	exit(1);
+	// A DMA1 that was started before the MDEC had output is waiting for it
+	tryStartChannel(1);
+
+	// A DMA4 that was started while the SPU wasn't requesting data is waiting for it
+	tryStartChannel(4);
+
+	// Check if DMA Channel 3 is active and waiting for data
+	bool isChannel3Enabled = (channels[3].channelControl & START_BIT) != 0 && isChannelEnabledInDPCR(3);
+	if (!isChannel3Enabled) return;
+
+	// Bit 6 (0x40) of the CD-ROM status register is "Data FIFO Not Empty" (read8 of that register has no side effects)
+	bool isDataReady = bus->getCDROM().getDataQueueSize() != 0;
+
+	if (isDataReady) {
+		performCDROMTransfer();
+		channels[3].channelControl &= ~START_BIT;
+	}
 }
 
 
@@ -130,15 +198,6 @@ void DMA::writeChannelControl(uint32_t channelIndex, uint32_t value) {
 }
 
 
-void DMA::cancelTransfer(uint32_t channelIndex) {
-	channels[channelIndex].transferActive = false;
-	for (size_t index = 0; index < pendingCompletions.size(); ) {
-		if (pendingCompletions[index].channel == channelIndex) pendingCompletions.erase(pendingCompletions.begin() + index);
-		else index++;
-	}
-}
-
-
 void DMA::tryStartChannel(uint32_t channelIndex) {
 	Channel& channel = channels[channelIndex];
 
@@ -152,8 +211,8 @@ void DMA::tryStartChannel(uint32_t channelIndex) {
 			if (pendingCompletions[index].channel == 2) pendingCompletions.erase(pendingCompletions.begin() + index);
 			else index++;
 		}
-		completeTransfer(2);                        // clears the start bit and raises the DICR flag
-		channel.channelControl = requestedControl;  // keep the new request
+		completeTransfer(2); // clears the start bit and raises the DICR flag
+		channel.channelControl = requestedControl; // keep the new request
 	}
 
 	// Sync mode 0 ("burst") also needs the manual trigger bit. The OTC channel always behaves as mode 0.
@@ -183,8 +242,7 @@ void DMA::tryStartChannel(uint32_t channelIndex) {
 			if (blockSize == 0) blockSize = 0x10000;
 			uint32_t estimatedWords = (syncMode == 0) ? blockSize : (blockSize * blockCount);
 
-			// Empirical value, not from any official source or hardware measurement. 2 and 4 play the movie; 5 and 8 make the game stall
-			// with the video never starting (the game seems to have a tight timeout while waiting for the slice). Real MDEC speed is unknown here.
+			// Empirical value, not from any official source or hardware measurement. 2 and 4 play the movie; 5 and 8 make the game stall with the video never starting (the game seems to have a tight timeout while waiting for the slice). Real MDEC speed is unknown here.
 			constexpr uint32_t MDEC_OUT_CYCLES_PER_WORD = 2;
 			int delay = static_cast<int>(std::max<uint32_t>(estimatedWords * MDEC_OUT_CYCLES_PER_WORD, 8));
 
@@ -231,48 +289,16 @@ void DMA::tryStartChannel(uint32_t channelIndex) {
 }
 
 
-void DMA::tickSlow(int cycles) {
-	// Fire any completions whose delay has elapsed
+void DMA::cancelTransfer(uint32_t channelIndex) {
+	channels[channelIndex].transferActive = false;
 	for (size_t index = 0; index < pendingCompletions.size(); ) {
-		pendingCompletions[index].cyclesRemaining -= cycles;
-		if (pendingCompletions[index].cyclesRemaining <= 0) {
-			uint8_t completedChannel = pendingCompletions[index].channel;
-			pendingCompletions.erase(pendingCompletions.begin() + index);
-
-			if (completedChannel == 1) {
-				// Deferred MDEC output: the decoded data lands in RAM now, right before the completion interrupt
-				uint8_t syncModeOfChannel = (channels[1].channelControl >> 9) & 0x03;
-				performMDECOutTransfer();
-				if (syncModeOfChannel == 1) channels[1].blockControl &= 0x0000FFFF;
-			}
-
-			completeTransfer(completedChannel);
-		}
-		else {
-			index++;
-		}
-	}
-
-	// A DMA1 that was started before the MDEC had output is waiting for it
-	tryStartChannel(1);
-
-	// A DMA4 that was started while the SPU wasn't requesting data is waiting for it
-	tryStartChannel(4);
-
-	// Check if DMA Channel 3 is active and waiting for data
-	bool isChannel3Enabled = (channels[3].channelControl & START_BIT) != 0 && isChannelEnabledInDPCR(3);
-	if (!isChannel3Enabled) return;
-
-	// Bit 6 (0x40) of the CD-ROM status register is "Data FIFO Not Empty" (read8 of that register has no side effects)
-	bool isDataReady = bus->getCDROM().getDataQueueSize() != 0;
-
-	if (isDataReady) {
-		performCDROMTransfer();
-		channels[3].channelControl &= ~START_BIT;
+		if (pendingCompletions[index].channel == channelIndex) pendingCompletions.erase(pendingCompletions.begin() + index);
+		else index++;
 	}
 }
 
 
+//Privates: Transfer Handlers
 uint32_t DMA::performGPUTransfer(bool directionToRAM) {
 	Channel& channel = channels[2];
 
@@ -375,8 +401,7 @@ void DMA::performCDROMTransfer() {
 	uint32_t bytesRequested = totalWords * 4;
 
 	if (bytesRequested > bytesAvailable) {
-		std::cout << "FATAL: CD-ROM DMA requested 0x" << std::hex << bytesRequested
-		          << " bytes but the data FIFO only holds 0x" << bytesAvailable << "\n";
+		std::cout << "FATAL: CD-ROM DMA requested 0x" << std::hex << bytesRequested << " bytes but the data FIFO only holds 0x" << bytesAvailable << "\n";
 		exit(1);
 	}
 
@@ -495,6 +520,7 @@ uint32_t DMA::performMDECOutTransfer() {
 }
 
 
+//Privates: Interrupts and Completions
 void DMA::setInterruptFlag(uint8_t channel) {
 	// The completion flag is only latched when the channel's IRQ enable bit (16 + channel) is set
 	if (((interruptControlRegister >> (16 + channel)) & 1) == 0) return;
@@ -505,12 +531,11 @@ void DMA::setInterruptFlag(uint8_t channel) {
 
 
 void DMA::updateInterruptLine() {
-	bool forceIRQ = (interruptControlRegister & 0x00008000) != 0;            // Bit 15
-	bool masterEnable = (interruptControlRegister & 0x00800000) != 0;        // Bit 23
+	bool forceIRQ = (interruptControlRegister & 0x00008000) != 0; // Bit 15
+	bool masterEnable = (interruptControlRegister & 0x00800000) != 0; // Bit 23
 	uint32_t flags = (interruptControlRegister >> 24) & 0x7F;
 
-	// The enable bits (16-22) only decide whether a completion latches a flag (see setInterruptFlag). A latched flag keeps
-	// bit 31 high while the master enable is set, even if its own enable bit is cleared afterwards.
+	// The enable bits (16-22) only decide whether a completion latches a flag (see setInterruptFlag). A latched flag keeps bit 31 high while the master enable is set, even if its own enable bit is cleared afterwards.
 	bool signal = forceIRQ || (masterEnable && flags != 0);
 	bool previous = (interruptControlRegister & 0x80000000) != 0;
 

@@ -1,14 +1,9 @@
-#include "GPU.h"
-#include <iostream>
-#include <vector>
 #include <fstream>
+#include <iostream>
 #include <set>
 #include <string>
-
-// GP0 vertex coordinates are signed 11-bit (-1024..1023), not signed 16-bit.
-static inline int16_t signExtend11(uint32_t value) {
-    return static_cast<int16_t>(static_cast<int32_t>(value << 21) >> 21);
-}
+#include <vector>
+#include "GPU.h"
 
 
 GPU::GPU() : rasterizer(vram) {}
@@ -21,6 +16,7 @@ uint32_t GPU::readGP0() {
 
     uint16_t firstPixel = vram.readPixel(readTransferXCursor, readTransferYCursor);
     readTransferXCursor++;
+
     if (readTransferXCursor >= readTransferX + readTransferWidth) {
         readTransferXCursor = readTransferX;
         readTransferYCursor++;
@@ -28,26 +24,19 @@ uint32_t GPU::readGP0() {
 
     uint16_t secondPixel = vram.readPixel(readTransferXCursor, readTransferYCursor);
     readTransferXCursor++;
+
     if (readTransferXCursor >= readTransferX + readTransferWidth) {
         readTransferXCursor = readTransferX;
         readTransferYCursor++;
     }
 
     vramReadWordsRemaining--;
+
     if (vramReadWordsRemaining <= 0) {
         gpuStatusRegister &= ~0x08000000; // Clear Bit 27
     }
 
     return static_cast<uint32_t>(firstPixel) | (static_cast<uint32_t>(secondPixel) << 16);
-}
-
-
-uint32_t GPU::readGP1() {
-    gpuStatusRegister |= 0x08000000;                           // bit 27 stays high (BIOS polling)
-    if (busyCycles > 0) gpuStatusRegister &= ~0x14000000u;     // bits 26 and 28: not ready while drawing
-    else                gpuStatusRegister |= 0x14000000u;
-    updateDMARequestBit();
-    return gpuStatusRegister;
 }
 
 
@@ -58,6 +47,17 @@ void GPU::writeGP0(uint32_t value) {
     }
 
     beginNewCommand(value);
+}
+
+
+uint32_t GPU::readGP1() {
+    gpuStatusRegister |= 0x08000000; // bit 27 stays high (BIOS polling)
+
+    if (busyCycles > 0) gpuStatusRegister &= ~0x14000000u; // bits 26 and 28: not ready while drawing
+    else gpuStatusRegister |= 0x14000000u;
+    
+    updateDMARequestBit();
+    return gpuStatusRegister;
 }
 
 
@@ -166,7 +166,36 @@ void GPU::writeGP1(uint32_t value) {
 }
 
 
+void GPU::advanceClock(int cycles) {
+    if (busyCycles > 0) {
+        busyCycles -= cycles;
+        if (busyCycles < 0) busyCycles = 0;
+    }
+}
 
+
+bool GPU::consumeInterruptRequest() {
+    if (interruptRequestFired) {
+        interruptRequestFired = false;
+        return true;
+    }
+
+    return false;
+}
+
+
+void GPU::toggleFrameBit() { 
+    gpuStatusRegister ^= 0x80000000; 
+
+    // Check Bit 22 to see if the display is currently in Interlaced mode
+    if (gpuStatusRegister & 0x00400000) { 
+        gpuStatusRegister ^= 0x00002000;  // Toggle Bit 13 (Interlace Field)
+    }
+}
+
+
+
+//Privates
 void GPU::continuePendingCommand(uint32_t value) {
     uint8_t commandType = currentCommand >> 24;
 
@@ -229,7 +258,6 @@ void GPU::beginNewCommand(uint32_t value) {
         lineIsPolyline = (commandType >> 3) & 0x01;
         lineIsSemiTransparent = (commandType >> 1) & 0x01;
 
-        // Parse base color from the command word
         uint8_t red = value & 0xFF;
         uint8_t green = (value >> 8) & 0xFF;
         uint8_t blue = (value >> 16) & 0xFF;
@@ -239,9 +267,11 @@ void GPU::beginNewCommand(uint32_t value) {
         
         if (lineIsPolyline) {
             wordsRemaining = 1; // Kept alive dynamically
-        } else {
+        } 
+        else {
             wordsRemaining = lineIsGouraud ? 3 : 2;
         }
+
         parametersRemaining = 0;
         return;
     }
@@ -448,6 +478,56 @@ void GPU::beginNewCommand(uint32_t value) {
             wordsRemaining = 0;
             break;
         }
+    }
+}
+
+
+void GPU::handleLineWord(uint32_t value) {
+    // Check for polyline hardware termination
+    if (lineIsPolyline && (value & 0xF000F000) == 0x50005000) { 
+        wordsRemaining = 0;
+        return;
+    }
+
+    if (lineWordStep == 1) { // V0 Position
+        lineVertices[0].x = signExtend11(value);
+        lineVertices[0].y = signExtend11(value >> 16);
+        
+        if (lineIsGouraud) {
+            lineWordStep = 2;
+        } else {
+            lineVertices[1].color = lineVertices[0].color;
+            lineWordStep = 3;
+        }
+    } 
+    else if (lineWordStep == 2) { // Color 1 (Gouraud)
+        uint8_t red = value & 0xFF;
+        uint8_t green = (value >> 8) & 0xFF;
+        uint8_t blue = (value >> 16) & 0xFF;
+        lineVertices[1].color = static_cast<uint32_t>(red | (green << 8) | (blue << 16));
+        lineWordStep = 3;
+    } 
+    else if (lineWordStep == 3) { // V1 Position
+        lineVertices[1].x = signExtend11(value);
+        lineVertices[1].y = signExtend11(value >> 16);
+
+        rasterizer.drawLine(lineVertices[0], lineVertices[1], lineIsSemiTransparent, lineIsGouraud);
+        chargeDrawCost();
+
+        if (lineIsPolyline) {
+            lineVertices[0] = lineVertices[1];
+            if (lineIsGouraud) {
+                lineWordStep = 2;
+            } else {
+                lineVertices[1].color = lineVertices[0].color;
+                lineWordStep = 3;
+            }
+            wordsRemaining = 1; // Sustain polyline
+        }
+    }
+
+    if (!lineIsPolyline) {
+        wordsRemaining--;
     }
 }
 
@@ -807,58 +887,6 @@ void GPU::updateDMARequestBit() {
 }
 
 
-
-void GPU::handleLineWord(uint32_t value) {
-    // Check for polyline hardware termination
-    if (lineIsPolyline && (value & 0xF000F000) == 0x50005000) { 
-        wordsRemaining = 0;
-        return;
-    }
-
-    if (lineWordStep == 1) { // V0 Position
-        lineVertices[0].x = signExtend11(value);
-        lineVertices[0].y = signExtend11(value >> 16);
-        
-        if (lineIsGouraud) {
-            lineWordStep = 2;
-        } else {
-            lineVertices[1].color = lineVertices[0].color;
-            lineWordStep = 3;
-        }
-    } 
-    else if (lineWordStep == 2) { // Color 1 (Gouraud)
-        uint8_t red = value & 0xFF;
-        uint8_t green = (value >> 8) & 0xFF;
-        uint8_t blue = (value >> 16) & 0xFF;
-        lineVertices[1].color = static_cast<uint32_t>(red | (green << 8) | (blue << 16));
-        lineWordStep = 3;
-    } 
-    else if (lineWordStep == 3) { // V1 Position
-        lineVertices[1].x = signExtend11(value);
-        lineVertices[1].y = signExtend11(value >> 16);
-
-        rasterizer.drawLine(lineVertices[0], lineVertices[1], lineIsSemiTransparent, lineIsGouraud);
-        chargeDrawCost();
-
-        if (lineIsPolyline) {
-            // Shift the ending vertex into the starting position for the next segment
-            lineVertices[0] = lineVertices[1];
-            if (lineIsGouraud) {
-                lineWordStep = 2;
-            } else {
-                lineVertices[1].color = lineVertices[0].color;
-                lineWordStep = 3;
-            }
-            wordsRemaining = 1; // Sustain polyline
-        }
-    }
-
-    if (!lineIsPolyline) {
-        wordsRemaining--;
-    }
-}
-
-
 void GPU::chargeDrawCost() {
     const double gpuClocks = rasterizer.takeDrawCost();
     const int64_t cycles = static_cast<int64_t>(gpuClocks * Hardware::GPU_COST_SCALE * Hardware::GPU_CLOCKS_TO_CPU_CYCLES);
@@ -866,8 +894,4 @@ void GPU::chargeDrawCost() {
     busyCycles += cycles;
     if (busyCycles > Hardware::GPU_MAX_BACKLOG_CYCLES) busyCycles = Hardware::GPU_MAX_BACKLOG_CYCLES;
 }
-
-
-
-
 

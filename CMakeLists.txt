@@ -9,6 +9,15 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Link-time optimization: lets the compiler inline across .cpp files (e.g. Bus::advanceClock into the CPU loop)
+include(CheckIPOSupported)
+check_ipo_supported(RESULT ipo_supported OUTPUT ipo_error)
+if(ipo_supported)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+else()
+    message(STATUS "LTO not supported, skipping: ${ipo_error}")
+endif()
+
 list(APPEND CMAKE_PREFIX_PATH "/opt/homebrew" "/usr/local")
 
 find_package(SDL2 REQUIRED)

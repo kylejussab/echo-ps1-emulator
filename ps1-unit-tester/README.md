@@ -108,7 +108,7 @@ Tiers 1 to 6 are ordered by dependency: a later tier builds on the earlier ones,
 | 4 | GTE |
 | 5 | MDEC, SPU, CD-ROM |
 | 6 | Pixel-exact rasterizer (strict, pixel for pixel) |
-| host | Our own component tests in `echo-tests/` (Timers so far), built by CMake and run without a BIOS |
+| host | Our own component tests in `echo-tests/` (Timers, Bus and Disc so far), built by CMake and run without a BIOS |
 | exotic | Hardware-characterisation tests: quirks of the real console that games do not depend on (bus access widths, COP0 breakpoints, scratchpad as data cache, unusual coprocessor branches, bus timing). They run with everything else; the ones that fail today are known failures in the baseline. |
 
 ## Layout

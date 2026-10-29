@@ -1,15 +1,7 @@
-#include "Timers.h"
-#include "Constants.h"
 #include <algorithm>
+#include "Constants.h"
+#include "Timers.h"
 
-namespace {
-    constexpr uint16_t TIMER_IRQ_BITS[3] = { Hardware::IRQ_TIMER0, Hardware::IRQ_TIMER1, Hardware::IRQ_TIMER2 };
-}
-
-// GPU clock / CPU clock, reduced by 75. NTSC: 53693175 / 33868800, PAL: 53203425 / 33868800
-constexpr uint64_t DOT_RATIO_NUMERATOR_NTSC = 715909;
-constexpr uint64_t DOT_RATIO_NUMERATOR_PAL = 709379;
-constexpr uint64_t DOT_RATIO_DENOMINATOR = 451584;
 
 uint32_t Timers::read(uint32_t address) {
     uint32_t index = (address - 0x1F801100) >> 4;
@@ -39,10 +31,10 @@ void Timers::write(uint32_t address, uint32_t value) {
 
     Timer& timer = timers[index];
     switch (address & 0xC) {
-        case 0x0:
+        case 0x00:
             timer.counter = value & 0xFFFF;
             break;
-        case 0x4:
+        case 0x04:
             // Bits 0-9 are writable. Bit 10 is set again, bits 11-12 are cleared, and the counter restarts at 0.
             timer.mode = (value & 0x03FF) | MODE_IRQ_LINE_HIGH;
             timer.counter = 0;
@@ -51,21 +43,58 @@ void Timers::write(uint32_t address, uint32_t value) {
             timer.pulseCyclesLeft = 0;
             timer.divideAccumulator = 0;
             break;
-        case 0x8:
+        case 0x08:
             timer.target = value & 0xFFFF;
             break;
         default:
             break;
     }
 
-    refreshGpuState();
+    refreshGPUState();
     deadlineCycles = computeDeadline();
 }
 
 
-// Picks up the GPU's current dot divider and video mode. Always called after the pending cycles were simulated, so
-// everything that was pending was produced under the old settings.
-void Timers::refreshGpuState() {
+void Timers::advanceClock(int cycles) {
+    elapsedCycles += static_cast<uint32_t>(cycles);
+
+    // The GPU's horizontal resolution and NTSC/PAL mode can only change through a GP1 write, so they're only looked at right after one (the Bus calls notifyVideoStateMayHaveChanged() from its GP1 handler) instead of on every cycle.
+    if (videoStateMayHaveChanged) checkVideoState();
+
+    if (elapsedCycles >= deadlineCycles) catchUp();
+}
+
+
+
+//Privates
+void Timers::checkVideoState() {
+    videoStateMayHaveChanged = false;
+
+    // Timer 0 on the dot clock depends on the GPU's horizontal resolution. If the game just changed it, the cycles that are still pending belong to the old divider, so simulate them first.
+    if ((timers[0].mode & 0x0100) && dotDivider && dotDivider() != cachedDotDivider) catchUp();
+
+    // Same for a switch between NTSC and PAL: scanline length and the dot clock ratio both change with it
+    if (isPal && isPal() != palActive) catchUp();
+}
+
+
+void Timers::catchUp() {
+    uint32_t remaining = elapsedCycles;
+    elapsedCycles = 0;
+
+    // No IRQ-raising event can happen before the deadline, so processing in deadline-sized chunks means events only ever land on a chunk boundary and get their exact cycle (this matters for the 4-cycle pulse on bit 10).
+    while (remaining > 0) {
+        uint32_t chunk = std::min(remaining, computeDeadline());
+        advance(chunk);
+        remaining -= chunk;
+    }
+    
+    refreshGPUState();
+    deadlineCycles = computeDeadline();
+}
+
+
+void Timers::refreshGPUState() {
     if (dotDivider) cachedDotDivider = dotDivider();
     if (isPal && isPal() != palActive) applyVideoMode(isPal());
 }
@@ -82,28 +111,11 @@ void Timers::applyVideoMode(bool pal) {
     dotRatioDenominator = DOT_RATIO_DENOMINATOR;
     dotAccumulator = 0; // the remainder is in units of the old ratio
 
-    // Keep the position inside the new frame layout
     if (line >= scanlinesPerFrame) line = scanlinesPerFrame - 1;
     if (cycleInLine >= cyclesPerScanline) cycleInLine = cyclesPerScanline - 1;
     frameCycle = line * cyclesPerScanline + cycleInLine;
     inVBlank = line < vblankLines;
     inHBlank = cycleInLine >= hblankStartCycle;
-}
-
-
-void Timers::catchUp() {
-    uint32_t remaining = elapsedCycles;
-    elapsedCycles = 0;
-
-    // No IRQ-raising event can happen before the deadline, so processing in deadline-sized chunks means events only ever
-    // land on a chunk boundary and get their exact cycle (this matters for the 4-cycle pulse on bit 10).
-    while (remaining > 0) {
-        uint32_t chunk = std::min(remaining, computeDeadline());
-        advance(chunk);
-        remaining -= chunk;
-    }
-    refreshGpuState();
-    deadlineCycles = computeDeadline();
 }
 
 
@@ -116,8 +128,7 @@ void Timers::advance(uint32_t cycles) {
             if (timer.pulseCyclesLeft > 0) span = std::min<uint32_t>(span, timer.pulseCyclesLeft);
         }
 
-        // Only pulses that were already running when this span began count down during it
-        // (one raised by an event inside the span starts fresh at the end of it)
+        // Only pulses that were already running when this span began count down during it (one raised by an event inside the span starts fresh at the end of it)
         bool pulseWasRunning[3];
         for (int index = 0; index < 3; index++) pulseWasRunning[index] = timers[index].pulseCyclesLeft > 0;
 
@@ -139,7 +150,6 @@ void Timers::advance(uint32_t cycles) {
 }
 
 
-// Counts every clock source that ticks continuously. The video gate state is constant for the whole span.
 void Timers::countSpan(uint32_t span) {
     for (int index = 0; index < 3; index++) {
         Timer& timer = timers[index];
@@ -173,19 +183,6 @@ void Timers::countSpan(uint32_t span) {
 }
 
 
-uint32_t Timers::cyclesToNextVideoEdge() const {
-    uint32_t toFrameEnd = cyclesPerFrame - frameCycle;
-    uint32_t toLineEvent;
-    if (line == scanlinesPerFrame - 1) {
-        toLineEvent = (cycleInLine < hblankStartCycle) ? hblankStartCycle - cycleInLine : toFrameEnd; // the last line runs to the end of the frame
-    }
-    else {
-        toLineEvent = (cycleInLine < hblankStartCycle) ? hblankStartCycle - cycleInLine : cyclesPerScanline - cycleInLine;
-    }
-    return std::max<uint32_t>(1, std::min(toFrameEnd, toLineEvent));
-}
-
-
 void Timers::moveVideo(uint32_t span) {
     frameCycle += span;
     cycleInLine += span;
@@ -207,15 +204,29 @@ void Timers::moveVideo(uint32_t span) {
     inVBlank = nowInVBlank;
 
     if (hblankStarted) onGateStart(0);
-    if (vblankStarted) onGateStart(1);
+    if (vblankStarted) {
+        onGateStart(1);
+        if (onVBlank) onVBlank();
+    }
 
     // Timer 1 with the HBlank clock source ticks once per HBlank
     if (hblankStarted && ((timers[1].mode >> 8) & 1) && gateAllowsCounting(1)) addTicks(1, 1);
 }
 
 
-// Lower bound on the number of cycles until something happens that has to be delivered on time (an IRQ).
-// Gating and clock dividers can only make events later than this, never earlier.
+uint32_t Timers::cyclesToNextVideoEdge() const {
+    uint32_t toFrameEnd = cyclesPerFrame - frameCycle;
+    uint32_t toLineEvent;
+    if (line == scanlinesPerFrame - 1) {
+        toLineEvent = (cycleInLine < hblankStartCycle) ? hblankStartCycle - cycleInLine : toFrameEnd; // the last line runs to the end of the frame
+    }
+    else {
+        toLineEvent = (cycleInLine < hblankStartCycle) ? hblankStartCycle - cycleInLine : cyclesPerScanline - cycleInLine;
+    }
+    return std::max<uint32_t>(1, std::min(toFrameEnd, toLineEvent));
+}
+
+
 uint32_t Timers::computeDeadline() const {
     uint32_t deadline = cyclesToNextVideoEdge();
 
@@ -256,10 +267,10 @@ bool Timers::gateAllowsCounting(int index) const {
 
     bool gateActive = (index == 0) ? inHBlank : inVBlank;
     switch (syncMode) {
-        case 0:  return !gateActive;       // pause during the gate
-        case 1:  return true;              // free run (the counter is reset when the gate starts)
-        case 2:  return gateActive;        // only count during the gate (and reset when it starts)
-        default: return timer.gateOpened;  // paused until the gate occurs once, then free run
+        case 0:  return !gateActive; // pause during the gate
+        case 1:  return true; // free run (the counter is reset when the gate starts)
+        case 2:  return gateActive; // only count during the gate (and reset when it starts)
+        default: return timer.gateOpened; // paused until the gate occurs once, then free run
     }
 }
 
@@ -274,7 +285,6 @@ void Timers::onGateStart(int index) {
 }
 
 
-// Adds many ticks at once, fast-forwarding over the stretches where nothing observable happens
 void Timers::addTicks(int index, uint32_t ticks) {
     Timer& timer = timers[index];
 
@@ -285,8 +295,8 @@ void Timers::addTicks(int index, uint32_t ticks) {
         if (toTarget == 0) toTarget = (timer.mode & 0x0008) ? 1 : 65536;
         if (toFFFF == 0) toFFFF = 65536;
 
-        uint32_t nextEvent = std::min(toTarget, toFFFF);   // the tick number on which something happens
-        uint32_t quiet = nextEvent - 1;                    // ticks before that are plain increments
+        uint32_t nextEvent = std::min(toTarget, toFFFF); // the tick number on which something happens
+        uint32_t quiet = nextEvent - 1; // ticks before that are plain increments
         uint32_t step = std::min(ticks, quiet);
 
         timer.counter = static_cast<uint16_t>(timer.counter + step);
@@ -337,3 +347,4 @@ void Timers::requestInterrupt(int index) {
         if (raiseInterrupt) raiseInterrupt(TIMER_IRQ_BITS[index]);
     }
 }
+

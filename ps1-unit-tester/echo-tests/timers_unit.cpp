@@ -21,7 +21,7 @@ int main() {
 		writeRegister(timers, TIMER_SYSTEM_CLOCK, MODE, RESET_AT_TARGET);
 		uint32_t highestCounter = 0;
 		for (int cycle = 0; cycle < 500; cycle++) {
-			timers.tick(1);
+			timers.advanceClock(1);
 			highestCounter = std::max<uint32_t>(highestCounter, readRegister(timers, TIMER_SYSTEM_CLOCK, COUNTER));
 		}
 		uint32_t mode = readRegister(timers, TIMER_SYSTEM_CLOCK, MODE);
@@ -36,10 +36,10 @@ int main() {
 		Timers dividedTimers, plainTimers;
 		writeRegister(dividedTimers, TIMER_SYSTEM_CLOCK, TARGET, 0xFFFF);
 		writeRegister(dividedTimers, TIMER_SYSTEM_CLOCK, MODE, CLOCK_SOURCE_BIT_9);
-		dividedTimers.tick(8000);
+		dividedTimers.advanceClock(8000);
 		writeRegister(plainTimers, TIMER_SYSTEM_CLOCK, TARGET, 0xFFFF);
 		writeRegister(plainTimers, TIMER_SYSTEM_CLOCK, MODE, 0);
-		plainTimers.tick(8000);
+		plainTimers.advanceClock(8000);
 		uint32_t dividedCounter = readRegister(dividedTimers, TIMER_SYSTEM_CLOCK, COUNTER);
 		uint32_t plainCounter = readRegister(plainTimers, TIMER_SYSTEM_CLOCK, COUNTER);
 		check(dividedCounter != 0 && plainCounter / dividedCounter == 8, "system clock / 8 ratio",
@@ -49,7 +49,7 @@ int main() {
 	// 3. A mode write resets the counter and sets bit 10
 	{
 		Timers timers;
-		timers.tick(500);
+		timers.advanceClock(500);
 		checkEqual(readRegister(timers, TIMER_SYSTEM_CLOCK, COUNTER), 500, "free run: counter counts");
 		writeRegister(timers, TIMER_SYSTEM_CLOCK, MODE, 0);
 		checkEqual(readRegister(timers, TIMER_SYSTEM_CLOCK, COUNTER), 0, "mode write resets the counter");
@@ -60,7 +60,7 @@ int main() {
 	{
 		Timers timers;
 		writeRegister(timers, TIMER_SYSTEM_CLOCK, TARGET, 0xFFFF);
-		timers.tick(70000);
+		timers.advanceClock(70000);
 		uint32_t mode = readRegister(timers, TIMER_SYSTEM_CLOCK, MODE);
 		check(isSet(mode, REACHED_OVERFLOW), "overflow: flag set");
 		check(!isSet(readRegister(timers, TIMER_SYSTEM_CLOCK, MODE), REACHED_OVERFLOW), "overflow: flag cleared by reading");
@@ -74,13 +74,13 @@ int main() {
 		timers.setInterruptCallback([&](uint16_t bits) { interruptCount++; interruptBits |= bits; });
 		writeRegister(timers, TIMER_SYSTEM_CLOCK, TARGET, 0x20);
 		writeRegister(timers, TIMER_SYSTEM_CLOCK, MODE, RESET_AT_TARGET | IRQ_AT_TARGET);
-		timers.tick(500);
+		timers.advanceClock(500);
 		check(interruptCount == 1 && interruptBits == 0x40, "IRQ once: a single IRQ6",
 			"IRQ count " + std::to_string(interruptCount) + ", IRQ bits " + echo_check::formatValue(interruptBits));
 		interruptCount = 0;
 		interruptBits = 0;
 		writeRegister(timers, TIMER_SYSTEM_CLOCK, MODE, RESET_AT_TARGET | IRQ_AT_TARGET | IRQ_REPEAT);
-		timers.tick(500);
+		timers.advanceClock(500);
 		check(interruptCount >= 10, "IRQ repeat: many IRQs", "IRQ count " + std::to_string(interruptCount));
 	}
 	{
@@ -90,7 +90,7 @@ int main() {
 		timers.setInterruptCallback([&](uint16_t bits) { interruptCount++; interruptBits |= bits; });
 		writeRegister(timers, TIMER_DOT_CLOCK, TARGET, 0x20);
 		writeRegister(timers, TIMER_DOT_CLOCK, MODE, RESET_AT_TARGET | IRQ_AT_TARGET | IRQ_REPEAT);
-		timers.tick(200);
+		timers.advanceClock(200);
 		check(interruptCount >= 3 && interruptBits == 0x10, "timer 0 raises IRQ4 only",
 			"IRQ count " + std::to_string(interruptCount) + ", IRQ bits " + echo_check::formatValue(interruptBits));
 	}
@@ -101,7 +101,7 @@ int main() {
 		timers.setInterruptCallback([&](uint16_t bits) { interruptCount++; interruptBits |= bits; });
 		writeRegister(timers, TIMER_HBLANK, TARGET, 0x20);
 		writeRegister(timers, TIMER_HBLANK, MODE, RESET_AT_TARGET | IRQ_AT_TARGET | IRQ_REPEAT);
-		timers.tick(200);
+		timers.advanceClock(200);
 		check(interruptCount >= 3 && interruptBits == 0x20, "timer 1 raises IRQ5 only",
 			"IRQ count " + std::to_string(interruptCount) + ", IRQ bits " + echo_check::formatValue(interruptBits));
 	}
@@ -111,7 +111,7 @@ int main() {
 		Timers timers;
 		writeRegister(timers, TIMER_SYSTEM_CLOCK, TARGET, 0x80);
 		writeRegister(timers, TIMER_SYSTEM_CLOCK, MODE, RESET_AT_TARGET | IRQ_AT_TARGET | IRQ_REPEAT);
-		timers.tick(1000);
+		timers.advanceClock(1000);
 		check(isSet(readRegister(timers, TIMER_SYSTEM_CLOCK, MODE), IRQ_NOT_REQUESTED), "pulse mode: bit 10 high");
 	}
 	{
@@ -122,14 +122,14 @@ int main() {
 		writeRegister(timers, TIMER_SYSTEM_CLOCK, MODE, RESET_AT_TARGET | IRQ_AT_TARGET | IRQ_REPEAT | IRQ_TOGGLE);
 		bool sawLow = false;
 		bool sawHigh = false;
-		timers.tick(200);
+		timers.advanceClock(200);
 		for (int sample = 0; sample < 50; sample++) {
 			if (isSet(readRegister(timers, TIMER_SYSTEM_CLOCK, MODE), IRQ_NOT_REQUESTED)) {
 				sawHigh = true;
 			} else {
 				sawLow = true;
 			}
-			timers.tick(10);
+			timers.advanceClock(10);
 		}
 		check(sawLow && sawHigh, "toggle mode: bit 10 shows both states");
 		check(interruptCount > 0, "toggle mode: raises IRQs");
@@ -140,9 +140,9 @@ int main() {
 		Timers timers;
 		writeRegister(timers, TIMER_SYSTEM_CLOCK, TARGET, 0xFFFF);
 		writeRegister(timers, TIMER_SYSTEM_CLOCK, MODE, syncMode(syncModeNumber));
-		timers.tick(5000);
+		timers.advanceClock(5000);
 		uint32_t counterAfterFirstWait = readRegister(timers, TIMER_SYSTEM_CLOCK, COUNTER);
-		timers.tick(5000);
+		timers.advanceClock(5000);
 		uint32_t counterAfterSecondWait = readRegister(timers, TIMER_SYSTEM_CLOCK, COUNTER);
 		std::string details = "counter " + std::to_string(counterAfterFirstWait) + " then " + std::to_string(counterAfterSecondWait);
 		if (syncModeNumber == 0 || syncModeNumber == 3) {
@@ -156,7 +156,7 @@ int main() {
 	{
 		Timers timers;
 		writeRegister(timers, TIMER_HBLANK, MODE, CLOCK_SOURCE_BIT_8);
-		timers.tick(Hardware::CYCLES_PER_FRAME);
+		timers.advanceClock(Hardware::CYCLES_PER_FRAME);
 		checkRange(readRegister(timers, TIMER_HBLANK, COUNTER), 262, 264, "hblank source counts the lines of a frame");
 	}
 
@@ -166,14 +166,14 @@ int main() {
 		Timers timers;
 		timers.setDotDividerCallback([] { return 10; });
 		writeRegister(timers, TIMER_DOT_CLOCK, MODE, CLOCK_SOURCE_BIT_8);
-		timers.tick(70000);
+		timers.advanceClock(70000);
 		checkRange(readRegister(timers, TIMER_DOT_CLOCK, COUNTER), 11087, 11107, "dot clock, divider 10");
 	}
 	{
 		Timers timers;
 		timers.setDotDividerCallback([] { return 8; });
 		writeRegister(timers, TIMER_DOT_CLOCK, MODE, CLOCK_SOURCE_BIT_8);
-		timers.tick(56000);
+		timers.advanceClock(56000);
 		checkRange(readRegister(timers, TIMER_DOT_CLOCK, COUNTER), 11087, 11107, "dot clock, divider 8");
 	}
 
@@ -182,7 +182,7 @@ int main() {
 		Timers timers;
 		writeRegister(timers, TIMER_DOT_CLOCK, TARGET, 0xFFFF);
 		writeRegister(timers, TIMER_DOT_CLOCK, MODE, syncMode(1));
-		timers.tick(Hardware::CYCLES_PER_SCANLINE * 5 + 10);
+		timers.advanceClock(Hardware::CYCLES_PER_SCANLINE * 5 + 10);
 		uint32_t counter = readRegister(timers, TIMER_DOT_CLOCK, COUNTER);
 		check(counter <= Hardware::CYCLES_PER_SCANLINE, "gate mode 1 resets the counter at each hblank", "counter " + echo_check::formatValue(counter));
 	}
@@ -192,9 +192,9 @@ int main() {
 		Timers timers;
 		writeRegister(timers, TIMER_DOT_CLOCK, TARGET, 0xFFFF);
 		writeRegister(timers, TIMER_DOT_CLOCK, MODE, syncMode(3));
-		timers.tick(100);
+		timers.advanceClock(100);
 		checkEqual(readRegister(timers, TIMER_DOT_CLOCK, COUNTER), 0, "gate mode 3: paused before the first hblank");
-		timers.tick(Hardware::CYCLES_PER_SCANLINE);
+		timers.advanceClock(Hardware::CYCLES_PER_SCANLINE);
 		uint32_t counter = readRegister(timers, TIMER_DOT_CLOCK, COUNTER);
 		check(counter > 0, "gate mode 3: free-runs after the first hblank", "counter " + echo_check::formatValue(counter));
 	}
@@ -204,8 +204,8 @@ int main() {
 		Timers gatedTimers, freeTimers;
 		writeRegister(gatedTimers, TIMER_DOT_CLOCK, MODE, syncMode(0));
 		writeRegister(freeTimers, TIMER_DOT_CLOCK, MODE, 0);
-		gatedTimers.tick(Hardware::CYCLES_PER_SCANLINE * 20);
-		freeTimers.tick(Hardware::CYCLES_PER_SCANLINE * 20);
+		gatedTimers.advanceClock(Hardware::CYCLES_PER_SCANLINE * 20);
+		freeTimers.advanceClock(Hardware::CYCLES_PER_SCANLINE * 20);
 		uint32_t gatedCounter = readRegister(gatedTimers, TIMER_DOT_CLOCK, COUNTER);
 		uint32_t freeCounter = readRegister(freeTimers, TIMER_DOT_CLOCK, COUNTER);
 		check(gatedCounter < freeCounter, "gate mode 0 pauses during hblank",
@@ -216,10 +216,30 @@ int main() {
 	{
 		Timers timers;
 		writeRegister(timers, TIMER_HBLANK, MODE, syncMode(2));
-		timers.tick(Hardware::CYCLES_PER_FRAME - 100);
+		timers.advanceClock(Hardware::CYCLES_PER_FRAME - 100);
 		uint32_t counter = readRegister(timers, TIMER_HBLANK, COUNTER);
 		check(counter <= Hardware::CYCLES_PER_SCANLINE * Timers::VBLANK_LINES + 10 && counter > 0, "vblank-only counting (gate mode 2)",
 			"counter " + echo_check::formatValue(counter));
+	}
+
+	// 14. VBlank callback: fires once per frame, at the start of vblank
+	{
+		Timers timers;
+		int vblankCount = 0;
+		timers.setVBlankCallback([&] { vblankCount++; });
+		timers.advanceClock(Hardware::CYCLES_PER_FRAME * 3);
+		check(vblankCount == 3, "vblank callback fires once per frame", "vblank count " + std::to_string(vblankCount));
+	}
+
+	// 15. In PAL mode the vblank callback follows the PAL frame length
+	{
+		Timers timers;
+		int vblankCount = 0;
+		timers.setVBlankCallback([&] { vblankCount++; });
+		timers.setVideoModeCallback([] { return true; });
+		writeRegister(timers, TIMER_SYSTEM_CLOCK, TARGET, 0); // any register write makes Timers pick up PAL
+		timers.advanceClock(Hardware::CYCLES_PER_SCANLINE_PAL * Hardware::SCANLINES_PER_FRAME_PAL * 3);
+		check(vblankCount == 3, "vblank callback follows PAL frame length", "vblank count " + std::to_string(vblankCount));
 	}
 
 	return echo_check::finish();

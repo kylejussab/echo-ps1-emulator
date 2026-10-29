@@ -4,6 +4,7 @@
 // component test exactly like a test program running on the emulator. A failed check does not stop the test; end main() with
 // `return echo_check::finish();`, which exits with 1 when any check failed.
 #pragma once
+#include <cstdint>
 #include <cstdio>
 #include <string>
 #include <type_traits>
@@ -23,6 +24,13 @@ std::string formatValue(Value value) {
 	} else {
 		std::snprintf(buffer, sizeof(buffer), "%llu (0x%llx)", static_cast<unsigned long long>(value), static_cast<unsigned long long>(value));
 	}
+	return buffer;
+}
+
+// Fixed-width hex for addresses and values: hex(0x1F, 4) -> "0x001F"; 8 digits by default
+inline std::string hex(uint32_t value, int digits = 8) {
+	char buffer[16];
+	std::snprintf(buffer, sizeof(buffer), "0x%0*X", digits, static_cast<unsigned>(value));
 	return buffer;
 }
 

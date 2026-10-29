@@ -1,66 +1,7 @@
-#include "Rasterizer.h"
 #include <algorithm>
 #include <cstdlib>
 #include <iostream>
-
-namespace {
-
-// ---------------------------------------------------------------------------------------------
-// Experiment toggles. These are the two behaviors I'm least sure about, so they're easy to flip.
-// ---------------------------------------------------------------------------------------------
-
-// Texture flip quirk. Evidence from texture-flip.exe: X-flipped rectangles match hardware when sampling starts
-// at (U | 1), but Y-flipped ones get WORSE with (V | 1). So only X gets the odd-start treatment.
-constexpr bool kFlipXForcesOddStart = true;
-constexpr bool kFlipYForcesOddStart = false;
-
-// Line minor-axis tie breaking. true = a tie rounds toward negative infinity, false = toward positive.
-constexpr bool kLineTieRoundsDown = true;
-
-// ---------------------------------------------------------------------------------------------
-
-// PS1 4x4 ordered dither, indexed [y & 3][x & 3] with VRAM coordinates, applied to 8-bit channels.
-constexpr int8_t kDitherTable[4][4] = {
-    {-4,  0, -3,  1},
-    { 2, -2,  3, -1},
-    {-3,  1, -4,  0},
-    { 3, -1,  2, -2},
-};
-
-// Converts 8-bit-per-channel shaded color to the 15-bit value written to VRAM (bit 15 is left clear).
-inline uint16_t packColor(int red, int green, int blue, int pixelX, int pixelY, bool dither) {
-    if (dither) {
-        const int offset = kDitherTable[pixelY & 3][pixelX & 3];
-        red += offset;
-        green += offset;
-        blue += offset;
-    }
-    red = std::clamp(red, 0, 255);
-    green = std::clamp(green, 0, 255);
-    blue = std::clamp(blue, 0, 255);
-    return static_cast<uint16_t>((red >> 3) | ((green >> 3) << 5) | ((blue >> 3) << 10));
-}
-
-// 5-bit texel channel * 8-bit color channel, where color 0x80 is 1.0. The result is in 8-bit range
-// (it may exceed 255; packColor clamps it).
-inline int modulate(int texel5, int color8) {
-    return (texel5 * color8) >> 4;
-}
-
-// Floor division that is correct for negative numerators (divisor must be positive).
-inline int floorDiv(int numerator, int divisor) {
-    int quotient = numerator / divisor;
-    if ((numerator % divisor != 0) && (numerator < 0)) quotient--;
-    return quotient;
-}
-
-// Rounds numerator / divisor to the nearest integer, resolving exact .5 ties downward (or upward).
-inline int roundDiv(int numerator, int divisor) {
-    const int tieBias = kLineTieRoundsDown ? (divisor - 1) : divisor;
-    return floorDiv(2 * numerator + tieBias, 2 * divisor);
-}
-
-} // namespace
+#include "Rasterizer.h"
 
 
 void Rasterizer::setTextureWindow(uint8_t maskX, uint8_t maskY, uint8_t offsetX, uint8_t offsetY) {
@@ -70,14 +11,12 @@ void Rasterizer::setTextureWindow(uint8_t maskX, uint8_t maskY, uint8_t offsetX,
     textureWindowOffsetY = offsetY;
 }
 
+
 void Rasterizer::setMaskSettings(bool setMask, bool preserveMask) {
     maskForceSet = setMask;
     maskPreserve = preserveMask;
 }
 
-void Rasterizer::setDither(bool enabled) {
-    ditherEnabled = enabled;
-}
 
 void Rasterizer::setTexturePage(uint16_t baseX, uint16_t baseY, uint8_t colorDepth, uint8_t semiTransparency) {
     texturePageBaseX = baseX;
@@ -120,12 +59,10 @@ void Rasterizer::setDrawingOffset(int16_t offsetX, int16_t offsetY) {
 
 
 void Rasterizer::drawPolygon(const Vertex* vertices, int vertexCount, bool isTextured, bool isSemiTransparent, bool isRawTexture, bool isGouraud, uint16_t colorLookupTableX, uint16_t colorLookupTableY) {
-    if (isTextured) {
-        loadCLUT(colorLookupTableX, colorLookupTableY);
-    }
+    if (isTextured) loadCLUT(colorLookupTableX, colorLookupTableY);
 
-    // Apply the persistent drawing offset to all vertices once before rasterization
     Vertex offsetVertices[4];
+
     for (int index = 0; index < vertexCount; index++) {
         offsetVertices[index] = vertices[index];
         offsetVertices[index].x += drawingOffsetX;
@@ -134,8 +71,7 @@ void Rasterizer::drawPolygon(const Vertex* vertices, int vertexCount, bool isTex
 
     drawTriangle(offsetVertices[0], offsetVertices[1], offsetVertices[2], isTextured, isSemiTransparent, isRawTexture, isGouraud, colorLookupTableX, colorLookupTableY);
 
-    // Quads are two triangles: (V0, V1, V2) and (V1, V2, V3). The vertex order matters because the
-    // attribute interpolation below is anchored to the first vertex it is given.
+    // Quads are two triangles: (V0, V1, V2) and (V1, V2, V3). The vertex order matters because the attribute interpolation below is anchored to the first vertex it is given.
     if (vertexCount == 4) {
         drawTriangle(offsetVertices[1], offsetVertices[2], offsetVertices[3], isTextured, isSemiTransparent, isRawTexture, isGouraud, colorLookupTableX, colorLookupTableY);
     }
@@ -146,31 +82,26 @@ void Rasterizer::drawRectangle(int16_t x, int16_t y, uint16_t width, uint16_t he
     int16_t originX = x + drawingOffsetX;
     int16_t originY = y + drawingOffsetY;
 
-    if (isTextured) {
-        loadCLUT(colorLookupTableX, colorLookupTableY);
-    }
+    if (isTextured) loadCLUT(colorLookupTableX, colorLookupTableY);
 
     const int colorRed = flatColor & 0xFF;
     const int colorGreen = (flatColor >> 8) & 0xFF;
     const int colorBlue = (flatColor >> 16) & 0xFF;
 
-    // Untextured rectangles are flat: plain truncation to 15-bit, never dithered
     const uint16_t flatPacked = packColor(colorRed, colorGreen, colorBlue, 0, 0, false);
 
     const int startU = (textureFlipX && kFlipXForcesOddStart) ? (textureCoordinateU | 1) : textureCoordinateU;
     const int startV = (textureFlipY && kFlipYForcesOddStart) ? (textureCoordinateV | 1) : textureCoordinateV;
 
-    // Rectangles strictly obey the hardware clipping plane. Work out which rows/columns survive it up front (instead of
-    // testing every pixel); everything below only depends on (row, column), so skipping the clipped ones changes nothing.
+    // Rectangles strictly obey the hardware clipping plane. Work out which rows/columns survive it up front (instead of testing every pixel); everything below only depends on (row, column), so skipping the clipped ones changes nothing.
     const int columnFirst = std::max(0, static_cast<int>(static_cast<int16_t>(drawingAreaLeft)) - originX);
-    const int columnLast  = std::min(static_cast<int>(width) - 1, static_cast<int>(static_cast<int16_t>(drawingAreaRight)) - originX);
-    const int rowFirst    = std::max(0, static_cast<int>(static_cast<int16_t>(drawingAreaTop)) - originY);
-    const int rowLast     = std::min(static_cast<int>(height) - 1, static_cast<int>(static_cast<int16_t>(drawingAreaBottom)) - originY);
+    const int columnLast = std::min(static_cast<int>(width) - 1, static_cast<int>(static_cast<int16_t>(drawingAreaRight)) - originX);
+    const int rowFirst = std::max(0, static_cast<int>(static_cast<int16_t>(drawingAreaTop)) - originY);
+    const int rowLast = std::min(static_cast<int>(height) - 1, static_cast<int>(static_cast<int16_t>(drawingAreaBottom)) - originY);
 
 	drawCost += Hardware::GPU_COST_PRIMITIVE_SETUP;
     if (rowLast >= rowFirst && columnLast >= columnFirst) {
-        const double perPixel = Hardware::GPU_COST_PIXEL_BASE + (isTextured ? Hardware::GPU_COST_PIXEL_TEXTURED : 0.0)
-                              + (isSemiTransparent ? Hardware::GPU_COST_PIXEL_BLEND : 0.0);
+        const double perPixel = Hardware::GPU_COST_PIXEL_BASE + (isTextured ? Hardware::GPU_COST_PIXEL_TEXTURED : 0.0) + (isSemiTransparent ? Hardware::GPU_COST_PIXEL_BLEND : 0.0);
         drawCost += double(rowLast - rowFirst + 1) * (double(columnLast - columnFirst + 1) * perPixel + Hardware::GPU_COST_ROW_SETUP);
     }
 
@@ -181,14 +112,13 @@ void Rasterizer::drawRectangle(int16_t x, int16_t y, uint16_t width, uint16_t he
 
             uint16_t color = flatPacked;
 
-            // Untextured rectangles blend every pixel. Textured ones decide per texel (see below).
+            // Untextured rectangles blend every pixel. Textured ones decide per texel.
             bool blendThisPixel = isSemiTransparent && !isTextured;
 
             if (isTextured) {
                 int textureCoordinateX = startU + (textureFlipX ? -column : column);
                 int textureCoordinateY = startV + (textureFlipY ? -row : row);
 
-                // Apply Hardware Texture Window Bitmasking
                 textureCoordinateX = (textureCoordinateX & ~(textureWindowMaskX * 8)) | ((textureWindowOffsetX & textureWindowMaskX) * 8);
                 textureCoordinateY = (textureCoordinateY & ~(textureWindowMaskY * 8)) | ((textureWindowOffsetY & textureWindowMaskY) * 8);
 
@@ -200,7 +130,6 @@ void Rasterizer::drawRectangle(int16_t x, int16_t y, uint16_t width, uint16_t he
 
                 if (texel == 0) continue;
 
-                // Only texels with bit 15 set are blended
                 blendThisPixel = isSemiTransparent && (texel & 0x8000);
 
                 if (!isRawTexture) {
@@ -233,28 +162,153 @@ void Rasterizer::drawRectangle(int16_t x, int16_t y, uint16_t width, uint16_t he
 void Rasterizer::fillRectangle(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t color) {
 	drawCost += 46.0 + double(height) * (width / 8.0 + 9.0);   // block fills are fast on hardware
 
-	// The PS1 Block Fill command explicitly ignores both the Drawing Offset and the Drawing Area clip.
-    // It wraps around the 1024x512 VRAM edges.
+	// The PS1 Block Fill command explicitly ignores both the Drawing Offset and the Drawing Area clip. It wraps around the 1024x512 VRAM edges.
     for (uint16_t row = 0; row < height; row++) {
         for (uint16_t column = 0; column < width; column++) {
-            // Hardware wraps the fill around VRAM edges instead of clipping it
             uint16_t pixelX = (x + column) & (Hardware::VRAM_WIDTH - 1);
             uint16_t pixelY = (y + row) & (Hardware::VRAM_HEIGHT - 1);
 
             if (maskPreserve && (vram.readPixel(pixelX, pixelY) & 0x8000)) {
-                continue; // Do not draw over masked pixels
+                continue;
             }
+
             vram.writePixel(pixelX, pixelY, color);
         }
     }
 }
 
 
-// Top-left fill rule: a pixel exactly on an edge belongs to the triangle only if that edge is a top or left edge. Assumes the triangle's winding was normalized so its area is positive.
-static bool isTopLeftEdge(int16_t startX, int16_t startY, int16_t endX, int16_t endY) {
+void Rasterizer::drawLine(const Vertex& vertex0, const Vertex& vertex1, bool isSemiTransparent, bool isGouraud) {
+	int startX = vertex0.x + drawingOffsetX;
+	int startY = vertex0.y + drawingOffsetY;
+	int endX = vertex1.x + drawingOffsetX;
+	int endY = vertex1.y + drawingOffsetY;
+	uint32_t startColor = vertex0.color;
+	uint32_t endColor = vertex1.color;
+
+	const int absoluteDeltaX = std::abs(endX - startX);
+	const int absoluteDeltaY = std::abs(endY - startY);
+	if (absoluteDeltaX > 1023 || absoluteDeltaY > 511) return;
+
+	const int stepCount = std::max(absoluteDeltaX, absoluteDeltaY);
+
+	// Hardware always walks the line left to right (colors travel with their endpoints)
+	if (startX >= endX && stepCount > 0) {
+		std::swap(startX, endX);
+		std::swap(startY, endY);
+		std::swap(startColor, endColor);
+	}
+
+	// Position steps have 32 fractional bits and round away from zero
+	auto divideAwayFromZero = [stepCount](int64_t delta) -> int64_t {
+		delta *= (int64_t(1) << 32);
+		if (delta < 0) delta -= stepCount - 1;
+		if (delta > 0) delta += stepCount - 1;
+		return delta / stepCount;
+	};
+
+	int64_t stepX = 0, stepY = 0, stepRed = 0, stepGreen = 0, stepBlue = 0;
+	if (stepCount > 0) {
+		stepX = divideAwayFromZero(endX - startX);
+		stepY = divideAwayFromZero(endY - startY);
+		if (isGouraud) {
+			stepRed   = (int64_t(int(endColor & 0xFF) - int(startColor & 0xFF)) * 4096) / stepCount;
+			stepGreen = (int64_t(int((endColor >> 8) & 0xFF) - int((startColor >> 8) & 0xFF)) * 4096) / stepCount;
+			stepBlue  = (int64_t(int((endColor >> 16) & 0xFF) - int((startColor >> 16) & 0xFF)) * 4096) / stepCount;
+		}
+	}
+
+	// Start at the pixel center minus a tiny epsilon. X always gets the epsilon, Y only when it is decreasing.
+	const int64_t one = int64_t(1) << 32;
+	int64_t currentX = int64_t(startX) * one + (one >> 1) - 1024;
+	int64_t currentY = int64_t(startY) * one + (one >> 1) - (stepY < 0 ? 1024 : 0);
+	int64_t currentRed   = (int64_t(startColor & 0xFF) << 12) + 0x800;
+	int64_t currentGreen = (int64_t((startColor >> 8) & 0xFF) << 12) + 0x800;
+	int64_t currentBlue  = (int64_t((startColor >> 16) & 0xFF) << 12) + 0x800;
+
+	const bool ditherThisDraw = ditherEnabled;
+
+	drawCost += Hardware::GPU_COST_PRIMITIVE_SETUP + double(stepCount) * (Hardware::GPU_COST_PIXEL_BASE + (isSemiTransparent ? Hardware::GPU_COST_PIXEL_BLEND : 0.0));
+
+	for (int step = 0; step <= stepCount; step++, currentX += stepX, currentY += stepY, currentRed += stepRed, currentGreen += stepGreen, currentBlue += stepBlue) {
+		const int pixelX = static_cast<int>(currentX >> 32);
+		const int pixelY = static_cast<int>(currentY >> 32);
+
+		if (pixelX < static_cast<int16_t>(drawingAreaLeft) || pixelX > static_cast<int16_t>(drawingAreaRight) ||
+			pixelY < static_cast<int16_t>(drawingAreaTop)  || pixelY > static_cast<int16_t>(drawingAreaBottom)) {
+			continue;
+		}
+
+		uint16_t color = packColor(static_cast<int>(currentRed >> 12), static_cast<int>(currentGreen >> 12), static_cast<int>(currentBlue >> 12), pixelX, pixelY, ditherThisDraw);
+
+		if (maskPreserve && (vram.readPixel(pixelX, pixelY) & 0x8000)) continue;
+		if (isSemiTransparent) color = blendSemiTransparent(vram.readPixel(pixelX, pixelY), color);
+		if (maskForceSet) color |= 0x8000;
+		vram.writePixel(pixelX, pixelY, color);
+	}
+}
+
+
+void Rasterizer::invalidateCache() {
+	cachedClutTag = 0xFFFFFFFF;
+	cachedClut4BitValid = false;
+	cachedClut8BitValid = false;
+}
+
+
+
+//Privates
+uint16_t Rasterizer::packColor(int red, int green, int blue, int pixelX, int pixelY, bool dither) {
+    if (dither) {
+        const int offset = kDitherTable[pixelY & 3][pixelX & 3];
+        red += offset;
+        green += offset;
+        blue += offset;
+    }
+
+    red = std::clamp(red, 0, 255);
+    green = std::clamp(green, 0, 255);
+    blue = std::clamp(blue, 0, 255);
+    return static_cast<uint16_t>((red >> 3) | ((green >> 3) << 5) | ((blue >> 3) << 10));
+}
+
+
+bool Rasterizer::isTopLeftEdge(int16_t startX, int16_t startY, int16_t endX, int16_t endY) const {
 	int deltaX = endX - startX;
 	int deltaY = endY - startY;
 	return (deltaY == 0 && deltaX > 0) || deltaY < 0;
+}
+
+
+void Rasterizer::loadCLUT(uint16_t clutX, uint16_t clutY) {
+    if (texturePageColorDepth == 2) return; // 15-bit textures bypass CLUT completely
+
+    uint32_t currentTag = (static_cast<uint32_t>(clutY) << 16) | clutX;
+
+    if (currentTag != cachedClutTag) {
+        cachedClutTag = currentTag;
+        cachedClut4BitValid = false;
+        cachedClut8BitValid = false;
+    }
+
+    if (texturePageColorDepth == 0) { // 4-bit
+        if (!cachedClut4BitValid) {
+            for (int i = 0; i < 16; i++) {
+                activeCLUT[i] = vram.readPixel((clutX + i) & 0x3FF, clutY & 0x1FF);
+            }
+            cachedClut4BitValid = true;
+        }
+    }
+    else if (texturePageColorDepth == 1) { // 8-bit
+        if (!cachedClut8BitValid) {
+            // CRITICAL: Fetch ALL 256 colors from 0, overwriting the first 16 if they existed.
+            for (int i = 0; i < 256; i++) {
+                activeCLUT[i] = vram.readPixel((clutX + i) & 0x3FF, clutY & 0x1FF);
+            }
+            cachedClut4BitValid = true;
+            cachedClut8BitValid = true;
+        }
+    }
 }
 
 
@@ -277,22 +331,18 @@ void Rasterizer::drawTriangle(const Vertex& vertex0, const Vertex& vertex1, cons
 		std::swap(second, third);
 	}
 
-	// Find the bounding box of the triangle
 	int16_t minX = std::min({first.x, second.x, third.x});
 	int16_t maxX = std::max({first.x, second.x, third.x});
 	int16_t minY = std::min({first.y, second.y, third.y});
 	int16_t maxY = std::max({first.y, second.y, third.y});
 
-	// Constrain the bounding box to absolute VRAM limits
 	minX = std::max((int16_t)0, minX);
 	maxX = std::min((int16_t)(Hardware::VRAM_WIDTH - 1), maxX);
 	minY = std::max((int16_t)0, minY);
 	maxY = std::min((int16_t)(Hardware::VRAM_HEIGHT - 1), maxY);
 
-	// Further constrain to the active drawing area
 	clipToDrawingArea(minX, maxX, minY, maxY);
 
-	// ---- Attribute planes (hardware-style) --------------------------------------------------
 	// The GPU does not do per-pixel barycentric weights. It derives a per-attribute gradient (d/dx, d/dy)
 	// in fixed point (12 fractional bits), anchors it at the first vertex with a +0.5 rounding bias,
 	// and steps from there. The truncation in these gradients is what real UV/color interpolation looks like.
@@ -330,7 +380,6 @@ void Rasterizer::drawTriangle(const Vertex& vertex0, const Vertex& vertex1, cons
 
 	if (minX > maxX || minY > maxY) return;
 
-	// ---- Coverage ----------------------------------------------------------------------------
 	// A pixel is inside when all three edge functions are >= bias, where bias is 0 for a top/left edge (a pixel exactly on
 	// it belongs to the triangle) and 1 otherwise (it must be strictly inside). Each edge function is linear, so along one
 	// scanline the covered pixels form a single span that can be solved for exactly with integer division. This visits
@@ -413,7 +462,6 @@ void Rasterizer::drawTriangle(const Vertex& vertex0, const Vertex& vertex1, cons
 		for (int pixelX = spanFirst; pixelX <= spanLast; pixelX++,
 		     valueRed += planeRed.dx, valueGreen += planeGreen.dx, valueBlue += planeBlue.dx, valueU += planeU.dx, valueV += planeV.dx) {
 
-			// 8-bit shading color for this pixel
 			int shadeRed = anchorRed;
 			int shadeGreen = anchorGreen;
 			int shadeBlue = anchorBlue;
@@ -426,25 +474,21 @@ void Rasterizer::drawTriangle(const Vertex& vertex0, const Vertex& vertex1, cons
 
 			uint16_t finalColor;
 
-			// Untextured polygons blend every pixel. Textured ones decide per texel
 			bool blendThisPixel = isSemiTransparent && !isTextured;
 
 			if (isTextured) {
 				int textureCoordinateX = static_cast<int>(valueU >> 12);
 				int textureCoordinateY = static_cast<int>(valueV >> 12);
 
-				// Apply Hardware Texture Window Bitmasking
 				textureCoordinateX = (textureCoordinateX & ~(textureWindowMaskX * 8)) | ((textureWindowOffsetX & textureWindowMaskX) * 8);
 				textureCoordinateY = (textureCoordinateY & ~(textureWindowMaskY * 8)) | ((textureWindowOffsetY & textureWindowMaskY) * 8);
 
-				// PS1 textures are strictly bound to 256x256 pages (negative values wrap too)
 				textureCoordinateX &= 0xFF;
 				textureCoordinateY &= 0xFF;
 
 				uint16_t texel = sampleTexture(textureCoordinateX, textureCoordinateY, colorLookupTableX, colorLookupTableY);
 				if (texel == 0) continue; // 0x0000 is fully transparent in PS1 textures
 
-				// Textured polygons only blend texels whose bit 15 is set
 				blendThisPixel = isSemiTransparent && (texel & 0x8000);
 
 				if (!isRawTexture) {
@@ -476,48 +520,6 @@ void Rasterizer::drawTriangle(const Vertex& vertex0, const Vertex& vertex1, cons
 }
 
 
-void Rasterizer::clipToDrawingArea(int16_t& minX, int16_t& maxX, int16_t& minY, int16_t& maxY) {
-    minX = std::max(minX, (int16_t)std::max(0, (int)drawingAreaLeft));
-    maxX = std::min(maxX, (int16_t)std::min((int)Hardware::VRAM_WIDTH - 1, (int)drawingAreaRight));
-    minY = std::max(minY, (int16_t)std::max(0, (int)drawingAreaTop));
-    maxY = std::min(maxY, (int16_t)std::min((int)Hardware::VRAM_HEIGHT - 1, (int)drawingAreaBottom));
-}
-
-
-uint16_t Rasterizer::sampleTexture(int textureX, int textureY, uint16_t colorLookupTableX, uint16_t colorLookupTableY) {
-    // The texture page sits at an arbitrary VRAM X, so a 8-bit / 15-bit texture can run off the right
-    // edge of VRAM. Hardware wraps around to the left side rather than clamping or reading out of bounds.
-    switch (texturePageColorDepth) {
-        case 0: { // 4-bit CLUT
-            int videoRamX = (texturePageBaseX + (textureX / 4)) & 0x3FF;
-            int videoRamY = (texturePageBaseY + textureY) & 0x1FF;
-
-            uint16_t pixelDataWord = vram.readPixel(videoRamX, videoRamY);
-            int bitShift = (textureX % 4) * 4;
-            uint8_t colorLookupTableIndex = (pixelDataWord >> bitShift) & 0xF;
-
-            return activeCLUT[colorLookupTableIndex]; // Read from cache
-        }
-        case 1: { // 8-bit CLUT
-            int videoRamX = (texturePageBaseX + (textureX / 2)) & 0x3FF;
-            int videoRamY = (texturePageBaseY + textureY) & 0x1FF;
-
-            uint16_t pixelDataWord = vram.readPixel(videoRamX, videoRamY);
-            int bitShift = (textureX % 2) * 8;
-            uint8_t colorLookupTableIndex = (pixelDataWord >> bitShift) & 0xFF;
-
-            return activeCLUT[colorLookupTableIndex]; // Read from cache
-        }
-        default: { // 15-bit Direct (1 pixel per 16-bit word, no CLUT)
-            int videoRamX = (texturePageBaseX + textureX) & 0x3FF;
-            int videoRamY = (texturePageBaseY + textureY) & 0x1FF;
-
-            return vram.readPixel(videoRamX, videoRamY);
-        }
-    }
-}
-
-
 uint16_t Rasterizer::blendSemiTransparent(uint16_t backgroundColor, uint16_t foregroundColor) const {
 	int blendedChannels[3];
 
@@ -541,106 +543,44 @@ uint16_t Rasterizer::blendSemiTransparent(uint16_t backgroundColor, uint16_t for
 }
 
 
-void Rasterizer::drawLine(const Vertex& vertex0, const Vertex& vertex1, bool isSemiTransparent, bool isGouraud) {
-	int startX = vertex0.x + drawingOffsetX;
-	int startY = vertex0.y + drawingOffsetY;
-	int endX = vertex1.x + drawingOffsetX;
-	int endY = vertex1.y + drawingOffsetY;
-	uint32_t startColor = vertex0.color;
-	uint32_t endColor = vertex1.color;
-
-	const int absoluteDeltaX = std::abs(endX - startX);
-	const int absoluteDeltaY = std::abs(endY - startY);
-	if (absoluteDeltaX > 1023 || absoluteDeltaY > 511) return;
-
-	const int stepCount = std::max(absoluteDeltaX, absoluteDeltaY);
-
-	// Hardware always walks the line left to right (colors travel with their endpoints)
-	if (startX >= endX && stepCount > 0) {
-		std::swap(startX, endX);
-		std::swap(startY, endY);
-		std::swap(startColor, endColor);
-	}
-
-	// Position steps have 32 fractional bits and round away from zero
-	auto divideAwayFromZero = [stepCount](int64_t delta) -> int64_t {
-		delta *= (int64_t(1) << 32);
-		if (delta < 0) delta -= stepCount - 1;
-		if (delta > 0) delta += stepCount - 1;
-		return delta / stepCount;
-	};
-
-	int64_t stepX = 0, stepY = 0, stepRed = 0, stepGreen = 0, stepBlue = 0;
-	if (stepCount > 0) {
-		stepX = divideAwayFromZero(endX - startX);
-		stepY = divideAwayFromZero(endY - startY);
-		if (isGouraud) {
-			stepRed   = (int64_t(int(endColor & 0xFF) - int(startColor & 0xFF)) * 4096) / stepCount;
-			stepGreen = (int64_t(int((endColor >> 8) & 0xFF) - int((startColor >> 8) & 0xFF)) * 4096) / stepCount;
-			stepBlue  = (int64_t(int((endColor >> 16) & 0xFF) - int((startColor >> 16) & 0xFF)) * 4096) / stepCount;
-		}
-	}
-
-	// Start at the pixel center minus a tiny epsilon. X always gets the epsilon, Y only when it is decreasing.
-	const int64_t one = int64_t(1) << 32;
-	int64_t currentX = int64_t(startX) * one + (one >> 1) - 1024;
-	int64_t currentY = int64_t(startY) * one + (one >> 1) - (stepY < 0 ? 1024 : 0);
-	int64_t currentRed   = (int64_t(startColor & 0xFF) << 12) + 0x800;
-	int64_t currentGreen = (int64_t((startColor >> 8) & 0xFF) << 12) + 0x800;
-	int64_t currentBlue  = (int64_t((startColor >> 16) & 0xFF) << 12) + 0x800;
-
-	const bool ditherThisDraw = ditherEnabled;
-
-	drawCost += Hardware::GPU_COST_PRIMITIVE_SETUP + double(stepCount) * (Hardware::GPU_COST_PIXEL_BASE + (isSemiTransparent ? Hardware::GPU_COST_PIXEL_BLEND : 0.0));
-
-	for (int step = 0; step <= stepCount; step++, currentX += stepX, currentY += stepY, currentRed += stepRed, currentGreen += stepGreen, currentBlue += stepBlue) {
-		const int pixelX = static_cast<int>(currentX >> 32);
-		const int pixelY = static_cast<int>(currentY >> 32);
-
-		if (pixelX < static_cast<int16_t>(drawingAreaLeft) || pixelX > static_cast<int16_t>(drawingAreaRight) ||
-			pixelY < static_cast<int16_t>(drawingAreaTop)  || pixelY > static_cast<int16_t>(drawingAreaBottom)) {
-			continue;
-		}
-
-		uint16_t color = packColor(static_cast<int>(currentRed >> 12), static_cast<int>(currentGreen >> 12), static_cast<int>(currentBlue >> 12), pixelX, pixelY, ditherThisDraw);
-
-		if (maskPreserve && (vram.readPixel(pixelX, pixelY) & 0x8000)) continue;
-		if (isSemiTransparent) color = blendSemiTransparent(vram.readPixel(pixelX, pixelY), color);
-		if (maskForceSet) color |= 0x8000;
-		vram.writePixel(pixelX, pixelY, color);
-	}
+void Rasterizer::clipToDrawingArea(int16_t& minX, int16_t& maxX, int16_t& minY, int16_t& maxY) {
+    minX = std::max(minX, (int16_t)std::max(0, (int)drawingAreaLeft));
+    maxX = std::min(maxX, (int16_t)std::min((int)Hardware::VRAM_WIDTH - 1, (int)drawingAreaRight));
+    minY = std::max(minY, (int16_t)std::max(0, (int)drawingAreaTop));
+    maxY = std::min(maxY, (int16_t)std::min((int)Hardware::VRAM_HEIGHT - 1, (int)drawingAreaBottom));
 }
 
 
-void Rasterizer::loadCLUT(uint16_t clutX, uint16_t clutY) {
-    if (texturePageColorDepth == 2) return; // 15-bit textures bypass CLUT completely
+uint16_t Rasterizer::sampleTexture(int textureX, int textureY, uint16_t colorLookupTableX, uint16_t colorLookupTableY) {
+    // The texture page sits at an arbitrary VRAM X, so a 8-bit / 15-bit texture can run off the right
+    // edge of VRAM. Hardware wraps around to the left side rather than clamping or reading out of bounds.
+    switch (texturePageColorDepth) {
+        case 0: { // 4-bit CLUT
+            int videoRamX = (texturePageBaseX + (textureX / 4)) & 0x3FF;
+            int videoRamY = (texturePageBaseY + textureY) & 0x1FF;
 
-    uint32_t currentTag = (static_cast<uint32_t>(clutY) << 16) | clutX;
+            uint16_t pixelDataWord = vram.readPixel(videoRamX, videoRamY);
+            int bitShift = (textureX % 4) * 4;
+            uint8_t colorLookupTableIndex = (pixelDataWord >> bitShift) & 0xF;
 
-    // 1. If the coordinates change, invalidate everything
-    if (currentTag != cachedClutTag) {
-        cachedClutTag = currentTag;
-        cachedClut4BitValid = false;
-        cachedClut8BitValid = false;
-    }
-
-    // 2. Fetch based on requested depth
-    if (texturePageColorDepth == 0) { // 4-bit
-        if (!cachedClut4BitValid) {
-            for (int i = 0; i < 16; i++) {
-                activeCLUT[i] = vram.readPixel((clutX + i) & 0x3FF, clutY & 0x1FF);
-            }
-            cachedClut4BitValid = true;
+            return activeCLUT[colorLookupTableIndex];
         }
-    }
-    else if (texturePageColorDepth == 1) { // 8-bit
-        if (!cachedClut8BitValid) {
-            // CRITICAL: Fetch ALL 256 colors from 0, overwriting the first 16 if they existed.
-            for (int i = 0; i < 256; i++) {
-                activeCLUT[i] = vram.readPixel((clutX + i) & 0x3FF, clutY & 0x1FF);
-            }
-            cachedClut4BitValid = true;
-            cachedClut8BitValid = true;
+        case 1: { // 8-bit CLUT
+            int videoRamX = (texturePageBaseX + (textureX / 2)) & 0x3FF;
+            int videoRamY = (texturePageBaseY + textureY) & 0x1FF;
+
+            uint16_t pixelDataWord = vram.readPixel(videoRamX, videoRamY);
+            int bitShift = (textureX % 2) * 8;
+            uint8_t colorLookupTableIndex = (pixelDataWord >> bitShift) & 0xFF;
+
+            return activeCLUT[colorLookupTableIndex];
+        }
+        default: { // 15-bit Direct (1 pixel per 16-bit word, no CLUT)
+            int videoRamX = (texturePageBaseX + textureX) & 0x3FF;
+            int videoRamY = (texturePageBaseY + textureY) & 0x1FF;
+
+            return vram.readPixel(videoRamX, videoRamY);
         }
     }
 }
+
