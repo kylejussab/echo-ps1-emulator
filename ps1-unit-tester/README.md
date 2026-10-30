@@ -1,6 +1,6 @@
 # PS1 unit tester
 
-A test runner for the emulator core: public hardware tests (Jaczekanski, Amidog, pcsx-redux), our own component tests (`echo-tests/`) and a
+A test runner for the emulator core: public hardware tests (Jaczekanski, Amidog, pcsx-redux), my own component tests (`echo-tests/`) and a
 baseline of expected results, so a run tells you what got worse instead of re-listing what is already known to be broken.
 
 Run everything, from the project root:
@@ -32,14 +32,14 @@ output, including any FATAL line), `log.diff` and `vram-diff.png` (red = differs
 
 Once `baseline.txt` exists, a run reports only changes against it:
 
-| category | meaning | fails the run |
-|---|---|---|
-| `REGRESSION` | passed before and fails now, or fails in the same way as before but worse (more pixels, more lines, more failed checks), or fails harder (a wrong result became a crash) | yes |
-| `NEW-FAILING` | a test that is not in the baseline yet and fails | yes |
-| `IMPROVED` | a failure that got better or now passes | no |
-| `CHANGED` | still failing, but with a different verdict of the same severity | no |
-| `OUTPUT-CHANGED` | an informational (`info`/`timing`) test printed something different from the saved output (`results/<test>/baseline.diff` has the full diff) | no |
-| `NEW` | not in the baseline yet, and fine | no |
+| category         | meaning                                                                                                                                                                  | fails the run |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------- |
+| `REGRESSION`     | passed before and fails now, or fails in the same way as before but worse (more pixels, more lines, more failed checks), or fails harder (a wrong result became a crash) | yes           |
+| `NEW-FAILING`    | a test that is not in the baseline yet and fails                                                                                                                         | yes           |
+| `IMPROVED`       | a failure that got better or now passes                                                                                                                                  | no            |
+| `CHANGED`        | still failing, but with a different verdict of the same severity                                                                                                         | no            |
+| `OUTPUT-CHANGED` | an informational (`info`/`timing`) test printed something different from the saved output (`results/<test>/baseline.diff` has the full diff)                             | no            |
+| `NEW`            | not in the baseline yet, and fine                                                                                                                                        | no            |
 
 Known failures are hidden unless you use `-v`.
 
@@ -52,7 +52,7 @@ python3 ps1-unit-tester/run_tests.py --strict            # ignore the baseline: 
 add `--force` to accept one on purpose. Run on a subset (`... 3 --update-baseline`) it only touches the tests that ran; a complete run also
 drops entries of tests that are no longer in the suite. With no `baseline.txt` at all, the runner behaves as `--strict` and says so.
 
-The saved output of informational tests is a snapshot of what *this emulator* printed when you accepted it, not what the hardware does.
+The saved output of informational tests is a snapshot of what _this emulator_ printed when you accepted it, not what the hardware does.
 It is only useful if the emulator is deterministic: if a test's output changes between two identical runs, something depends on host timing.
 
 ## Looking at the failures
@@ -86,12 +86,12 @@ Tests whose files are missing are reported as `SKIPPED` (and ignored by the base
 
 ## How a test is judged (the `checks` column in tiers.txt)
 
-| check | meaning |
-|---|---|
-| `sum` | the test's own pass/fail counts (`pass - ` / `fail - ` lines, or libcester's summary) must show no failures |
-| `log` | the printed output must match the real-hardware `psx.log` next to the test (the Sony library's `ResetGraph:` start-up lines are ignored) |
-| `vram` | VRAM at the end must match the reference `vram.png` next to the test |
-| `timing`, `info` | run, but not graded: the numbers are hardware measurements. Their printed output is compared with the baseline instead |
+| check            | meaning                                                                                                                                  |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `sum`            | the test's own pass/fail counts (`pass - ` / `fail - ` lines, or libcester's summary) must show no failures                              |
+| `log`            | the printed output must match the real-hardware `psx.log` next to the test (the Sony library's `ResetGraph:` start-up lines are ignored) |
+| `vram`           | VRAM at the end must match the reference `vram.png` next to the test                                                                     |
+| `timing`, `info` | run, but not graded: the numbers are hardware measurements. Their printed output is compared with the baseline instead                   |
 
 Verdicts: `FAIL`, `LOG-DIFF`, `VRAM-DIFF`, `CRASH` (your FATAL / `exit(1)` text is shown), `TIMEOUT`, `NO-SIDELOAD` (the BIOS never reached the shell),
 `NO-RESULT`, `HOST-FAIL` (a component test in `echo-tests/` that does not compile, was not built, or crashed).
@@ -100,15 +100,15 @@ Verdicts: `FAIL`, `LOG-DIFF`, `VRAM-DIFF`, `CRASH` (your FATAL / `exit(1)` text 
 
 Tiers 1 to 6 are ordered by dependency: a later tier builds on the earlier ones, so when several fail, start with the lowest.
 
-| Tier | Covers |
-|---|---|
-| 1 | CPU, exceptions, COP0 |
-| 2 | Timers, interrupts, DMA |
-| 3 | GPU commands, VRAM |
-| 4 | GTE |
-| 5 | MDEC, SPU, CD-ROM |
-| 6 | Pixel-exact rasterizer (strict, pixel for pixel) |
-| host | Our own component tests in `echo-tests/` (Timers, Bus and Disc so far), built by CMake and run without a BIOS |
+| Tier   | Covers                                                                                                                                                                                                                                                                                         |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1      | CPU, exceptions, COP0                                                                                                                                                                                                                                                                          |
+| 2      | Timers, interrupts, DMA                                                                                                                                                                                                                                                                        |
+| 3      | GPU commands, VRAM                                                                                                                                                                                                                                                                             |
+| 4      | GTE                                                                                                                                                                                                                                                                                            |
+| 5      | MDEC, SPU, CD-ROM                                                                                                                                                                                                                                                                              |
+| 6      | Pixel-exact rasterizer (strict, pixel for pixel)                                                                                                                                                                                                                                               |
+| host   | My own component tests in `echo-tests/` (Timers, Bus, Disc, IRQ/DICR, DMA, SIO, and SPU), built by CMake and run without a BIOS                                                                                                                                                                |
 | exotic | Hardware-characterisation tests: quirks of the real console that games do not depend on (bus access widths, COP0 breakpoints, scratchpad as data cache, unusual coprocessor branches, bus timing). They run with everything else; the ones that fail today are known failures in the baseline. |
 
 ## Layout

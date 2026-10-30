@@ -38,7 +38,8 @@ add_library(echo_core STATIC
     src/gpu/Rasterizer.cpp
 
     src/io/DualShock.cpp
-    src/io/SIO.cpp
+    src/io/SIO0.cpp
+    src/io/SIO1.cpp
 
     src/mdec/MDEC.cpp
 

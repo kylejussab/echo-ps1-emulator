@@ -59,6 +59,7 @@ uint32_t DMA::read32(uint32_t address) {
 		return interruptControlRegister;
 	}
 
+	/// @todo (bug): psx-spx (memorymap.md): the seven channel CHCR registers at 1F8010x8h are mirrored at 1F8010xCh (e.g. 1F80108Ch is channel 0's CHCR). `(address & 0xF) <= 0x8` rejects xC, so those accesses hit the FATAL below. (iomap.md lists 1F8010F8h/FCh as unknown, so crashing there is fine.)
 	bool isChannelRegister = address >= Hardware::REGISTER_DMA_BASE && address < Hardware::REGISTER_DMA_CONTROL && (address & 0x3) == 0 && (address & 0xF) <= 0x8;
 
 	if (isChannelRegister) {
@@ -105,6 +106,7 @@ void DMA::write32(uint32_t address, uint32_t value) {
     }
 
     // Per-Channel Registers (0x1F801080 - 0x1F8010E8)
+	/// @todo (bug): same mirror gap as in read32.
     bool isChannelRegister = address >= Hardware::REGISTER_DMA_BASE && address < Hardware::REGISTER_DMA_CONTROL
         && (address & 0x3) == 0 && (address & 0xF) <= 0x8;
 

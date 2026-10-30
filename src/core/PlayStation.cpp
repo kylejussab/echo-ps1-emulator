@@ -72,7 +72,7 @@ void PlayStation::run() {
 			}
 
 			/// @todo Expand input routing to handle Controller 2 multiplexing.
-			bus.getSIO().getController().handleEvent(event);
+			bus.getSIO0().getController().handleEvent(event);
 		}
 
 		SDL_GameControllerUpdate();

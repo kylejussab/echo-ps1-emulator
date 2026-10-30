@@ -23,6 +23,6 @@ Passing tests are not proof that the emulator is accurate. A test suite can't co
 - [JaCzekanski/ps1-tests](https://github.com/JaCzekanski/ps1-tests) (MIT licence), including the real-hardware reference captures
 - [PCSX-Redux nugget tests](https://github.com/pcsx-redux/nugget) (MIT licence)
 - Amidog's `psxtest_cpu` and `psxtest_gte`, from [psx.amidog.se](https://psx.amidog.se)
-- Echo's own Timers tests in [`ps1-unit-tester/echo-tests/`](ps1-unit-tester/echo-tests/)
+- Echo's own tests in [`ps1-unit-tester/echo-tests/`](ps1-unit-tester/echo-tests/)
 
 The third-party tests are downloaded on your machine and are not stored in this repository. See [`ps1-unit-tester/PROVENANCE.md`](ps1-unit-tester/PROVENANCE.md) for exact versions.

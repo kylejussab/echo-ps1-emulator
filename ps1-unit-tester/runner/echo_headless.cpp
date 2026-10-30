@@ -442,7 +442,7 @@ int main(int argumentCount, char* arguments[]) {
 		SDL_Event addedEvent = {};
 		addedEvent.type = SDL_CONTROLLERDEVICEADDED;
 		addedEvent.cdevice.which = deviceIndex;
-		bus.getSIO().getController().handleEvent(addedEvent);
+		bus.getSIO0().getController().handleEvent(addedEvent);
 	}
 
 	TTYCapture tty;

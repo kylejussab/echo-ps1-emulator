@@ -53,6 +53,7 @@ void Bus::loadRAMBlock(uint32_t address, const uint8_t* data, size_t size) {
 
 
 uint8_t Bus::read8(uint32_t address) {
+    /// @todo (bug): `& 0x1FFFFFFF` throws the segment away. psx-spx: the scratchpad is mirrored only in KUSEG/KSEG0 (not KSEG1); KUSEG above 512MB and KSEG2 other than FFFE0130h fault instead of aliasing onto physical memory; the write queue and i-cache apply only to KUSEG/KSEG0. Needs the unmasked address.
     address &= 0x1FFFFFFF; // KSEG masking
 
     // Main RAM with 8MB Mirroring (0x00000000 - 0x007FFFFF)
@@ -61,6 +62,7 @@ uint8_t Bus::read8(uint32_t address) {
     }
 
     // Expansion Region 1 (0x1F000000)
+    /// @todo off by one: 1F080000h is past the 512KB DEV0 window (see the isOpenBus todo in Bus.h).
     else if (address >= 0x1F000000 && address <= 0x1F080000) {
         return 0xFF; // No cart plugged in
     }
@@ -71,8 +73,14 @@ uint8_t Bus::read8(uint32_t address) {
     }
 
     // Hardware Registers: SIO0 (0x1F801040)
+    /// @todo SIO0_BR occupies 1F80104Eh-1F80104Fh (iomap.md) but this range stops at 1F80104Eh, so an 8-bit access to 1F80104Fh hits the FATAL.
     else if (address >= 0x1F801040 && address <= 0x1F80104E) {
         return sio0.read8(address);
+    }
+
+    // Hardware Registers: SIO1 (0x1F801050 - 0x1F80105F)
+    else if (address >= 0x1F801050 && address <= 0x1F80105F) {
+        return sio1.read8(address);
     }
 
     // Hardware Registers: DMA (0x1F801080 - 0x1F8010FF)
@@ -94,19 +102,19 @@ uint8_t Bus::read8(uint32_t address) {
     else if (address >= Hardware::BIOS_STARTING_ADDRESS && address < Hardware::BIOS_STARTING_ADDRESS + Hardware::BIOS_SIZE) {
         return bios[address - Hardware::BIOS_STARTING_ADDRESS];
     }
-
-    if (address >= 0x1F801050 && address < 0x1F801060) return static_cast<uint8_t>(sio1Read(address, 1));
     
     if (isOpenBus(address)) {
         return 0xFF;
     }
 
+    /// @todo psx-spx: unused regions (including gaps in the I/O region) raise a Bus Error (DBE, ExcCode 07h); this prints and exit(1)s. Switch once crash-loud debugging is no longer needed (the CPU needs a way to receive the fault, see the CPU DBE todo). Per iomap.md the I/O gaps are 1F801024h-1F80103Fh, 1F801064h-1F80106Fh, 1F801078h-1F80107Fh, 1F801130h-1F8017FFh, 1F801804h-1F80180Fh, 1F801818h-1F80181Fh and 1F801828h-1F801BFFh (plus 1F8010F8h/FCh, listed as unknown).
     std::cout << "FATAL: Unhandled read8 at address: 0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << address << "\n";
     exit(1);
 }
 
 
 void Bus::write8(uint32_t address, uint8_t value) {
+    /// @todo (bug): segment info is lost here, see the segment masking todo in Bus::read8.
     address &= 0x1FFFFFFF; // KSEG masking
 
     // Scratchpad RAM (0x1F800000 - 0x1F8003FF)
@@ -122,8 +130,14 @@ void Bus::write8(uint32_t address, uint8_t value) {
     }
 
     // Hardware Registers: SIO0 (0x1F801040)
+    /// @todo SIO0_BR occupies 1F80104Eh-1F80104Fh (iomap.md) but this range stops at 1F80104Eh, so an 8-bit access to 1F80104Fh hits the FATAL.
     else if (address >= 0x1F801040 && address <= 0x1F80104E) {
         sio0.write8(address, value);
+    }
+
+    // Hardware Registers: SIO1 (0x1F801050 - 0x1F80105F)
+    else if (address >= 0x1F801050 && address <= 0x1F80105F) {
+        sio1.write8(address, value);
     }
 
     // Hardware Registers: DMA (0x1F801080 - 0x1F8010FF)
@@ -162,13 +176,11 @@ void Bus::write8(uint32_t address, uint8_t value) {
 		std::cout << " (0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(2) << (int)value << std::dec << std::nouppercase << ")" << std::endl;
         //std::cout << " (0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(2) << (int)value << std::dec << std::nouppercase << ")" << " [frame " << totalFrames << "]" << std::endl;
 	}
-    else if (address >= 0x1F801050 && address < 0x1F801060) {
-        sio1Write(address, value, 1);
-    }
     else if (isIgnoredWrite(address)) {
         // The hardware ignores these writes
     }
     else {
+        /// @todo psx-spx: unmapped regions raise a Bus Error (DBE), see the todo in Bus::read8.
         std::cout << "FATAL: Unhandled write8 at address: 0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << address << "\n";
         exit(1);
     }
@@ -176,6 +188,7 @@ void Bus::write8(uint32_t address, uint8_t value) {
 
 
 uint16_t Bus::read16(uint32_t address) {
+    /// @todo (bug): segment info is lost here, see the segment masking todo in Bus::read8.
     address &= 0x1FFFFFFF; // KSEG masking
 
     // Scratchpad RAM (0x1F800000 - 0x1F8003FF)
@@ -196,7 +209,13 @@ uint16_t Bus::read16(uint32_t address) {
         return sio0.read16(address);
     }
 
+    // Hardware Registers: SIO1 (0x1F801050 - 0x1F80105F)
+    else if (address >= 0x1F801050 && address <= 0x1F80105F) {
+        return sio1.read16(address);
+    }
+
     // Hardware Registers: Interrupts (0x1F801070)
+    /// @todo (bug): no DMA route in read16/write16, so any 16-bit access to a DMA register hits the FATAL below. psx-spx (CPU spec): 8/16-bit stores to 32-bit I/O registers behave like a 32-bit store of the full GPR value (soundscope uses `sh` on DMA registers and hangs without it); see the CPU 8/16-bit store todos.
     else if (address == Hardware::REG_INTERRUPT_STATUS) {
         return interruptStatus;
     }
@@ -220,18 +239,18 @@ uint16_t Bus::read16(uint32_t address) {
         return bios[offset] | (bios[offset + 1] << 8);
     }
 
-    if (address >= 0x1F801050 && address < 0x1F801060) return static_cast<uint16_t>(sio1Read(address, 2));
-
     if (isOpenBus(address)) {
         return 0xFFFF;
     }
 
+    /// @todo psx-spx: unmapped regions raise a Bus Error (DBE), see the todo in Bus::read8.
     std::cout << "FATAL: Unhandled read16 at address: 0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << address << "\n";
     exit(1);
 }
 
 
 void Bus::write16(uint32_t address, uint16_t value) {
+    /// @todo (bug): segment info is lost here, see the segment masking todo in Bus::read8.
     address &= 0x1FFFFFFF; // KSEG masking
 
     // Scratchpad RAM (0x1F800000 - 0x1F8003FF)
@@ -255,7 +274,13 @@ void Bus::write16(uint32_t address, uint16_t value) {
         sio0.write16(address, value);
     }
 
+    // Hardware Registers: SIO1 (0x1F801050 - 0x1F80105F)
+    else if (address >= 0x1F801050 && address <= 0x1F80105F) {
+        sio1.write16(address, value);
+    }
+
     // Hardware Registers: Interrupts (0x1F801070)
+    /// @todo (bug): no DMA route in read16/write16, so any 16-bit access to a DMA register hits the FATAL below. psx-spx (CPU spec): 8/16-bit stores to 32-bit I/O registers behave like a 32-bit store of the full GPR value (soundscope uses `sh` on DMA registers and hangs without it); see the CPU 8/16-bit store todos.
     else if (address == Hardware::REG_INTERRUPT_STATUS) {
         interruptStatus &= value;
     }
@@ -272,13 +297,11 @@ void Bus::write16(uint32_t address, uint16_t value) {
     else if (address >= 0x1F801C00 && address <= 0x1F801FFF) {
         spu.write16(address, value);
     }
-    else if (address >= 0x1F801050 && address < 0x1F801060) {
-        sio1Write(address, value, 2);
-    }
     else if (isIgnoredWrite(address)) {
         // The hardware ignores these writes
     }
     else {
+        /// @todo psx-spx: unmapped regions raise a Bus Error (DBE), see the todo in Bus::read8.
         std::cout << "FATAL: Unhandled write16 at address: 0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << address << "\n";
         exit(1);
     }
@@ -286,6 +309,7 @@ void Bus::write16(uint32_t address, uint16_t value) {
 
 
 uint32_t Bus::read32(uint32_t address) {
+    /// @todo (bug): segment info is lost here, see the segment masking todo in Bus::read8.
     address &= 0x1FFFFFFF; // KSEG masking
 
     // Main RAM first: nearly every instruction fetch and data access lands here, and this range overlaps none of the others
@@ -295,6 +319,7 @@ uint32_t Bus::read32(uint32_t address) {
         return value;
     }
 
+    /// @todo (bug): BCC (FFFE0130h) is raw storage, 32-bit only. psx-spx: bits 6 and 10 always read 0; TAG(2)/INV(1)/LOCK(0)/IS1(11) steer isolated-cache stores (see the CPU.cpp isolate todo); IBLKSZ (8-9) sets the i-cache refill burst; RAM(3)/DS(7) control the scratchpad mapping (clearing bit 3 unmaps it: loads update it but never hit).
     if (address == 0x1FFE0130) return cacheControlRegister;
 
     // Scratchpad RAM (0x1F800000 - 0x1F8003FF)
@@ -313,6 +338,7 @@ uint32_t Bus::read32(uint32_t address) {
     }
 
     // Memory Control (0x1F801000 - 0x1F801020)
+    /// @todo memory control regs (1F801000h-1F801020h) are raw storage and 32-bit. psx-spx: 1F801000h/04h bits 24-31 are fixed 1Fh; Delay/Size bits 21-23 are always 0 and bit 28 is a write-1-to-clear address-error flag; COM_DELAY bits 16-31 read 0. The base, size, width and delay fields have no effect (see the timing todo).
 	else if (address >= 0x1F801000 && address <= 0x1F801020) {
 		return memoryControlRegisters[(address - 0x1F801000) >> 2];
 	}
@@ -322,7 +348,13 @@ uint32_t Bus::read32(uint32_t address) {
         return sio0.read32(address);
     }
 
+    // Hardware Registers: SIO1 (Serial Port)
+    else if (address >= 0x1F801050 && address <= 0x1F80105F) {
+        return sio1.read32(address);
+    }
+
     // Hardware Registers: Interrupts (0x1F801070)
+    /// @todo psx-spx: I_STAT/I_MASK bits 11-15 read as zero and 16-31 are garbage; the raw stored values are returned.
     else if (address == Hardware::REG_INTERRUPT_STATUS) {
         return interruptStatus;
     }
@@ -358,13 +390,7 @@ uint32_t Bus::read32(uint32_t address) {
 		return mdec.readData();
 	}
 
-    // Hardware Registers: SIO1 (Memory Card / Serial)
-    else if (address >= 0x1F801050 && address <= 0x1F80105E) {
-        std::cout << "FATAL: Unimplemented SIO1 access at 0x" << std::hex << address << "\n";
-        exit(1);
-    }
-
-     // SPU
+    // SPU
     else if(address >= 0x1F801C00 && address <= 0x1F801FFF) {
         return spu.read32(address);
     }
@@ -376,18 +402,18 @@ uint32_t Bus::read32(uint32_t address) {
         return bios[offset] | (bios[offset + 1] << 8) | (bios[offset + 2] << 16) | (bios[offset + 3] << 24);
     }
 
-    if (address >= 0x1F801050 && address < 0x1F801060) return static_cast<uint32_t>(sio1Read(address, 4));
-
     if (isOpenBus(address)) {
         return 0xFFFFFFFF;
     }
 
+    /// @todo psx-spx: unmapped regions raise a Bus Error (DBE), see the todo in Bus::read8.
     std::cout << "FATAL: Unhandled read32 at address: 0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << address << "\n";
     exit(1);
 }
 
 
 void Bus::write32(uint32_t address, uint32_t value) {
+    /// @todo (bug): segment info is lost here, see the segment masking todo in Bus::read8.
     address &= 0x1FFFFFFF; // KSEG masking
 
     // Scratchpad RAM (0x1F800000 - 0x1F8003FF)
@@ -411,6 +437,7 @@ void Bus::write32(uint32_t address, uint32_t value) {
     }
 
     // Memory Control (0x1F801000 - 0x1F801020)
+    /// @todo memory control regs (1F801000h-1F801020h) are raw storage and 32-bit. psx-spx: 1F801000h/04h bits 24-31 are fixed 1Fh; Delay/Size bits 21-23 are always 0 and bit 28 is a write-1-to-clear address-error flag; COM_DELAY bits 16-31 read 0. The base, size, width and delay fields have no effect (see the timing todo).
     else if (address >= 0x1F801000 && address <= 0x1F801020) {
         memoryControlRegisters[(address - 0x1F801000) >> 2] = value;
     }
@@ -420,7 +447,13 @@ void Bus::write32(uint32_t address, uint32_t value) {
         sio0.write32(address, value);
     }
 
+    // Hardware Registers: SIO1 (Serial Port)
+    else if (address >= 0x1F801050 && address <= 0x1F80105F) {
+        sio1.write32(address, value);
+    }
+
     // RAM Size Configuration (0x1F801060)
+    /// @todo (bug): 1F801060h (DRAM_CTRL/RAM_SIZE) is write-ignored and has NO read path, so a read hits the FATAL below (16-bit accesses also hit FATAL). psx-spx: R/W; bits 8-11 set the /RAS0 and /RAS1 bank sizes (1/2/4/8MB), bit 10 enables bank 1, and unmapped areas fault instead of mirroring. The 2MB-in-8MB mirrors exist only because the BIOS programs an 8MB bank (Wipeout shrinks it with SetMem). Bits 0-2 and 7 affect DMA/RAM timing.
     else if (address == 0x1F801060) {
         // Emulators can safely ignore physical RAM size configuration
     }
@@ -463,28 +496,21 @@ void Bus::write32(uint32_t address, uint32_t value) {
 		mdec.writeCommand(value);
 	}
 
-    // Hardware Registers: SIO1 (Memory Card / Serial)
-    else if (address >= 0x1F801050 && address <= 0x1F80105E) {
-        std::cout << "FATAL: Unimplemented SIO1 access at 0x" << std::hex << address << "\n";
-        exit(1);
-    }
-
     // SPU
     else if(address >= 0x1F801C00 && address <= 0x1F801FFF) {
         spu.write32(address, value);
     }
 
     // Cache Control (0x1FFE0130)
+    /// @todo (bug): BCC (FFFE0130h) is raw storage, 32-bit only. psx-spx: bits 6 and 10 always read 0; TAG(2)/INV(1)/LOCK(0)/IS1(11) steer isolated-cache stores (see the CPU.cpp isolate todo); IBLKSZ (8-9) sets the i-cache refill burst; RAM(3)/DS(7) control the scratchpad mapping (clearing bit 3 unmaps it: loads update it but never hit).
     else if (address == 0x1FFE0130) {
         cacheControlRegister = value; // not modelled, but it reads back what was written
-    }
-    else if (address >= 0x1F801050 && address < 0x1F801060) {
-        sio1Write(address, value, 4);
     }
     else if (isIgnoredWrite(address)) {
         // The hardware ignores these writes
     }
     else {
+        /// @todo psx-spx: unmapped regions raise a Bus Error (DBE), see the todo in Bus::read8.
         std::cout << "FATAL: Unhandled write32 at address: 0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << address << "\n";
         exit(1);
     }
@@ -522,29 +548,13 @@ void Bus::advanceClock(int cycles) {
         lastSio0Int = currentSio0Int;
     }
 
+    sio1.advanceClock(cycles);
+    
+    if (sio1.consumeInterruptRequest()) {
+        interruptStatus |= Hardware::IRQ_SIO1;
+    }
+
     timers.advanceClock(cycles);
     spu.advanceClock(cycles);
 };
 
-
-
-//Privates
-uint32_t Bus::sio1Read(uint32_t address, int bytes) const {
-    uint32_t offset = address - 0x1F801050;
-    uint32_t result = 0;
-    for (int i = 0; i < bytes; i++) {
-        uint32_t byteOffset = offset + i;
-        uint8_t byteValue = sio1Registers[byteOffset & 0xF];
-        if (byteOffset >= 4 && byteOffset < 8) byteValue = (0x00000005 >> ((byteOffset - 4) * 8)) & 0xFF; // SIO1_STAT: TX ready, TX empty
-        result |= static_cast<uint32_t>(byteValue) << (8 * i);
-    }
-    return result;
-}
-
-
-void Bus::sio1Write(uint32_t address, uint32_t value, int bytes) {
-    uint32_t offset = address - 0x1F801050;
-    for (int i = 0; i < bytes; i++) {
-        sio1Registers[(offset + i) & 0xF] = (value >> (8 * i)) & 0xFF;
-    }
-}

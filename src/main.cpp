@@ -16,6 +16,7 @@ int main(int argc, char* argv[]) {
     //Tomb Raider (USA)/Tomb Raider (USA).cue
     //Resident Evil 2 (USA) (Disc 1)/Resident Evil 2 (USA) (Disc 1).cue
     //Resident Evil 2 (USA) (Disc 2)/Resident Evil 2 (USA) (Disc 2).cue
+    //Crash Bandicoot 2 - Cortex Strikes Back (USA)/Crash Bandicoot 2 - Cortex Strikes Back (USA).cue
 
     // Initialize SDL video and event subsystems
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {

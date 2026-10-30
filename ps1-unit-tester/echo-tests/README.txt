@@ -53,3 +53,11 @@ Tests
                    order and out of order, never more than 2352 bytes written, the last sector reads, the one after it and the largest
                    sector number do not, an incomplete sector at the end of a truncated image is not returned, a MODE1/2352 image reads like
                    any other, and reads fail (without crashing) with no disc or after the BIN file is removed.
+  dma_interrupt_control : the DMA interrupt register (DICR) and how a finished transfer reaches I_STAT bit 3 (IRQ3): the bit layout (which bits hold
+                   what is written, which read 0, which cannot be set), a flag latching only when its channel's enable bit is set and clearing
+                   when a 1 is written to it, the flag following the channel number (channels 6 and 2), the force bit, the master enable, IRQ3 being
+                   raised on the 0 -> 1 edge of bit 31 and not while it stays 1, I_MASK gating, and DICR / DPCR read through byte and halfword
+                   accesses (each in its own child process, because the Bus prints FATAL and exits on an access it does not handle). Finished
+                   transfers are made with the ordering-table clear channel, which only writes RAM. Left out because the hardware behaviour is
+                   not confirmed: byte/halfword writes to DICR, a flag latching while the master enable is off, and whether bit 31 follows
+                   "enable AND flag" or just "flag".

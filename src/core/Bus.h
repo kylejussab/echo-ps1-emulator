@@ -10,18 +10,19 @@
 #include "../cdrom/CDROM.h"
 #include "../gpu/GPU.h"
 #include "../mdec/MDEC.h"
-#include "../io/SIO.h"
+#include "../io/SIO0.h"
+#include "../io/SIO1.h"
 #include "../spu/SPU.h"
 
 
-/// @brief Emulates the MIPS R3000A CPU, managing instruction execution, the delay slot pipeline, and Coprocessor state.
 class Bus {
 public:
     Bus();
 
     GPU& getGPU() { return gpu; }
     CDROM& getCDROM() { return cdrom; }
-    SIO& getSIO() { return sio0; }
+    SIO0& getSIO0() { return sio0; }
+    SIO1& getSIO1() { return sio1; }
     SPU& getSPU() { return spu; }
     MDEC& getMDEC() { return mdec; }
 
@@ -92,7 +93,8 @@ public:
 private:
     GPU gpu;
     CDROM cdrom;
-    SIO sio0;
+    SIO0 sio0;
+    SIO1 sio1;
     SPU spu;
     MDEC mdec;
     DMA dma;
@@ -111,34 +113,17 @@ private:
     uint32_t memoryControlRegisters[9] = {};
     uint32_t cacheControlRegister = 0; // 0x1FFE0130
 
-    uint8_t sio1Registers[16] = {};
-
     uint64_t totalFrames = 0;
 
     // Video mode last selected through GP1 (08h) bit 3: false = NTSC, true = PAL. Drives the timers' scanline length.
     bool palMode = false;
-
-
-    /// @brief Reads from the SIO1 (Serial Port 1) register block.
-    /// @param address The 32-bit physical memory address.
-    /// @param bytes The size of the read operation (1, 2, or 4 bytes).
-    /// @return The value read from the dummy register storage.
-    /// @note SIO1 is currently unimplemented; this serves as a stub to prevent memory faults.
-    uint32_t sio1Read(uint32_t address, int bytes) const;
-
-
-    /// @brief Writes to the SIO1 (Serial Port 1) register block.
-    /// @param address The 32-bit physical memory address.
-    /// @param value The value to write.
-    /// @param bytes The size of the write operation (1, 2, or 4 bytes).
-    /// @note SIO1 is currently unimplemented; this serves as a stub to prevent memory faults.
-    void sio1Write(uint32_t address, uint32_t value, int bytes); 
     
     
     /// @brief Checks if a physical address belongs to an unconnected expansion region.
     /// @param address The 32-bit physical memory address.
     /// @return True if the address is open bus (reads return 0xFF).
     /// @note Real expansion 3 reads back some bytes you wrote, but all-ones is acceptable for most cases.
+    /// @todo region sizes are approximations. psx-spx/iomap.md: DEV0 is 512KB by default (1F801008h bits 16-20), DEV8 128 bytes (1F80101Ch, 1F802000h-1F80207Fh) and DEV1 1 byte (1F80100Ch), with maximums of 8MB, 8KB and 2MB. Accesses past the configured size cause a bus exception, so 1F080000h-1F7FFFFFh, 1F802080h+ and 1FA00001h+ should fault instead of reading 0xFF. DEV8 is 8K max (1F802000h-1F803FFFh) but only its first 4K is open bus here. DEV8 uses an 8-bit bus and iomap says 16-bit access may crash. read8's expansion-1 check also includes 1F080000h itself.
     static bool isOpenBus(uint32_t address) {
         return (address >= 0x1F000000 && address < 0x1F800000)   // Expansion region 1 (no cartridge)
             || (address >= 0x1F802000 && address < 0x1F803000)   // Expansion region 2

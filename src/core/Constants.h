@@ -16,6 +16,8 @@ namespace Hardware {
 
     constexpr uint32_t BIOS_ROM_START = 0x1FC00000;
     constexpr uint32_t BIOS_ROM_END = 0x1FC80000;
+
+    /// @todo (timing): fixed 24-cycle ROM fetch. psx-spx derives access time from DEV2 Delay/Size (1F801010h), COM_DELAY (1F801020h) and the bus width (a 32-bit access on an 8-bit bus is 4 byte accesses, 1ST + 3xSEQ). The BIOS boots with the slowest settings and speeds up after writing 1F801010h. SPU, CD-ROM and expansion accesses use their own delay registers (1F801014h/18h/08h/1Ch).
     constexpr int BIOS_ROM_FETCH_CYCLES = 24; // Cost of fetching one instruction word from ROM
     
     // ardware Register Base Addresses
@@ -41,6 +43,7 @@ namespace Hardware {
     constexpr uint16_t IRQ_TIMER2  = 0x0040; // Bit 6: Timer 2
     constexpr uint16_t IRQ_PAD_MEM = 0x0080; // Bit 7: Controller & Memory Card (SIO0)
     constexpr uint16_t IRQ_SIO0    = 0x0080; // Alias for Bit 7 to keep code intent clear
+    constexpr uint16_t IRQ_SIO1    = 0x0100; // Bit 8: Serial Port 1 (SIO1)
     constexpr uint16_t IRQ_SPU     = 0x0200; // Bit 9: SPU
 
     // GPU Memory & Display Defaults

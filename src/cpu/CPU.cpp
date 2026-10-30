@@ -1,6 +1,6 @@
+#include <iostream>
 #include "CPU.h"
 #include "../core/Constants.h"
-#include <iostream>
 
 
 CPU::CPU(Bus* bus) : bus(bus) {
@@ -17,23 +17,40 @@ CPU::CPU(Bus* bus) : bus(bus) {
 
 void CPU::step() {
     bool globalInterruptsEnabled = (coprocessor0Registers[12] & 0x1) != 0;
+
+    /// @todo (bug): CAUSE.IP2 (bit 10) should continuously mirror (I_STAT & I_MASK). Also, software interrupts (CAUSE bits 8-9 with SR.IM0/IM1) never raise an exception here.
+
     bool hardwareInterruptsUnmasked = (coprocessor0Registers[12] & 0x400) != 0;
 
     isDelaySlot = nextIsDelaySlot;
     nextIsDelaySlot = false;
 
-    if (bus->hasPendingInterrupts() && globalInterruptsEnabled && hardwareInterruptsUnmasked) {
-        if (!isDelaySlot) {
-            // Flush any pending load from the previous instruction before jumping
-            if (pendingLoadRegister != 0) {
-                setRegister(pendingLoadRegister, pendingLoadValue);
-                pendingLoadRegister = 0;
-                pendingLoadValue = 0;
-            }
+    /// @todo (bug): exception priority is not modelled. psx-spx order: data AdEL/AdES/DBE > Ovf > Int > Sys/Bp/RI/CpU > fetch errors. The IRQ is checked before the instruction runs, so it always wins.
 
-            triggerHardwareInterrupt();
-            bus->advanceClock(1);
-            return; 
+    if (bus->hasPendingInterrupts() && globalInterruptsEnabled && hardwareInterruptsUnmasked) {
+        /// @todo (bug): IRQs are never taken inside a branch delay slot. psx-spx says they are: CAUSE.BD=1 and EPC points back at the branch, which re-executes on return (this is also why JALR with rs==rd is dangerous).
+
+        if (!isDelaySlot) {
+            uint32_t fetchAddress = programCounter & 0x1FFFFFFF;
+            bool peekable = fetchAddress < 0x00800000 || (fetchAddress >= Hardware::BIOS_ROM_START && fetchAddress < Hardware::BIOS_ROM_END);
+            
+            /// @todo psx-spx: an IRQ on a GTE command is taken, the command still executes, and EPC points AT the GTE command (the BIOS handler then skips it with epc+4). Here the IRQ is deferred past the command instead, so EPC never points at it.
+            
+            bool nextIsGteCommand = peekable && ((bus->read32(programCounter) >> 25) == 0x25);
+
+
+            if (!nextIsGteCommand) {
+                // Flush any pending load from the previous instruction before jumping
+                if (pendingLoadRegister != 0) {
+                    setRegister(pendingLoadRegister, pendingLoadValue);
+                    pendingLoadRegister = 0;
+                    pendingLoadValue = 0;
+                }
+
+                triggerHardwareInterrupt();
+                bus->advanceClock(1);
+                return; 
+            }
         }
     }
 
@@ -47,6 +64,8 @@ void CPU::step() {
     pendingLoadValue = 0;
 
     currentProgramCounter = programCounter;
+
+    /// @todo (bug): if (programCounter & 3), raise AdEL (ExcCode 0x04) with EPC = the bad address. JR/JALR to an unaligned target is never checked (psx-spx: AdEL on the next fetch).
     
     // Bus Error on Instruction fetch (ExcCode 6). Hardware-verified by ps1-tests cpu/code-in-io for exactly these three places:
     // scratchpad, the interrupt registers and MDEC. Fetching from the SPU registers, DMA0 and the DMA control register does NOT
@@ -64,6 +83,8 @@ void CPU::step() {
         bus->advanceClock(1);
         return;
     }
+
+    /// @todo (bug): instruction fetch bypasses iCache entirely. psx-spx (memorymap.md): the i-cache is direct-mapped, 256 lines x 4 words indexed by address bits [11:4], tag = physical address[31:12] | per-word valid[3:0], active only for KUSEG/KSEG0 (KSEG1 bypasses). Stores to RAM never touch it, so stale code keeps executing until an explicit flush (Formula One 2001 relies on this). A miss fills from the accessed word to the end of the line (IBLKSZ=0 limits a miss at word 0 to 2 words); a tag match with a clear valid bit refills the whole line.
 
     uint32_t instruction = bus->read32(programCounter);
 
@@ -113,6 +134,8 @@ void CPU::jumpTo(uint32_t address) {
 
 //Privates
 bool CPU::isInstructionCacheIsolated() const {
+    /// @todo (bug): the isolated-cache model is partial. psx-spx: with SR.IsC=1 ALL loads and stores target the cache (loads here still read the bus; SB/SH/SWL/SWR are dropped). BCC (FFFE0130h) picks the target: TAG+IS1 writes the tag, tag = (data & 0Fh) | (write offset & FFFFF000h), so the low 4 data bits are the valid bits (this is how the BIOS flushes); IS1 alone writes the code words. SW here always writes data+tag+valid from the address. TAG-mode loads return valid bits [3:0] plus a tag-match bit 4; SR.CM (bit 19) is never set.
+
     uint32_t statusRegister = coprocessor0Registers[12];
     // Sony's custom CPU isolates the I-Cache using ONLY Bit 16
     return (statusRegister & 0x00010000) != 0;
@@ -196,6 +219,8 @@ void CPU::execute(uint32_t instruction) {
                     break;
                 }
                 case 0x10: { // MFHI (Move From HI Register)
+                    /// @todo (timing): stall until the pending mul/div finishes (not implemented).
+
                     setRegister(registerTarget, hi);
                     break;
                 }
@@ -204,6 +229,8 @@ void CPU::execute(uint32_t instruction) {
                     break;
                 }
                 case 0x12: { // MFLO (Move from LO Register)
+                    /// @todo (timing): stall until the pending mul/div finishes (not implemented).
+
                     setRegister(registerTarget, lo);
                     break;
                 }
@@ -212,6 +239,9 @@ void CPU::execute(uint32_t instruction) {
                     break;
                 }
                 case 0x18: { // MULT (Multiply Signed)
+                    /// @todo (timing): MULT/MULTU take 6/9/13 cycles by rs, DIV/DIVU 36 (see docs cpu.md section 10).
+                    /// Record a ready-clock here; MFHI/MFLO and the next mul/div should stall until it.
+
                     int64_t value1 = static_cast<int64_t>(static_cast<int32_t>(getRegister(registerFirstSource)));
                     int64_t value2 = static_cast<int64_t>(static_cast<int32_t>(getRegister(registerSecondSource)));
                     
@@ -336,6 +366,9 @@ void CPU::execute(uint32_t instruction) {
                     break;
                 }
                 default: {
+                    /// @todo hardware raises RI (triggerException(0x0A)) for reserved opcodes; this prints and exit(1)s.
+                    /// Switch reserved encodings to RI once missing-instruction debugging is no longer needed.
+
                     std::cout << "Unimplemented R-Type function: 0x" << std::hex << function << " at PC: 0x" << (programCounter - Hardware::INSTRUCTION_SIZE) << std::endl;
                     exit(1);
                 }
@@ -369,6 +402,9 @@ void CPU::execute(uint32_t instruction) {
                 }
                 case 0x10: { // BLTZAL (Branch if Less Than Zero And Link)
                     nextIsDelaySlot = true;
+
+                    /// @todo (bug): if registerSource == 31, the comparison must use $ra's value from BEFORE linking (according to psx-spx). Read/compare first, then call setRegister(31, ...).
+
                     setRegister(31, programCounter + Hardware::INSTRUCTION_SIZE); 
                     
                     if (static_cast<int32_t>(getRegister(registerSource)) < 0) {
@@ -378,6 +414,9 @@ void CPU::execute(uint32_t instruction) {
                 }
                 case 0x11: { // BGEZAL (Branch if Greater Than or Equal to Zero And Link)
                     nextIsDelaySlot = true;
+
+                    /// @todo (bug): if registerSource == 31, the comparison must use $ra's value from BEFORE linking (according to psx-spx). Read/compare first, then call setRegister(31, ...).
+
                     setRegister(31, programCounter + Hardware::INSTRUCTION_SIZE); 
                     
                     if (static_cast<int32_t>(getRegister(registerSource)) >= 0) {
@@ -460,7 +499,8 @@ void CPU::execute(uint32_t instruction) {
 
             break;
         }
-        case 0x08: { // ADDI (Add Immediate) // TODO: Implement signed overflow exception (Coprocessor 0)
+        case 0x08: { // ADDI (Add Immediate)
+            /// @todo (bug): raise Ovf (triggerException(0x0C)) on signed overflow like ADD does. Currently wraps silently.
             uint32_t registerSource = (instruction >> 21) & 0x1F;
             uint32_t registerTarget = (instruction >> 16) & 0x1F;
             int32_t immediate = signExtend16(instruction & 0xFFFF);
@@ -540,7 +580,10 @@ void CPU::execute(uint32_t instruction) {
             setRegister(registerTarget, immediate << 16);
             break;
         }
-        case 0x10: { // Coprocessor 0 
+        case 0x10: { // Coprocessor 0
+            /// @todo COP0 debug registers (r3 BPC, r5 BDA, r7 DCIC, r9 BDAM, r11 BPCM) are plain storage. psx-spx: breakpoint/trace matches set DCIC status bits and jump to 80000040h (ExcCode 09h), and DCIC has jump-redirect bits. None of that exists.
+            /// @todo (bug): psx-spx says cop0r0-r2, r4 and r10 raise RI (ExcCode 0Ah) when read, and cop0r16-r31 return garbage WITHOUT an exception, even in user mode with CU0=0 (the CU0 check above would raise CpU for them).
+
             // Kernel mode (Status.KUc = bit 1 clear) can always use COP0; user mode needs Status.CU0
             if ((coprocessor0Registers[12] & 0x2) && !isCoprocessorEnabled(0)) {
                 triggerCoprocessorUnusable(0);
@@ -551,6 +594,9 @@ void CPU::execute(uint32_t instruction) {
 
             switch (coprocessorOopcode) {
                 case 0x00: { // MFC0 (Move From Coprocessor 0)
+                    /// @todo psx-spx says coprocessor reads have a 1-instruction load delay. 
+                    /// This writes the register immediately; queue via pendingLoadRegister/pendingLoadValue like loads.
+
                     uint32_t registerTarget = (instruction >> 16) & 0x1F;
                     uint32_t coprocessor0Register = (instruction >> 11) & 0x1F;
                     
@@ -558,6 +604,9 @@ void CPU::execute(uint32_t instruction) {
                     break;
                 }
                 case 0x04: { // MTC0 (Move To Coprocessor 0)
+                    /// @todo CAUSE is read-only except bits 8-9, and EPC/PRID/BadVaddr/TAR (r6) are read-only. SR bits 6-7, 23-24 and 26-27 and DCIC (r7) bits 6-11 and 16-22 always read zero.
+                    /// Apply per-register write masks instead of raw storage.
+
                     uint32_t cpuRegisterSource = (instruction >> 16) & 0x1F;
                     uint32_t coprocessor0RegisterTarget = (instruction >> 11) & 0x1F;
 
@@ -565,6 +614,8 @@ void CPU::execute(uint32_t instruction) {
                     break;
                 }
                 case 0x10: { // RFE (Return From Exception)
+                    /// @todo (bug): dispatch is on rs only; psx-spx says only function field 10h is RFE. TLBR/TLBWI/TLBWR/TLBP (function 01h/02h/06h/08h) should raise RI (ExcCode 0Ah) but currently execute as RFE.
+
                     uint32_t statusRegister = coprocessor0Registers[12];
                     
                     uint32_t mode = statusRegister & 0x0000003F;
@@ -574,6 +625,8 @@ void CPU::execute(uint32_t instruction) {
                     break;
                 }
                 default: {
+                    /// @todo (bug): psx-spx says CFC0/CTC0 (rs=2/6) and BC0F/BC0T (rs=8) are unsupported and raise Coprocessor Unusable (ExcCode 0Bh). This prints and exit(1)s instead (fine while debugging, same reasoning as the R-type RI todo).
+
                     // Hardware-verified (ps1-tests cpu/cop): unknown COP0 "CO" commands (rs >= 0x10) do nothing
                     if (coprocessorOopcode >= 0x10) break;
 
@@ -589,6 +642,7 @@ void CPU::execute(uint32_t instruction) {
             break;
         }
         case 0x12: { // Coprocessor 2 (Geometry Transformation Engine)
+            /// @todo psx-spx: setting SR.CU2 (bit 30) takes effect about 2 cycles late. The enable is instant here.
             if (!isCoprocessorEnabled(2)) { triggerCoprocessorUnusable(2); break; }
             if (instruction & 0x02000000) { // Bit 25
                 gte.executeCommand(instruction);
@@ -600,18 +654,26 @@ void CPU::execute(uint32_t instruction) {
 
             switch (coprocessor2Opcode) {
                 case 0x00: { // MFC2 (Move From Coprocessor 2 Data Register)
+                    /// @todo psx-spx says coprocessor reads have a 1-instruction load delay. 
+                    /// This writes the register immediately; queue via pendingLoadRegister/pendingLoadValue like loads.
+
                     uint32_t registerTarget = (instruction >> 16) & 0x1F;
                     uint32_t gteRegister = (instruction >> 11) & 0x1F;
                     setRegister(registerTarget, gte.readDataRegister(gteRegister));
                     break;
                 }
                 case 0x02: { // CFC2 (Move From Coprocessor 2 Control Register)
+                    /// @todo psx-spx says coprocessor reads have a 1-instruction load delay. 
+                    /// This writes the register immediately; queue via pendingLoadRegister/pendingLoadValue like loads.
+
                     uint32_t registerTarget = (instruction >> 16) & 0x1F;
                     uint32_t gteRegister = (instruction >> 11) & 0x1F;
                     setRegister(registerTarget, gte.readControlRegister(gteRegister));
                     break;
                 }
                 case 0x04: { // MTC2 (Move To Coprocessor 2 Data Register)
+                    /// @todo psx-spx: writes to COP2 registers (MTC2/CTC2) take 2-3 cycles to land (3 for IRGB, which also updates IR1-3). Writes are instant here.
+
                     uint32_t cpuRegisterSource = (instruction >> 16) & 0x1F;
                     uint32_t gteRegisterTarget = (instruction >> 11) & 0x1F;
                     gte.writeDataRegister(gteRegisterTarget, getRegister(cpuRegisterSource));
@@ -635,6 +697,7 @@ void CPU::execute(uint32_t instruction) {
             if (!isCoprocessorEnabled(coprocessorNumber)) triggerCoprocessorUnusable(coprocessorNumber);
             break;
         }
+        /// @todo (bug): data bus error (DBE, ExcCode 07h) is never raised, and no address errors for bad segments. psx-spx: unused regions (including gaps in the I/O region) cause a Bus Error (Bus.cpp currently exit(1)s there); in user mode, accesses outside KUSEG raise AdEL/AdES with BadVaddr set.
         case 0x20: { // LB (Load Byte)
             uint32_t registerSource = (instruction >> 21) & 0x1F;
             uint32_t registerTarget = (instruction >> 16) & 0x1F;
@@ -770,6 +833,9 @@ void CPU::execute(uint32_t instruction) {
             break;
         }
         case 0x28: { // SB (Store Byte)
+            /// @todo (bug): for 8/16-bit stores to I/O registers, hardware puts all 32 bits of the GPR on the bus (psx-spx: soundscope's `sh` to DMA registers depends on it). 
+            /// Only the low bits reach the bus here; needs a Bus write API that receives the full register value.
+
             uint32_t registerSource = (instruction >> 21) & 0x1F;
             uint32_t registerTarget = (instruction >> 16) & 0x1F;
             int32_t immediate = signExtend16(instruction & 0xFFFF);
@@ -782,6 +848,9 @@ void CPU::execute(uint32_t instruction) {
             break;
         }
         case 0x29: { // SH (Store Halfword)
+            /// @todo (bug): for 8/16-bit stores to I/O registers, hardware puts all 32 bits of the GPR on the bus (psx-spx: soundscope's `sh` to DMA registers depends on it). 
+            /// Only the low bits reach the bus here; needs a Bus write API that receives the full register value.
+
             uint32_t registerSource = (instruction >> 21) & 0x1F;
             uint32_t registerTarget = (instruction >> 16) & 0x1F;
             int32_t immediate = signExtend16(instruction & 0xFFFF);
@@ -818,6 +887,7 @@ void CPU::execute(uint32_t instruction) {
             break;
         }
         case 0x2B: { // SW (Store Word)
+            /// @todo psx-spx: stores go through a 4-word write queue and the CPU stalls only when it is full. Stores always cost one cycle here. (Ordering effects on hardware registers: see Bus.cpp.)
             uint32_t registerSource = (instruction >> 21) & 0x1F;
             uint32_t registerTarget = (instruction >> 16) & 0x1F;
             int32_t immediate = signExtend16(instruction & 0xFFFF);
@@ -862,6 +932,7 @@ void CPU::execute(uint32_t instruction) {
             bus->write32(alignedAddress, newValue);
             break;
         }
+        /// @todo (bug): psx-spx says LWC0/SWC0 are unsupported and ALWAYS raise Coprocessor Unusable (ExcCode 0Bh). Here CpU only fires when CU0 is clear. If this was hardware-verified, replace this todo with a "hardware-verified" note.
         case 0x30: case 0x31: case 0x33:   // LWC0/1/3
         case 0x38: case 0x39: case 0x3B: { // SWC0/1/3
             uint32_t coprocessorNumber = (instruction >> 26) & 0x3;
@@ -900,6 +971,8 @@ void CPU::execute(uint32_t instruction) {
             break;
         }
         default: {  // The Safety Net Crash
+            /// @todo (bug): psx-spx says every N/A primary opcode raises RI (ExcCode 0Ah); this prints and exit(1)s. The isGarbage list also treats 2Ch/2Dh as "valid" although psx-spx marks them N/A. Switch to RI together with the R-type todo.
+
             uint32_t opcode = instruction >> 26;
             bool isGarbage = true;
 
@@ -939,6 +1012,9 @@ void CPU::triggerCoprocessorUnusable(uint32_t coprocessorNumber) {
 
 
 void CPU::triggerException(uint32_t cause) {
+    /// @todo BadVaddr (COP0 r8) must be set on AdEL/AdES (the faulting address). Never set today.
+    /// @todo CAUSE.BT (bit 30) and TAR (cop0r6) are never written. psx-spx: for an exception in a delay slot, BT says whether the branch is taken and TAR holds its destination.
+
     if (isDelaySlot) {
         coprocessor0Registers[14] = currentProgramCounter - Hardware::INSTRUCTION_SIZE; 
         
@@ -975,6 +1051,10 @@ void CPU::triggerException(uint32_t cause) {
 void CPU::triggerHardwareInterrupt() {
     // Save the current instruction's address to EPC
     coprocessor0Registers[14] = programCounter; 
+
+
+    /// @todo (bug): IP2 is set here but nothing ever clears it; see the TODO at the top of step().
+
     
     // Preserve IP bits (8-15), clear ExcCode (2-6) and BD (31), and hard-assert IP2 (Bit 10)
     coprocessor0Registers[13] = (coprocessor0Registers[13] & 0x0000FF00) | (1 << 10); 
@@ -985,6 +1065,8 @@ void CPU::triggerHardwareInterrupt() {
 
     // Hijack the Program Counter based on the BEV bit (Bit 22)
     if (status & 0x00400000) {
+        /// @todo vector addresses are inconsistent: this uses 0x1FC00180, triggerException uses 0xBFC00180, and reset uses 0x1FC00000 (constructor). psx-spx lists BFC00180h / BFC00000h. Harmless while the I-cache is not modelled.
+
         programCounter = 0x1FC00180;
     } 
     else {
@@ -996,6 +1078,8 @@ void CPU::triggerHardwareInterrupt() {
 
 
 void CPU::chargeLoad(uint32_t address) {
+    /// @todo psx-spx gives Main RAM a 6-cycle access time; 7 extra cycles is an empirical value for RE2 and not derived from that. Revisit once timing is modelled properly.
+
     // Empirical: 7 was the smallest value that made RE2's second movie start. Not a measured RAM latency.
     constexpr int RAM_LOAD_EXTRA_CYCLES = 7;
     if ((address & 0x1FFFFFFF) < 0x00800000) bus->advanceClock(RAM_LOAD_EXTRA_CYCLES); // RAM and mirrors only; scratchpad and I/O untouched

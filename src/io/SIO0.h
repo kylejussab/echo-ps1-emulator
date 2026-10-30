@@ -4,7 +4,7 @@
 #include "io/DualShock.h"
 
 /// @brief Emulates the Serial Input/Output port 0 bus, managing communication between the console, controllers, and memory cards.
-class SIO {
+class SIO0 {
 public:
     /// @brief Reads an 8-bit value from a hardware register (e.g., the Receive First-In-First-Out buffer).
     /// @param address The absolute memory address being read.

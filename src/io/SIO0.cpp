@@ -1,7 +1,7 @@
-#include "SIO.h"
+#include "SIO0.h"
 
 
-uint8_t SIO::read8(uint32_t address) {
+uint8_t SIO0::read8(uint32_t address) {
     if (address == 0x1F801040) { // SIO_DATA
         statusRegister &= ~(1 << 1); // RX FIFO not empty (Receive Not Empty)
         return receiveFIFO;
@@ -10,7 +10,7 @@ uint8_t SIO::read8(uint32_t address) {
 }
 
 
-uint16_t SIO::read16(uint32_t address) {
+uint16_t SIO0::read16(uint32_t address) {
     switch (address) {
         case 0x1F801044: { // SIO_STAT (Status)
             return statusRegister;
@@ -31,7 +31,7 @@ uint16_t SIO::read16(uint32_t address) {
 }
 
 
-uint32_t SIO::read32(uint32_t address) {
+uint32_t SIO0::read32(uint32_t address) {
     switch (address) {
 		case 0x1F801040: { // SIO_DATA
 			return read8(address);
@@ -52,7 +52,7 @@ uint32_t SIO::read32(uint32_t address) {
 }
 
 
-void SIO::write8(uint32_t address, uint8_t value) {
+void SIO0::write8(uint32_t address, uint8_t value) {
     if (address == 0x1F801040) { // SIO_DATA
         transmitFIFO = value;
         if (controlRegister & (1 << 0)) { // Transmit Enable
@@ -62,7 +62,7 @@ void SIO::write8(uint32_t address, uint8_t value) {
 }
 
 
-void SIO::write16(uint32_t address, uint16_t value) {
+void SIO0::write16(uint32_t address, uint16_t value) {
     switch (address) {
         case 0x1F801048: { // SIO_MODE
             modeRegister = value;
@@ -97,7 +97,7 @@ void SIO::write16(uint32_t address, uint16_t value) {
 }
 
 
-void SIO::write32(uint32_t address, uint32_t value) {
+void SIO0::write32(uint32_t address, uint32_t value) {
     switch (address) {
         case 0x1F801040: { // SIO_DATA
             write8(address, value & 0xFF);
@@ -121,7 +121,7 @@ void SIO::write32(uint32_t address, uint32_t value) {
 }
 
 
-bool SIO::advanceClock() {
+bool SIO0::advanceClock() {
     if (transferCyclesRemaining <= 0 && !acknowledgePending && dataSetReadyPulseCycles <= 0) return false;
     return advanceClockSlowly();
 }
@@ -129,7 +129,7 @@ bool SIO::advanceClock() {
 
 
 // Privates
-bool SIO::advanceClockSlowly() {
+bool SIO0::advanceClockSlowly() {
     bool fireInterruptRequest = false;
 
     // The byte has finished shifting: the reply becomes readable and the pad may now pull /ACK
@@ -165,7 +165,7 @@ bool SIO::advanceClockSlowly() {
 }
 
 
-void SIO::processTransmit(uint8_t data) {
+void SIO0::processTransmit(uint8_t data) {
     uint8_t reply = 0xFF; // High-Z / nothing connected
     bool acknowledgeSignalPulled = false;
 
@@ -198,7 +198,7 @@ void SIO::processTransmit(uint8_t data) {
 }
 
 
-void SIO::deselect() {
+void SIO0::deselect() {
     activeDevice = Device::None;
     controller.resetTransfer();
     acknowledgePending = false;
@@ -208,7 +208,7 @@ void SIO::deselect() {
 }
 
 
-void SIO::softReset() {
+void SIO0::softReset() {
     statusRegister = (1 << 0) | (1 << 2);
     modeRegister = 0;
     controlRegister = 0;
@@ -218,7 +218,7 @@ void SIO::softReset() {
 }
 
 
-int SIO::calculateByteCycles() const {
+int SIO0::calculateByteCycles() const {
     int baudMultiplier = 1; 
 
     // The baud rate factor is defined by the lowest 2 bits of the mode register.
