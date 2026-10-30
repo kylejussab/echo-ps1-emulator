@@ -65,6 +65,8 @@ private:
 
 	Bus* bus;
 	Channel channels[CHANNEL_COUNT];
+
+    /// @todo (bug): psx-spx (dmachannels.md): DPCR resets to 07654321h (channel N has priority N+1, all channels disabled, CPU priority 0), not 07777777h. Only visible if something reads DPCR before the BIOS writes it, or once priority arbitration exists (see the arbitration todo in write32).
 	uint32_t controlRegister = 0x07777777; // Default PS1 startup value
 	uint32_t interruptControlRegister = 0;
 	std::vector<PendingCompletion> pendingCompletions;
@@ -105,6 +107,7 @@ private:
 	
 	
 	//Transfer Handlers
+    /// @todo psx-spx: DICR bit 15 (bus error, forces bit 31) is raised when a transfer reads/writes an address outside RAM. Only the linked-list terminator case sets it. Every handler masks with 0x001FFFFC, so addresses in 800000h-FFFFFFh mirror into RAM silently. "Outside RAM" is 8MB only with default memory settings, so this also depends on the RAM size register todo in Bus.cpp.
 	uint32_t performGPUTransfer(bool directionToRAM);
 	uint32_t performOrderingTableClearTransfer();
 	void performCDROMTransfer();

@@ -84,7 +84,7 @@ void CPU::step() {
         return;
     }
 
-    /// @todo (bug): instruction fetch bypasses iCache entirely. psx-spx (memorymap.md): the i-cache is direct-mapped, 256 lines x 4 words indexed by address bits [11:4], tag = physical address[31:12] | per-word valid[3:0], active only for KUSEG/KSEG0 (KSEG1 bypasses). Stores to RAM never touch it, so stale code keeps executing until an explicit flush (Formula One 2001 relies on this). A miss fills from the accessed word to the end of the line (IBLKSZ=0 limits a miss at word 0 to 2 words); a tag match with a clear valid bit refills the whole line.
+    /// @todo (bug): instruction fetch bypasses iCache entirely. psx-spx (memorymap.md): the i-cache is direct-mapped, 256 lines x 4 words indexed by address bits [11:4], tag = physical address[31:12] | per-word valid[3:0], active only for KUSEG/KSEG0 (KSEG1 bypasses). Stores to RAM never touch it, so stale code keeps executing until an explicit flush (Formula One 2001 relies on this). A miss fills from the accessed word to the end of the line (IBLKSZ=0 limits a miss at word 0 to 2 words); a tag match with a clear valid bit refills the whole line. DMA writes (DMA.cpp goes through Bus::write32) must not invalidate it either, so keep the cache inside the CPU rather than hooking Bus::write32.
 
     uint32_t instruction = bus->read32(programCounter);
 

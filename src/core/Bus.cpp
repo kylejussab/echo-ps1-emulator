@@ -467,6 +467,7 @@ void Bus::write32(uint32_t address, uint32_t value) {
     }
 
     // Hardware Registers: DMA (0x1F801080 - 0x1F8010FF)
+    /// @todo psx-spx (memorymap.md, "Write queue"): in KUSEG/KSEG0 a store to a DMA register sits in the CPU's 4-entry write queue and reaches the hardware later than the store instruction itself (the doc's flash example shows loads overtaking queued stores). Sony code writes 4 dummy values to force a flush, and any KSEG1 access flushes the whole queue. DMA starts at the CHCR store here, so a transfer begins earlier than on hardware. The queue isn't modelled, see the segment masking todo in Bus::read8.
     else if (address >= 0x1F801080 && address <= 0x1F8010FF) {
   		dma.write32(address, value);
   	}
@@ -521,6 +522,7 @@ void Bus::advanceClock(int cycles) {
     // Feed cycles to the CD-ROM state machine
     cdrom.advanceClock(cycles);
 
+    /// @todo psx-spx (dmachannels.md "CPU Operation during DMA", memorymap.md "Write queue"): the CPU keeps running during DMA only on cache/scratchpad/COP0/GTE plus the 4-entry write queue. Any RAM or I/O read (including reads of the DMA registers themselves, so a CHCR bit 24 polling loop would see a finished burst at once), or a 5th queued write, stalls it until the DMA finishes. It resumes between SyncMode 1 blocks, SyncMode 2 nodes and chopping windows. DMA here runs instantly inside the CHCR write, so the CPU never stalls. Needs a "DMA busy until cycle N" the CPU can query (Bus::read32's RAM path / advanceClock). The write queue exists only in KUSEG/KSEG0 and any KSEG1 access flushes the whole queue first, so this also needs the unmasked address (see the segment masking todo in Bus::read8).
     dma.advanceClock(cycles);
 
     bool currentCDROMInt = cdrom.checkInterrupt();
