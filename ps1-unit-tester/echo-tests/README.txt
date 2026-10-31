@@ -61,3 +61,25 @@ Tests
                    transfers are made with the ordering-table clear channel, which only writes RAM. Left out because the hardware behaviour is
                    not confirmed: byte/halfword writes to DICR, a flag latching while the master enable is off, and whether bit 31 follows
                    "enable AND flag" or just "flag".
+  sio_pad_protocol : the controller on SIO0, driven the way a game drives it (bytes to JOY_DATA, replies back, /ACK watched in JOY_STAT). Byte-exact
+                   transactions: the digital poll (FF 41 5A FF FF) and analog poll (FF 73 5A ...), /ACK after every byte but the last, configuration
+                   mode (enter, exit, ID F3h), the status and constant queries, setting the analog mode and its lock, the rumble mapping, and who
+                   answers (dropping DTR restarts a packet, nothing on port 2, nothing at the memory card address, nothing with DTR low).
+                   There is no host gamepad in a test run, so every poll reads "nothing pressed, sticks centred": button bit positions and stick byte
+                   order cannot be checked until the pad can be fed values. Left out because the hardware behaviour is not confirmed: unknown commands,
+                   a poll sent in configuration mode, the first rumble-mapping reply, the exact cycle of /ACK.
+  sio_registers : the SIO0 registers: power-on JOY_STAT, readback of JOY_MODE / JOY_CTRL / JOY_BAUD (bits 4 and 6 of JOY_CTRL write-only), 16- and
+                   32-bit layout, the status bits while a byte shifts, the byte time (8 * reload * multiplier cycles for multipliers 1, 16, 64), the
+                   /ACK pulse and the interrupt flag it raises (only with the DSR interrupt enabled, cleared by JOY_CTRL bit 4), the reset bit, byte and
+                   halfword reads of the registers, and IRQ7 reaching I_STAT through the Bus. Left out because the hardware behaviour is not confirmed:
+                   narrow writes, the baud timer in JOY_STAT, writing JOY_DATA with transmit disabled, a baud reload of 0.
+  sio1_registers : the SIO1 (serial port) registers, against the stable psx-spx page: power-on STAT, readback of MODE / CTRL / BAUD, the bits that
+                   are always zero (MODE 8-15, CTRL 14-15) and the write-only CTRL bits 4 and 6, 32-bit layout, the baud timer in STAT (loaded with
+                   reload * factor / 2 on a write to BAUD, down one per cycle), what a read of DR returns at 8, 16 and 32 bits (the FIFO preview and
+                   how many entries each width removes), and byte reads of the 16-bit registers. Left out because the page says "probably" or gives no
+                   value: SIO1_MISC, STAT bits 0 and 2 at power-on, the RX input level, an empty-FIFO read, narrow writes.
+  sio1_transfer : SIO1 sending and receiving: frame time at several baud and frame settings (start, 5-8 data, parity, 1 / 1.5 / 2 stop bits, floor of
+                   the divisor), the TX status bits, two bytes back to back, DR written again while busy (overwrite), TXEN, CTS, baud factor 0 (STOP),
+                   the 8-byte RX FIFO with its overrun, RXEN clearing the FIFO, the RX interrupt level (1, 2, 4, 8 bytes) and its acknowledge, the DSR
+                   and CTS inputs, reset, and IRQ8 reaching I_STAT through the Bus. Left out: the TX interrupt, parity and framing errors, the
+                   latched-TXEN quirk, an empty-FIFO read, what a reset does to BAUD.

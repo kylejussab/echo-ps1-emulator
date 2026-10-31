@@ -104,6 +104,7 @@ private:
     int readCycleTimer = 0;
     uint32_t seekTargetLogicalBlockAddress = 0;
     uint32_t currentReadLogicalBlockAddress = 0;
+    /// @todo (accuracy): sectorBuffer isn't zero-initialised (compactDiscDigitalAudioBuffer is). GetlocL before the first read returns indeterminate bytes.
     uint8_t sectorBuffer[2352];
     bool speedChangePending = false;
     int pendingInitializationCycles = 0;

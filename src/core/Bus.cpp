@@ -228,6 +228,8 @@ uint16_t Bus::read16(uint32_t address) {
         return timers.read(address);
     }
 
+    /// @todo (bug): no CD-ROM route in read16/read32, so any 16/32-bit access to 1F801800h-1F801803h hits the FATAL below. psx-spx (cdromdrive.md): RDDATA (1F801802h) can be read with 16-bit loads (LSB = first byte, MSB = second byte), and a 32-bit read of 1F801800h returns the HSTS byte repeated four times, because the BIU auto-increment flag (1F801018h) is off by default. CD-ROM DMA relies on each 32-bit word transfer being split into four byte reads of RDDATA.
+
     // Hardware Registers: SPU (0x1F801C00)
     else if (address >= 0x1F801C00 && address <= 0x1F801FFF) {
        return spu.read16(address);
@@ -287,6 +289,8 @@ void Bus::write16(uint32_t address, uint16_t value) {
     else if (address == Hardware::REG_INTERRUPT_MASK) {
         interruptMask = value;
     }
+
+    /// @todo psx-spx (cdromdrive.md) doesn't document 16-bit writes to the CD-ROM registers, but there is no route here, so one hits the FATAL below. See the todo in Bus::read16.
 
     // Hardware Registers: Timers (0x1F801100)
     else if (address >= 0x1F801100 && address < 0x1F801130) {
@@ -362,6 +366,7 @@ uint32_t Bus::read32(uint32_t address) {
         return interruptMask;
     }
 
+    /// @todo (bug): no CD-ROM route, see the todo in Bus::read16. A 32-bit read of 1F801800h returns HSTS four times (1F801018h auto-increment off).
 
     // Hardware Registers: DMA (0x1F801080 - 0x1F8010FF)
     else if (address >= 0x1F801080 && address <= 0x1F8010FF) {
@@ -465,6 +470,9 @@ void Bus::write32(uint32_t address, uint32_t value) {
     else if (address == Hardware::REG_INTERRUPT_MASK) {
         interruptMask = value;
     }
+
+    /// @todo psx-spx (cdromdrive.md) doesn't document 32-bit writes to the CD-ROM registers, but there is no route here, so one hits the FATAL below. See the todo in Bus::read16.
+
 
     // Hardware Registers: DMA (0x1F801080 - 0x1F8010FF)
     /// @todo psx-spx (memorymap.md, "Write queue"): in KUSEG/KSEG0 a store to a DMA register sits in the CPU's 4-entry write queue and reaches the hardware later than the store instruction itself (the doc's flash example shows loads overtaking queued stores). Sony code writes 4 dummy values to force a flush, and any KSEG1 access flushes the whole queue. DMA starts at the CHCR store here, so a transfer begins earlier than on hardware. The queue isn't modelled, see the segment masking todo in Bus::read8.

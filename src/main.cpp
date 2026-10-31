@@ -5,9 +5,10 @@
 
 int main(int argc, char* argv[]) {
     std::string biosPath = "assets/SCPH1001.BIN";
-    std::string cuePath = "games/Resident Evil 2 (USA) (Disc 1)/Resident Evil 2 (USA) (Disc 1).cue";
+    std::string cuePath = "games/CTR - Crash Team Racing (USA)/CTR - Crash Team Racing (USA).cue";
 
     //Crash Bandicoot (USA)/Crash Bandicoot (USA).cue
+    //Crash Bandicoot 2 - Cortex Strikes Back (USA)/Crash Bandicoot 2 - Cortex Strikes Back (USA).cue
     //CTR - Crash Team Racing (USA)/CTR - Crash Team Racing (USA).cue
     //Rayman (USA)/Rayman (USA).cue
     //Tetris Plus (USA)/Tetris Plus (USA).cue
@@ -16,7 +17,7 @@ int main(int argc, char* argv[]) {
     //Tomb Raider (USA)/Tomb Raider (USA).cue
     //Resident Evil 2 (USA) (Disc 1)/Resident Evil 2 (USA) (Disc 1).cue
     //Resident Evil 2 (USA) (Disc 2)/Resident Evil 2 (USA) (Disc 2).cue
-    //Crash Bandicoot 2 - Cortex Strikes Back (USA)/Crash Bandicoot 2 - Cortex Strikes Back (USA).cue
+    
 
     // Initialize SDL video and event subsystems
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {

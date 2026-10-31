@@ -92,6 +92,7 @@ namespace Hardware {
     constexpr int DELAY_CDROM_READ_SINGLE_SPEED     = 451584;  // CPU clock * 0x930 / 4 / 44100
     constexpr int DELAY_CDROM_READ_DOUBLE_SPEED     = 225792;
 
+    /// @todo (timing): the comment says ~1-1.6 s but the value is 5 ms. psx-spx documents ~1 s only for ReadTOC's INT2. Stop needs its own constants (0xD38ACA single / 0x18A6076 double / 0x1D7B when stopped). This constant is currently reused for MotorOn, Stop, Init, SetSession and ReadTOC.
     // Real mechanical CD motor spin-up time (~1 to 1.6 seconds on real hardware)
     constexpr int DELAY_CDROM_MOTOR_SPINUP = static_cast<int>(CPU_CLOCK_SPEED_HERTZ * 0.005);
 

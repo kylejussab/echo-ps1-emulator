@@ -75,6 +75,7 @@ bool Disc::loadCue(const std::string& cuePath) {
             ss >> indexNumber >> minuteSecondFrameString;
 
             // INDEX 01 designates the start of the actual track data.
+            /// @todo (unimplemented): INDEX 00 and PREGAP are ignored. Real SubQ reports the next track's number and index 0 inside its pregap, which AutoPause, GetlocP (index and relative time) and Report depend on. GetTD correctly uses INDEX 01.
             if (indexNumber == 1 && inTrack) {
                 int minutes = 0, seconds = 0, frames = 0;
                 char colon1 = 0, colon2 = 0;
