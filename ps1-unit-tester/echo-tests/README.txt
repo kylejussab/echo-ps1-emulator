@@ -53,14 +53,14 @@ Tests
                    order and out of order, never more than 2352 bytes written, the last sector reads, the one after it and the largest
                    sector number do not, an incomplete sector at the end of a truncated image is not returned, a MODE1/2352 image reads like
                    any other, and reads fail (without crashing) with no disc or after the BIN file is removed.
-  dma_interrupt_control : the DMA interrupt register (DICR) and how a finished transfer reaches I_STAT bit 3 (IRQ3): the bit layout (which bits hold
-                   what is written, which read 0, which cannot be set), a flag latching only when its channel's enable bit is set and clearing
-                   when a 1 is written to it, the flag following the channel number (channels 6 and 2), the force bit, the master enable, IRQ3 being
-                   raised on the 0 -> 1 edge of bit 31 and not while it stays 1, I_MASK gating, and DICR / DPCR read through byte and halfword
-                   accesses (each in its own child process, because the Bus prints FATAL and exits on an access it does not handle). Finished
-                   transfers are made with the ordering-table clear channel, which only writes RAM. Left out because the hardware behaviour is
-                   not confirmed: byte/halfword writes to DICR, a flag latching while the master enable is off, and whether bit 31 follows
-                   "enable AND flag" or just "flag".
+  dma_interrupt_control : the DMA interrupt register (DICR) and how a finished transfer reaches I_STAT bit 3 (IRQ3), against the stable psx-spx page:
+                   the bit layout (bits 0-6 channel controls, 7-14 unused, 15 bus-error flag, 16-22 enables, 23 master enable, 24-30 flags that clear by
+                   writing 1, 31 master flag), a flag latching only when both its channel enable and bit 23 are set, the master flag being "b15 OR
+                   (b23 AND any flag)" without the channel enables, the flag following the channel number (channels 6 and 2), IRQ3 raised on the
+                   0 -> 1 edge of bit 31 and not while it stays 1, I_MASK gating, and DICR / DPCR read through byte and halfword accesses (each in its
+                   own child process, because the Bus prints FATAL and exits on an access it does not handle). Finished transfers are made with the
+                   ordering-table clear channel, which only writes RAM. Left out because the hardware behaviour is not confirmed: byte/halfword writes
+                   to DICR, and what DICR bits 0-6 do to slice / list-node interrupts.
   sio_pad_protocol : the controller on SIO0, driven the way a game drives it (bytes to JOY_DATA, replies back, /ACK watched in JOY_STAT). Byte-exact
                    transactions: the digital poll (FF 41 5A FF FF) and analog poll (FF 73 5A ...), /ACK after every byte but the last, configuration
                    mode (enter, exit, ID F3h), the status and constant queries, setting the analog mode and its lock, the rumble mapping, and who
@@ -83,3 +83,11 @@ Tests
                    the 8-byte RX FIFO with its overrun, RXEN clearing the FIFO, the RX interrupt level (1, 2, 4, 8 bytes) and its acknowledge, the DSR
                    and CTS inputs, reset, and IRQ8 reaching I_STAT through the Bus. Left out: the TX interrupt, parity and framing errors, the
                    latched-TXEN quirk, an empty-FIFO read, what a reset does to BAUD.
+  dma_transfers : what a DMA transfer does, against the stable psx-spx page: the DPCR reset value (07654321h) and all its bits, the MADR / BCR / CHCR
+                   masks (D6_CHCR has only bits 24, 28, 30 writable, bit 1 always 1), the list the ordering-table clear builds (entries going down from
+                   MADR, each pointing at the previous, the last FFFFFFh; a count of 0 = 10000h), what it leaves in MADR / BCR / CHCR (SyncMode 0
+                   updates none of them), the MADR wraparound at 000000h (words past the 8 MB of RAM are not written), the DPCR master enable, and a
+                   RAM -> SPU -> RAM round trip through channel 4 on the real SPU in blocks (BA counted down, MADR at the end address, CHCR start bit
+                   cleared, DICR flag 28) plus bit 28 clearing when a transfer begins. Not covered yet because they need the GPU / MDEC / CD-ROM:
+                   linked lists, GPU and MDEC transfers, chopping. Left out because the page gives no value: transfer times and the unused CHCR bits
+                   of channels other than 6.

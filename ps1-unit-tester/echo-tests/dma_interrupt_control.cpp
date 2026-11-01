@@ -4,11 +4,12 @@
 // Needs no BIOS and no devices: a finished transfer is made with the ordering-table clear channel (channel 6, which only writes RAM),
 // and a second channel (channel 2 with an empty linked list, which sends the GPU nothing) shows the flag follows the channel number.
 //
-// What is checked is what the hardware documents (psx-spx "DMA Channels", "DMA Interrupt Register") and what emulators agree on. Left out on
-// purpose because the hardware behaviour is not confirmed (sources disagree, or none was found): what a byte or halfword WRITE to DICR does
-// to the bits outside the access; whether a finished transfer latches its flag while the master enable (bit 23) is off; whether bit 31 is
-// "master enable AND any (channel enable AND flag)" or "master enable AND any flag" (so, whether clearing a flagged channel's enable bit
-// drops it); and the value of DPCR at power-on.
+// What is checked is what the stable psx-spx page "DMA Channels" documents: DICR bits 0-6 control the channel completion interrupts (7-14 are
+// unused), bit 15 is the bus-error flag that forces bit 31, bits 16-22 are the channel enables, bit 23 the master enable, bits 24-30 the flags
+// (write 1 to reset) and bit 31 the master flag = "b15 OR (b23 AND any flag)", recalculated on every write to DICR. A completion sets flag 24+n
+// only if BOTH bit 16+n AND bit 23 are set, and the per-channel enables do not factor into bit 31: a latched flag keeps it up until acknowledged.
+// IRQ3 is raised on the 0 -> 1 transition of bit 31. Left out on purpose because the hardware behaviour is not confirmed: what a byte or halfword
+// WRITE to DICR does to the bits outside the access, and what DICR bits 0-6 do to slice / list-node interrupts (nothing here runs a slice).
 #include "core/Bus.h"
 #include "support/echo_check.h"
 #include "support/isolated_probe.h"
@@ -36,7 +37,7 @@ constexpr uint32_t CHANNEL_REGISTERS = 0x1F801080;  // channel n: + n * 0x10 (ad
 constexpr uint32_t FORCE_IRQ = 1u << 15;
 constexpr uint32_t MASTER_ENABLE = 1u << 23;
 constexpr uint32_t MASTER_FLAG = 1u << 31;
-constexpr uint32_t WRITABLE_BITS = 0x00FF803F;      // bits 0-5, 15 and 16-23. 6-14 always read 0, 24-30 clear by writing 1, 31 is read only
+constexpr uint32_t WRITABLE_BITS = 0x00FF807F;      // bits 0-6, 15 and 16-23. 7-14 are unused, 24-30 clear by writing 1, 31 is read only
 
 constexpr uint32_t enableBit(int channel) { return 1u << (16 + channel); }
 constexpr uint32_t flagBit(int channel) { return 1u << (24 + channel); }
@@ -74,13 +75,14 @@ void checkBitLayout() {
 	};
 	const Case cases[] = {
 		{0x0000003F, 0x0000003F, "bits 0-5 hold what is written"},
-		{0x00007FC0, 0x00000000, "bits 6-14 always read 0"},
+		{0x00000040, 0x00000040, "bit 6 (channel 6's completion-interrupt control) holds what is written"},
+		{0x00007F80, 0x00000000, "bits 7-14 are unused and read 0"},
 		{0x00008000, 0x80008000, "bit 15 (force IRQ) holds what is written, and sets bit 31"},
 		{0x007F0000, 0x007F0000, "bits 16-22 (the channel enables) hold what is written"},
 		{0x00800000, 0x00800000, "bit 23 (master enable) holds what is written; with no flag it does not set bit 31"},
 		{0x7F000000, 0x00000000, "bits 24-30 (the flags) cannot be set by writing"},
 		{0x80000000, 0x00000000, "bit 31 cannot be set by writing"},
-		{0xFFFFFFFF, 0x80FF803F, "writing all ones: only the writable bits are set, and bit 31 follows the force bit"},
+		{0xFFFFFFFF, 0x80FF807F, "writing all ones: only the writable bits (0-6, 15, 16-23) are set, and bit 31 follows the force bit"},
 	};
 	for (const Case& testCase : cases) {
 		Bus bus;
@@ -119,7 +121,7 @@ void checkFlagLatching() {
 		Bus bus;
 		bus.write32(DICR, enableBit(6));
 		runOrderingTableClear(bus);
-		check((readDicr(bus) & MASTER_FLAG) == 0, "flags: with the channel enabled but the master enable off, bit 31 stays 0");
+		checkEqual(readDicr(bus), enableBit(6), "flags: with the channel enabled but the master enable (bit 23) off, no flag is set: a flag needs bit 16+n AND bit 23");
 		check(!irq3Pending(bus), "flags: with the master enable off, no IRQ3 is raised");
 	}
 	{
@@ -177,9 +179,18 @@ void checkFlagFollowsChannel() {
 	check(irq3Pending(bus), "channel 2: its transfer finishing raises IRQ3");
 }
 
-// Bit 31 is the force bit, or the master enable with a flag set. Clearing the master enable drops it (and leaves the flag alone), and the force
-// bit keeps it up whatever the flags do.
+// Bit 31 is the force bit, or the master enable with a flag set. The per-channel enables do not factor in, so clearing the flagged channel's enable
+// bit leaves the flag and bit 31 alone; clearing the master enable drops bit 31 (and leaves the flag alone); the force bit keeps it up whatever the
+// flags do.
 void checkMasterFlag() {
+	{
+		Bus bus;
+		bus.write32(DICR, MASTER_ENABLE | enableBit(6));
+		runOrderingTableClear(bus);
+		bus.write32(DICR, MASTER_ENABLE);                   // the channel's enable bit off, flag untouched
+		uint32_t value = readDicr(bus);
+		check((value & flagBit(6)) != 0 && (value & MASTER_FLAG) != 0, "master flag: clearing the flagged channel's enable bit leaves the flag and bit 31 set (b31 = b23 AND any flag)", "DICR is " + hex(value));
+	}
 	{
 		Bus bus;
 		bus.write32(DICR, MASTER_ENABLE | enableBit(6));

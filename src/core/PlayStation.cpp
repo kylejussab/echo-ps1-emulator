@@ -10,7 +10,7 @@ PlayStation::PlayStation() : cpu(&bus) {
     const int windowWidth = 1280;
     const int windowHeight = 960;
 
-    window = SDL_CreateWindow("PlayStation 1", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, windowWidth, windowHeight, SDL_WINDOW_SHOWN);
+    window = SDL_CreateWindow("Echo", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, windowWidth, windowHeight, SDL_WINDOW_SHOWN);
                               
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     

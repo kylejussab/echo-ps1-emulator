@@ -7,7 +7,8 @@ echo-tests/bus_memory_map | PASS | 0
 echo-tests/bus_register_widths | FAIL | 1
 echo-tests/disc_cue_parsing | FAIL | 3
 echo-tests/disc_sector_reads | PASS | 0
-echo-tests/dma_interrupt_control | FAIL | 4
+echo-tests/dma_interrupt_control | FAIL | 7
+echo-tests/dma_transfers | FAIL | 4
 echo-tests/sio1_registers | FAIL | 9
 echo-tests/sio1_transfer | FAIL | 8
 echo-tests/sio_pad_protocol | PASS | 0
