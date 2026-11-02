@@ -1,0 +1,107 @@
+# tier | checks | path (relative to public-tests/) | max frames | extra echo-headless arguments (optional)
+# tier: 1-6 are ordered by what depends on what (a later tier builds on the earlier ones); `exotic` is hardware-characterisation
+#       tests that games do not depend on. `python3 run_tests.py <tier>` runs one tier, by number or by name.
+# checks: sum = pass/fail counts from TTY, log = TTY must match the real-hardware psx.log,
+#         vram = VRAM must match the reference vram.png, timing = print TTY next to psx.log (numbers are hardware measurements),
+#         info = no verdict, just show the last TTY lines
+# The BIOS needs a few hundred frames to reach the shell before the EXE even starts, so frame limits are generous.
+
+# ---- Tier 1: CPU ---------------------------------------------------------------------------
+1|sum,log|jaczekanski/cpu/cop/cop.exe|1500
+1|sum,log|jaczekanski/cpu/code-in-io/code-in-io.exe|1500
+1|sum|pcsx-redux/basic/basic.ps-exe|1500
+1|sum|pcsx-redux/cpu/cpu.ps-exe|2500
+1|sum|pcsx-redux/memcpy/memcpy.ps-exe|2500
+1|sum|pcsx-redux/memset/memset.ps-exe|2500
+1|sum|pcsx-redux/libc/libc.ps-exe|2500
+1|info|amidog/psxtest_cpu.exe|3000
+
+# ---- Tier 2: interrupts, timers, DMA --------------------------------------------------------
+2|timing|jaczekanski/timers/timers.exe|3000
+2|timing|jaczekanski/timer-dump/timer-dump.exe|3000
+2|sum|pcsx-redux/timers/timers.ps-exe|3000
+2|sum,log|jaczekanski/dma/otc-test/otc-test.exe|1500
+2|sum,log|jaczekanski/dma/dpcr/dpcr.exe|1500
+2|info|jaczekanski/dma/chain-looping/chain-looping.exe|1500
+2|timing|jaczekanski/dma/chopping/chopping.exe|1500
+2|sum|pcsx-redux/dma/dma.ps-exe|2500
+2|info|pcsx-redux/dma-priority/dma-priority.ps-exe|1500
+
+# ---- Tier 3: GPU basics ----------------------------------------------------------------------
+3|sum,log|jaczekanski/gpu/gp0-e1/gp0-e1.exe|1500
+3|sum,log|jaczekanski/gpu/mask-bit/mask-bit.exe|1500
+3|info|jaczekanski/gpu/version-detect/version-detect.exe|1500
+3|vram|jaczekanski/gpu/triangle/triangle.exe|1200
+3|vram|jaczekanski/gpu/quad/quad.exe|1200
+3|vram|jaczekanski/gpu/rectangles/rectangles.exe|1200
+3|vram-ignore@150:140:33:33,vram-ignore@210:140:33:33|jaczekanski/gpu/lines/lines.exe|1200
+3|vram@0:0:320:240|jaczekanski/gpu/transparency/transparency.exe|1200
+3|vram|jaczekanski/gpu/clipping/clipping.exe|1200
+3|vram|jaczekanski/gpu/clut-cache/clut-cache.exe|1200
+3|vram|jaczekanski/gpu/texture-flip/texture-flip.exe|1200
+3|vram|jaczekanski/gpu/texture-overflow/texture-overflow.exe|1200
+3|vram|jaczekanski/gpu/uv-interpolation/uv-interpolation.exe|1200
+3|vram|jaczekanski/gpu/vram-to-vram-overlap/vram-to-vram-overlap.exe|1200
+3|info|pcsx-redux/gpu/gpu.ps-exe|1500
+3|info|pcsx-redux/gpu-nop/gpu-nop.ps-exe|1500
+3|info|pcsx-redux/gpu-fifo/gpu-fifo.ps-exe|1500
+
+# ---- Tier 4: GTE ------------------------------------------------------------------------------
+4|log|jaczekanski/gte/test-all/test-all.exe|6000|--ignore-line "^Total tests:"
+4|sum|pcsx-redux/gte/gte.ps-exe|6000
+4|info|amidog/psxtest_gte.exe|6000|--press start@150+10 --quiet-exit 2000
+
+# ---- Tier 5: MDEC / SPU / CD-ROM -------------------------------------------------------------
+5|log,vram|jaczekanski/mdec/4bit/4bit.exe|2500
+5|log,vram|jaczekanski/mdec/8bit/8bit.exe|2500
+5|log|jaczekanski/mdec/step-by-step-log/step-by-step-log.exe|2500
+5|sum,log|jaczekanski/spu/memory-transfer/memory-transfer.exe|1500
+5|sum|pcsx-redux/spu/spu.ps-exe|2500
+5|info|pcsx-redux/spu-endx/spu-endx.ps-exe|1500
+5|info|pcsx-redux/spu-endmute/spu-endmute.ps-exe|1500
+5|info|pcsx-redux/spu-offvoice/spu-offvoice.ps-exe|1500
+5|info|pcsx-redux/spu-wide-writes/spu-wide-writes.ps-exe|1500
+5|sum|pcsx-redux/cdrom/cdrom.ps-exe|4000
+5|info|jaczekanski/cdrom/getloc/getloc.exe|2500
+5|timing|jaczekanski/cdrom/timing/timing.exe|3000
+
+# ---- Tier 6: exact rasterizer behaviour (strict, pixel for pixel) ----------------------------
+6|sum|pcsx-redux/gpu-raster-phase1/gpu-raster-phase1.ps-exe|3000
+6|sum|pcsx-redux/gpu-raster-phase2/gpu-raster-phase2.ps-exe|3000
+6|sum|pcsx-redux/gpu-raster-phase3/gpu-raster-phase3.ps-exe|3000
+6|sum|pcsx-redux/gpu-raster-phase4/gpu-raster-phase4.ps-exe|3000
+6|sum|pcsx-redux/gpu-raster-phase5/gpu-raster-phase5.ps-exe|3000
+6|sum|pcsx-redux/gpu-raster-phase6/gpu-raster-phase6.ps-exe|3000
+6|sum|pcsx-redux/gpu-raster-phase7/gpu-raster-phase7.ps-exe|3000
+6|sum|pcsx-redux/gpu-raster-phase8/gpu-raster-phase8.ps-exe|3000
+6|sum|pcsx-redux/gpu-raster-phase9/gpu-raster-phase9.ps-exe|3000
+6|sum|pcsx-redux/gpu-raster-phase10/gpu-raster-phase10.ps-exe|3000
+6|sum|pcsx-redux/gpu-raster-phase11/gpu-raster-phase11.ps-exe|3000
+6|sum|pcsx-redux/gpu-raster-phase12/gpu-raster-phase12.ps-exe|3000
+6|sum|pcsx-redux/gpu-raster-phase13/gpu-raster-phase13.ps-exe|3000
+6|sum|pcsx-redux/gpu-raster-phase14/gpu-raster-phase14.ps-exe|3000
+6|sum|pcsx-redux/gpu-raster-phase15/gpu-raster-phase15.ps-exe|3000
+6|sum|pcsx-redux/gpu-raster-phase16/gpu-raster-phase16.ps-exe|3000
+6|sum|pcsx-redux/gpu-raster-phase17/gpu-raster-phase17.ps-exe|3000
+6|sum|pcsx-redux/gpu-raster-phase18/gpu-raster-phase18.ps-exe|3000
+6|sum|pcsx-redux/gpu-raster-phase19/gpu-raster-phase19.ps-exe|3000
+6|sum|pcsx-redux/gpu-raster-phase20/gpu-raster-phase20.ps-exe|3000
+6|sum|pcsx-redux/gpu-raster-phase21/gpu-raster-phase21.ps-exe|3000
+6|sum|pcsx-redux/gpu-raster-phase22/gpu-raster-phase22.ps-exe|3000
+
+# ---- Exotic: hardware-characterisation tests -------------------------------------------------
+# Quirks of the real console that games do not depend on. They run with everything else and are listed under their own tier;
+# the ones that fail today are recorded as known failures in baseline.txt, so they only show up when they get worse.
+
+# bus access widths: probes quirks (expansion 3 echoes written bytes, some accesses crash a real console)
+exotic|info|jaczekanski/cpu/io-access-bitwidth/io-access-bitwidth.exe|1500
+# bus timing measurements; needs cycle-accurate memory timing
+exotic|timing|jaczekanski/cpu/access-time/access-time.exe|1500
+# COP0 hardware breakpoints (BPC/BDA/DCIC)
+exotic|sum|pcsx-redux/cop0/cop0.ps-exe|2500
+# unusual BCz coprocessor-branch encodings, never emitted by compilers
+exotic|sum|pcsx-redux/cop-branch/cop-branch.ps-exe|1500
+# scratchpad-as-data-cache mode via the cache-control bits
+exotic|sum|pcsx-redux/dcache/dcache.ps-exe|2500
+# SPU DMA in unsupported sync modes (linked list on the SPU channel)
+exotic|info|pcsx-redux/dma-modes/dma-modes.ps-exe|1500

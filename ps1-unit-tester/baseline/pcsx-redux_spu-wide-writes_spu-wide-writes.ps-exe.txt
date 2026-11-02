@@ -1,0 +1,64 @@
+SPUW-START spucnt=0000 spudelay=200931e1
+SPUW rev0   sw     n=8192 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW rev0   sh     n=8192 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW rev0   swLate n=2048 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW rev0   sb1    n=1024 missLo=1016 missHi=0 lateLo=0 lateHi=0 badBits=00ff/0000 first wrote=6533616e got=65336161
+SPUW adsr0  sw     n=8192 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW adsr0  sh     n=8192 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW adsr0  swLate n=2048 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW adsr0  sb1    n=1024 missLo=1021 missHi=0 lateLo=0 lateHi=0 badBits=00ff/0000 first wrote=a1d4f120 got=a1d4f1f1
+SPUW rev0-7 burst  n=8192 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW rev0-7 slots 0:0/0 1:0/0 2:0/0 3:0/0 4:0/0 5:0/0 6:0/0 7:0/0
+SPUW rev0   sw     n=8192 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW rev0   sh     n=8192 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW rev0   swLate n=2048 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW rev0   sb1    n=1024 missLo=1021 missHi=0 lateLo=0 lateHi=0 badBits=00ff/0000 first wrote=57336f5d got=57336f6f
+SPUW adsr0  sw     n=8192 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW adsr0  sh     n=8192 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW adsr0  swLate n=2048 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW adsr0  sb1    n=1024 missLo=1020 missHi=0 lateLo=0 lateHi=0 badBits=00ff/0000 first wrote=3b6b18eb got=3b6b1818
+SPUW rev0-7 burst  n=8192 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW rev0-7 slots 0:0/0 1:0/0 2:0/0 3:0/0 4:0/0 5:0/0 6:0/0 7:0/0
+SPUW-DELAY set=200931e1 read=200931e1
+SPUW rev0   sw     n=8192 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW rev0   sh     n=8192 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW rev0   swLate n=2048 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW rev0   sb1    n=1024 missLo=1021 missHi=0 lateLo=0 lateHi=0 badBits=00ff/0000 first wrote=13f6899b got=13f68989
+SPUW rev0-7 burst  n=8192 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW rev0-7 slots 0:0/0 1:0/0 2:0/0 3:0/0 4:0/0 5:0/0 6:0/0 7:0/0
+SPUW-DELAY set=200931ef read=200931ef
+SPUW rev0   sw     n=8192 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW rev0   sh     n=8192 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW rev0   swLate n=2048 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW rev0   sb1    n=1024 missLo=1021 missHi=0 lateLo=0 lateHi=0 badBits=00ff/0000 first wrote=04cf2b59 got=04cf2b2b
+SPUW rev0-7 burst  n=8192 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW rev0-7 slots 0:0/0 1:0/0 2:0/0 3:0/0 4:0/0 5:0/0 6:0/0 7:0/0
+SPUW-DELAY set=200931ff read=200931ff
+SPUW rev0   sw     n=8192 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW rev0   sh     n=8192 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW rev0   swLate n=2048 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW rev0   sb1    n=1024 missLo=1022 missHi=0 lateLo=0 lateHi=0 badBits=00ff/0000 first wrote=56006fbe got=56006f6f
+SPUW rev0-7 burst  n=8192 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW rev0-7 slots 0:0/0 1:0/0 2:0/0 3:0/0 4:0/0 5:0/0 6:0/0 7:0/0
+SPUW-DELAY set=200930e1 read=200930e1
+SPUW rev0   sw     n=8192 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW rev0   sh     n=8192 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW rev0   swLate n=2048 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW rev0   sb1    n=1024 missLo=1023 missHi=0 lateLo=0 lateHi=0 badBits=00ff/0000 first wrote=f5fb67b7 got=f5fb6767
+SPUW rev0-7 burst  n=8192 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW rev0-7 slots 0:0/0 1:0/0 2:0/0 3:0/0 4:0/0 5:0/0 6:0/0 7:0/0
+SPUW-DELAY set=200933e1 read=200933e1
+SPUW rev0   sw     n=8192 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW rev0   sh     n=8192 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW rev0   swLate n=2048 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW rev0   sb1    n=1024 missLo=1020 missHi=0 lateLo=0 lateHi=0 badBits=00ff/0000 first wrote=64344275 got=64344242
+SPUW rev0-7 burst  n=8192 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW rev0-7 slots 0:0/0 1:0/0 2:0/0 3:0/0 4:0/0 5:0/0 6:0/0 7:0/0
+SPUW-DELAY set=200935e1 read=200935e1
+SPUW rev0   sw     n=8192 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW rev0   sh     n=8192 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW rev0   swLate n=2048 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW rev0   sb1    n=1024 missLo=1021 missHi=0 lateLo=0 lateHi=0 badBits=00ff/0000 first wrote=351d9ba6 got=351d9b9b
+SPUW rev0-7 burst  n=8192 missLo=0 missHi=0 lateLo=0 lateHi=0 badBits=0000/0000
+SPUW rev0-7 slots 0:0/0 1:0/0 2:0/0 3:0/0 4:0/0 5:0/0 6:0/0 7:0/0
+SPUW-DONE

@@ -1,0 +1,2000 @@
+args: 0
+PSX is NTSC with CPU 00000002, GPU 00000002 and SPU 00000000
+TEXT  : 0x80010000 to 0x8001f12c (0x0000f12c /      61740 bytes)
+RODATA: 0x8001f12c to 0x80101cd0 (0x000e2ba4 /     928676 bytes)
+DATA  : 0x80101cd0 to 0x80106a34 (0x00004d64 /      19812 bytes)
+BSS   : 0x80106a34 to 0x80118610 (0x00011bdc /      72668 bytes)
+TOTAL : 0x80010000 to 0x80118610 (0x00108610 /    1082896 bytes)
+STACK : 0x80118610 to 0x801efff0 (0x000d79e0 /     883168 bytes)
+WORK  : 0x801f0000 to 0x80200000 (0x00010000 /      65536 bytes)
+FREE  : 0x80118610 to 0x801efff0 (0x000d79e0 /     883168 bytes)
+Running tests
+Running CPU tests
+Running CPU LOG test
+Running mthi_mfhi test
+Done
+Running mtlo_mflo test
+Done
+Running mthi_mflo test
+Done
+Running mtlo_mfhi test
+Done
+Running add test
+Done
+Running addu test
+Done
+Running sub test
+Done
+Running subu test
+Done
+Running and test
+Done
+Running or test
+Done
+Running xor test
+Done
+Running nor test
+Done
+Running sllv test
+Done
+Running srlv test
+Done
+Running srav test
+Done
+Running slt test
+Done
+Running sltu test
+Done
+Running div test
+Done
+Running rem test
+Done
+Running divu test
+Done
+Running remu test
+Done
+Running multl test
+Done
+Running multh test
+Done
+Running multul test
+Done
+Running multuh test
+Done
+Done
+Running CPU LOG IMM test
+Running lui test
+Done
+Running addi test
+addi exception error @ 66: got 00000000 wanted 0000000c
+addi value error @ 66,1: got 7fffffff wanted 80000000
+addi exception error @ 67: got 00000000 wanted 0000000c
+addi exception error @ 69: got 00000000 wanted 0000000c
+addi value error @ 69,1: got 7fffffff wanted deadbeef
+addi exception error @ 71: got 00000000 wanted 0000000c
+addi value error @ 71,1: got 7fff8000 wanted 80000000
+addi exception error @ 72: got 00000000 wanted 0000000c
+addi exception error @ 74: got 00000000 wanted 0000000c
+addi value error @ 74,1: got 7fff8000 wanted deadbeef
+addi exception error @ 106: got 00000000 wanted 0000000c
+addi value error @ 106,1: got 80007ffe wanted 7fffffff
+addi exception error @ 107: got 00000000 wanted 0000000c
+addi exception error @ 109: got 00000000 wanted 0000000c
+addi value error @ 109,1: got 80007ffe wanted deadbeef
+addi exception error @ 111: got 00000000 wanted 0000000c
+addi value error @ 111,1: got 80000000 wanted 7fffffff
+addi exception error @ 112: got 00000000 wanted 0000000c
+addi exception error @ 114: got 00000000 wanted 0000000c
+addi value error @ 114,1: got 80000000 wanted deadbeef
+addi exception error @ 116: got 00000000 wanted 0000000c
+addi value error @ 116,1: got 80000001 wanted 7fffffff
+addi exception error @ 117: got 00000000 wanted 0000000c
+addi exception error @ 119: got 00000000 wanted 0000000c
+addi value error @ 119,1: got 80000001 wanted deadbeef
+Done
+Running addiu test
+Done
+Running andi test
+Done
+Running ori test
+Done
+Running xori test
+Done
+Running sll test
+Done
+Running srl test
+Done
+Running sra test
+Done
+Running slti test
+Done
+Running sltiu test
+Done
+Done
+Running CPU MEM test
+Running lb test
+Done
+Running lbu test
+Done
+Running lh test
+Done
+Running lhu test
+Done
+Running lw test
+Done
+Running lwl test
+Done
+Running lwr test
+Done
+Running sb test
+Done
+Running sh test
+Done
+Running sw test
+Done
+Running swl test
+Done
+Running swr test
+Done
+Done
+Running CPU BRA test
+Running beq_b test
+Done
+Running beq_f test
+Done
+Running bne_b test
+Done
+Running bne_f test
+Done
+Running blez_b test
+Done
+Running blez_f test
+Done
+Running bgtz_b test
+Done
+Running bgtz_f test
+Done
+Running bltz_b test
+Done
+Running bltz_f test
+Done
+Running bgez_b test
+Done
+Running bgez_f test
+Done
+Running bltzal_b test
+bltzal_b value error @ 1,1: got ffffffff wanted 00000000
+bltzal_b value error @ 2,1: got ffffffff wanted 00000000
+bltzal_b value error @ 16,1: got ffffffff wanted 00000000
+bltzal_b value error @ 17,1: got ffffffff wanted 00000000
+bltzal_b value error @ 21,1: got ffffffff wanted 00000000
+bltzal_b value error @ 22,1: got ffffffff wanted 00000000
+bltzal_b value error @ 26,1: got ffffffff wanted 00000000
+bltzal_b value error @ 27,1: got ffffffff wanted 00000000
+bltzal_b value error @ 31,1: got ffffffff wanted 00000000
+bltzal_b value error @ 32,1: got ffffffff wanted 00000000
+bltzal_b value error @ 36,1: got ffffffff wanted 00000000
+bltzal_b value error @ 37,1: got ffffffff wanted 00000000
+bltzal_b value error @ 41,1: got ffffffff wanted 00000000
+bltzal_b value error @ 42,1: got ffffffff wanted 00000000
+bltzal_b value error @ 46,1: got ffffffff wanted 00000000
+bltzal_b value error @ 47,1: got ffffffff wanted 00000000
+bltzal_b value error @ 61,1: got ffffffff wanted 00000000
+bltzal_b value error @ 62,1: got ffffffff wanted 00000000
+bltzal_b value error @ 66,1: got ffffffff wanted 00000000
+bltzal_b value error @ 67,1: got ffffffff wanted 00000000
+bltzal_b value error @ 71,1: got ffffffff wanted 00000000
+bltzal_b value error @ 72,1: got ffffffff wanted 00000000
+bltzal_b value error @ 76,1: got ffffffff wanted 00000000
+bltzal_b value error @ 77,1: got ffffffff wanted 00000000
+bltzal_b value error @ 81,1: got ffffffff wanted 00000000
+bltzal_b value error @ 82,1: got ffffffff wanted 00000000
+bltzal_b value error @ 86,1: got ffffffff wanted 00000000
+bltzal_b value error @ 87,1: got ffffffff wanted 00000000
+bltzal_b value error @ 91,1: got ffffffff wanted 00000000
+bltzal_b value error @ 92,1: got ffffffff wanted 00000000
+bltzal_b value error @ 106,1: got ffffffff wanted 00000000
+bltzal_b value error @ 107,1: got ffffffff wanted 00000000
+bltzal_b value error @ 111,1: got ffffffff wanted 00000000
+bltzal_b value error @ 112,1: got ffffffff wanted 00000000
+bltzal_b value error @ 116,1: got ffffffff wanted 00000000
+bltzal_b value error @ 117,1: got ffffffff wanted 00000000
+bltzal_b value error @ 121,1: got ffffffff wanted 00000000
+bltzal_b value error @ 122,1: got ffffffff wanted 00000000
+bltzal_b value error @ 126,1: got ffffffff wanted 00000000
+bltzal_b value error @ 127,1: got ffffffff wanted 00000000
+bltzal_b value error @ 131,1: got ffffffff wanted 00000000
+bltzal_b value error @ 132,1: got ffffffff wanted 00000000
+bltzal_b value error @ 136,1: got ffffffff wanted 00000000
+bltzal_b value error @ 137,1: got ffffffff wanted 00000000
+bltzal_b value error @ 151,1: got ffffffff wanted 00000000
+bltzal_b value error @ 152,1: got ffffffff wanted 00000000
+bltzal_b value error @ 156,1: got ffffffff wanted 00000000
+bltzal_b value error @ 157,1: got ffffffff wanted 00000000
+bltzal_b value error @ 161,1: got ffffffff wanted 00000000
+bltzal_b value error @ 162,1: got ffffffff wanted 00000000
+bltzal_b value error @ 166,1: got ffffffff wanted 00000000
+bltzal_b value error @ 167,1: got ffffffff wanted 00000000
+bltzal_b value error @ 171,1: got ffffffff wanted 00000000
+bltzal_b value error @ 172,1: got ffffffff wanted 00000000
+bltzal_b value error @ 176,1: got ffffffff wanted 00000000
+bltzal_b value error @ 177,1: got ffffffff wanted 00000000
+bltzal_b value error @ 181,1: got ffffffff wanted 00000000
+bltzal_b value error @ 182,1: got ffffffff wanted 00000000
+bltzal_b value error @ 196,1: got ffffffff wanted 00000000
+bltzal_b value error @ 197,1: got ffffffff wanted 00000000
+bltzal_b value error @ 201,1: got ffffffff wanted 00000000
+bltzal_b value error @ 202,1: got ffffffff wanted 00000000
+bltzal_b value error @ 206,1: got ffffffff wanted 00000000
+bltzal_b value error @ 207,1: got ffffffff wanted 00000000
+bltzal_b value error @ 211,1: got ffffffff wanted 00000000
+bltzal_b value error @ 212,1: got ffffffff wanted 00000000
+bltzal_b value error @ 216,1: got ffffffff wanted 00000000
+bltzal_b value error @ 217,1: got ffffffff wanted 00000000
+bltzal_b value error @ 221,1: got ffffffff wanted 00000000
+bltzal_b value error @ 222,1: got ffffffff wanted 00000000
+bltzal_b value error @ 226,1: got ffffffff wanted 00000000
+bltzal_b value error @ 227,1: got ffffffff wanted 00000000
+bltzal_b value error @ 241,1: got ffffffff wanted 00000000
+bltzal_b value error @ 242,1: got ffffffff wanted 00000000
+bltzal_b value error @ 246,1: got ffffffff wanted 00000000
+bltzal_b value error @ 247,1: got ffffffff wanted 00000000
+bltzal_b value error @ 251,1: got ffffffff wanted 00000000
+bltzal_b value error @ 252,1: got ffffffff wanted 00000000
+bltzal_b value error @ 256,1: got ffffffff wanted 00000000
+bltzal_b value error @ 257,1: got ffffffff wanted 00000000
+bltzal_b value error @ 261,1: got ffffffff wanted 00000000
+bltzal_b value error @ 262,1: got ffffffff wanted 00000000
+bltzal_b value error @ 266,1: got ffffffff wanted 00000000
+bltzal_b value error @ 267,1: got ffffffff wanted 00000000
+bltzal_b value error @ 271,1: got ffffffff wanted 00000000
+bltzal_b value error @ 272,1: got ffffffff wanted 00000000
+bltzal_b value error @ 286,1: got ffffffff wanted 00000000
+bltzal_b value error @ 287,1: got ffffffff wanted 00000000
+bltzal_b value error @ 291,1: got ffffffff wanted 00000000
+bltzal_b value error @ 292,1: got ffffffff wanted 00000000
+bltzal_b value error @ 296,1: got ffffffff wanted 00000000
+bltzal_b value error @ 297,1: got ffffffff wanted 00000000
+bltzal_b value error @ 301,1: got ffffffff wanted 00000000
+bltzal_b value error @ 302,1: got ffffffff wanted 00000000
+bltzal_b value error @ 306,1: got ffffffff wanted 00000000
+bltzal_b value error @ 307,1: got ffffffff wanted 00000000
+bltzal_b value error @ 311,1: got ffffffff wanted 00000000
+bltzal_b value error @ 312,1: got ffffffff wanted 00000000
+bltzal_b value error @ 316,1: got ffffffff wanted 00000000
+bltzal_b value error @ 317,1: got ffffffff wanted 00000000
+too many errors, giving up
+Running bltzal_f test
+bltzal_f value error @ 1,1: got 00000001 wanted 00000000
+bltzal_f value error @ 2,1: got 00000001 wanted 00000000
+bltzal_f value error @ 16,1: got 00000001 wanted 00000000
+bltzal_f value error @ 17,1: got 00000001 wanted 00000000
+bltzal_f value error @ 21,1: got 00000001 wanted 00000000
+bltzal_f value error @ 22,1: got 00000001 wanted 00000000
+bltzal_f value error @ 26,1: got 00000001 wanted 00000000
+bltzal_f value error @ 27,1: got 00000001 wanted 00000000
+bltzal_f value error @ 31,1: got 00000001 wanted 00000000
+bltzal_f value error @ 32,1: got 00000001 wanted 00000000
+bltzal_f value error @ 36,1: got 00000001 wanted 00000000
+bltzal_f value error @ 37,1: got 00000001 wanted 00000000
+bltzal_f value error @ 41,1: got 00000001 wanted 00000000
+bltzal_f value error @ 42,1: got 00000001 wanted 00000000
+bltzal_f value error @ 46,1: got 00000001 wanted 00000000
+bltzal_f value error @ 47,1: got 00000001 wanted 00000000
+bltzal_f value error @ 61,1: got 00000001 wanted 00000000
+bltzal_f value error @ 62,1: got 00000001 wanted 00000000
+bltzal_f value error @ 66,1: got 00000001 wanted 00000000
+bltzal_f value error @ 67,1: got 00000001 wanted 00000000
+bltzal_f value error @ 71,1: got 00000001 wanted 00000000
+bltzal_f value error @ 72,1: got 00000001 wanted 00000000
+bltzal_f value error @ 76,1: got 00000001 wanted 00000000
+bltzal_f value error @ 77,1: got 00000001 wanted 00000000
+bltzal_f value error @ 81,1: got 00000001 wanted 00000000
+bltzal_f value error @ 82,1: got 00000001 wanted 00000000
+bltzal_f value error @ 86,1: got 00000001 wanted 00000000
+bltzal_f value error @ 87,1: got 00000001 wanted 00000000
+bltzal_f value error @ 91,1: got 00000001 wanted 00000000
+bltzal_f value error @ 92,1: got 00000001 wanted 00000000
+bltzal_f value error @ 106,1: got 00000001 wanted 00000000
+bltzal_f value error @ 107,1: got 00000001 wanted 00000000
+bltzal_f value error @ 111,1: got 00000001 wanted 00000000
+bltzal_f value error @ 112,1: got 00000001 wanted 00000000
+bltzal_f value error @ 116,1: got 00000001 wanted 00000000
+bltzal_f value error @ 117,1: got 00000001 wanted 00000000
+bltzal_f value error @ 121,1: got 00000001 wanted 00000000
+bltzal_f value error @ 122,1: got 00000001 wanted 00000000
+bltzal_f value error @ 126,1: got 00000001 wanted 00000000
+bltzal_f value error @ 127,1: got 00000001 wanted 00000000
+bltzal_f value error @ 131,1: got 00000001 wanted 00000000
+bltzal_f value error @ 132,1: got 00000001 wanted 00000000
+bltzal_f value error @ 136,1: got 00000001 wanted 00000000
+bltzal_f value error @ 137,1: got 00000001 wanted 00000000
+bltzal_f value error @ 151,1: got 00000001 wanted 00000000
+bltzal_f value error @ 152,1: got 00000001 wanted 00000000
+bltzal_f value error @ 156,1: got 00000001 wanted 00000000
+bltzal_f value error @ 157,1: got 00000001 wanted 00000000
+bltzal_f value error @ 161,1: got 00000001 wanted 00000000
+bltzal_f value error @ 162,1: got 00000001 wanted 00000000
+bltzal_f value error @ 166,1: got 00000001 wanted 00000000
+bltzal_f value error @ 167,1: got 00000001 wanted 00000000
+bltzal_f value error @ 171,1: got 00000001 wanted 00000000
+bltzal_f value error @ 172,1: got 00000001 wanted 00000000
+bltzal_f value error @ 176,1: got 00000001 wanted 00000000
+bltzal_f value error @ 177,1: got 00000001 wanted 00000000
+bltzal_f value error @ 181,1: got 00000001 wanted 00000000
+bltzal_f value error @ 182,1: got 00000001 wanted 00000000
+bltzal_f value error @ 196,1: got 00000001 wanted 00000000
+bltzal_f value error @ 197,1: got 00000001 wanted 00000000
+bltzal_f value error @ 201,1: got 00000001 wanted 00000000
+bltzal_f value error @ 202,1: got 00000001 wanted 00000000
+bltzal_f value error @ 206,1: got 00000001 wanted 00000000
+bltzal_f value error @ 207,1: got 00000001 wanted 00000000
+bltzal_f value error @ 211,1: got 00000001 wanted 00000000
+bltzal_f value error @ 212,1: got 00000001 wanted 00000000
+bltzal_f value error @ 216,1: got 00000001 wanted 00000000
+bltzal_f value error @ 217,1: got 00000001 wanted 00000000
+bltzal_f value error @ 221,1: got 00000001 wanted 00000000
+bltzal_f value error @ 222,1: got 00000001 wanted 00000000
+bltzal_f value error @ 226,1: got 00000001 wanted 00000000
+bltzal_f value error @ 227,1: got 00000001 wanted 00000000
+bltzal_f value error @ 241,1: got 00000001 wanted 00000000
+bltzal_f value error @ 242,1: got 00000001 wanted 00000000
+bltzal_f value error @ 246,1: got 00000001 wanted 00000000
+bltzal_f value error @ 247,1: got 00000001 wanted 00000000
+bltzal_f value error @ 251,1: got 00000001 wanted 00000000
+bltzal_f value error @ 252,1: got 00000001 wanted 00000000
+bltzal_f value error @ 256,1: got 00000001 wanted 00000000
+bltzal_f value error @ 257,1: got 00000001 wanted 00000000
+bltzal_f value error @ 261,1: got 00000001 wanted 00000000
+bltzal_f value error @ 262,1: got 00000001 wanted 00000000
+bltzal_f value error @ 266,1: got 00000001 wanted 00000000
+bltzal_f value error @ 267,1: got 00000001 wanted 00000000
+bltzal_f value error @ 271,1: got 00000001 wanted 00000000
+bltzal_f value error @ 272,1: got 00000001 wanted 00000000
+bltzal_f value error @ 286,1: got 00000001 wanted 00000000
+bltzal_f value error @ 287,1: got 00000001 wanted 00000000
+bltzal_f value error @ 291,1: got 00000001 wanted 00000000
+bltzal_f value error @ 292,1: got 00000001 wanted 00000000
+bltzal_f value error @ 296,1: got 00000001 wanted 00000000
+bltzal_f value error @ 297,1: got 00000001 wanted 00000000
+bltzal_f value error @ 301,1: got 00000001 wanted 00000000
+bltzal_f value error @ 302,1: got 00000001 wanted 00000000
+bltzal_f value error @ 306,1: got 00000001 wanted 00000000
+bltzal_f value error @ 307,1: got 00000001 wanted 00000000
+bltzal_f value error @ 311,1: got 00000001 wanted 00000000
+bltzal_f value error @ 312,1: got 00000001 wanted 00000000
+bltzal_f value error @ 316,1: got 00000001 wanted 00000000
+bltzal_f value error @ 317,1: got 00000001 wanted 00000000
+too many errors, giving up
+Running bgezal_b test
+bgezal_b value error @ 1,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 2,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 16,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 17,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 21,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 22,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 26,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 27,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 31,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 32,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 36,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 37,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 41,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 42,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 46,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 47,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 61,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 62,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 66,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 67,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 71,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 72,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 76,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 77,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 81,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 82,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 86,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 87,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 91,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 92,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 106,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 107,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 111,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 112,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 116,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 117,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 121,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 122,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 126,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 127,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 131,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 132,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 136,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 137,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 151,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 152,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 156,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 157,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 161,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 162,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 166,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 167,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 171,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 172,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 176,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 177,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 181,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 182,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 196,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 197,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 201,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 202,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 206,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 207,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 211,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 212,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 216,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 217,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 221,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 222,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 226,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 227,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 241,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 242,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 246,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 247,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 251,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 252,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 256,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 257,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 261,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 262,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 266,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 267,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 271,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 272,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 286,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 287,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 291,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 292,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 296,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 297,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 301,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 302,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 306,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 307,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 311,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 312,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 316,1: got 00000000 wanted ffffffff
+bgezal_b value error @ 317,1: got 00000000 wanted ffffffff
+too many errors, giving up
+Running bgezal_f test
+bgezal_f value error @ 1,1: got 00000000 wanted 00000001
+bgezal_f value error @ 2,1: got 00000000 wanted 00000001
+bgezal_f value error @ 16,1: got 00000000 wanted 00000001
+bgezal_f value error @ 17,1: got 00000000 wanted 00000001
+bgezal_f value error @ 21,1: got 00000000 wanted 00000001
+bgezal_f value error @ 22,1: got 00000000 wanted 00000001
+bgezal_f value error @ 26,1: got 00000000 wanted 00000001
+bgezal_f value error @ 27,1: got 00000000 wanted 00000001
+bgezal_f value error @ 31,1: got 00000000 wanted 00000001
+bgezal_f value error @ 32,1: got 00000000 wanted 00000001
+bgezal_f value error @ 36,1: got 00000000 wanted 00000001
+bgezal_f value error @ 37,1: got 00000000 wanted 00000001
+bgezal_f value error @ 41,1: got 00000000 wanted 00000001
+bgezal_f value error @ 42,1: got 00000000 wanted 00000001
+bgezal_f value error @ 46,1: got 00000000 wanted 00000001
+bgezal_f value error @ 47,1: got 00000000 wanted 00000001
+bgezal_f value error @ 61,1: got 00000000 wanted 00000001
+bgezal_f value error @ 62,1: got 00000000 wanted 00000001
+bgezal_f value error @ 66,1: got 00000000 wanted 00000001
+bgezal_f value error @ 67,1: got 00000000 wanted 00000001
+bgezal_f value error @ 71,1: got 00000000 wanted 00000001
+bgezal_f value error @ 72,1: got 00000000 wanted 00000001
+bgezal_f value error @ 76,1: got 00000000 wanted 00000001
+bgezal_f value error @ 77,1: got 00000000 wanted 00000001
+bgezal_f value error @ 81,1: got 00000000 wanted 00000001
+bgezal_f value error @ 82,1: got 00000000 wanted 00000001
+bgezal_f value error @ 86,1: got 00000000 wanted 00000001
+bgezal_f value error @ 87,1: got 00000000 wanted 00000001
+bgezal_f value error @ 91,1: got 00000000 wanted 00000001
+bgezal_f value error @ 92,1: got 00000000 wanted 00000001
+bgezal_f value error @ 106,1: got 00000000 wanted 00000001
+bgezal_f value error @ 107,1: got 00000000 wanted 00000001
+bgezal_f value error @ 111,1: got 00000000 wanted 00000001
+bgezal_f value error @ 112,1: got 00000000 wanted 00000001
+bgezal_f value error @ 116,1: got 00000000 wanted 00000001
+bgezal_f value error @ 117,1: got 00000000 wanted 00000001
+bgezal_f value error @ 121,1: got 00000000 wanted 00000001
+bgezal_f value error @ 122,1: got 00000000 wanted 00000001
+bgezal_f value error @ 126,1: got 00000000 wanted 00000001
+bgezal_f value error @ 127,1: got 00000000 wanted 00000001
+bgezal_f value error @ 131,1: got 00000000 wanted 00000001
+bgezal_f value error @ 132,1: got 00000000 wanted 00000001
+bgezal_f value error @ 136,1: got 00000000 wanted 00000001
+bgezal_f value error @ 137,1: got 00000000 wanted 00000001
+bgezal_f value error @ 151,1: got 00000000 wanted 00000001
+bgezal_f value error @ 152,1: got 00000000 wanted 00000001
+bgezal_f value error @ 156,1: got 00000000 wanted 00000001
+bgezal_f value error @ 157,1: got 00000000 wanted 00000001
+bgezal_f value error @ 161,1: got 00000000 wanted 00000001
+bgezal_f value error @ 162,1: got 00000000 wanted 00000001
+bgezal_f value error @ 166,1: got 00000000 wanted 00000001
+bgezal_f value error @ 167,1: got 00000000 wanted 00000001
+bgezal_f value error @ 171,1: got 00000000 wanted 00000001
+bgezal_f value error @ 172,1: got 00000000 wanted 00000001
+bgezal_f value error @ 176,1: got 00000000 wanted 00000001
+bgezal_f value error @ 177,1: got 00000000 wanted 00000001
+bgezal_f value error @ 181,1: got 00000000 wanted 00000001
+bgezal_f value error @ 182,1: got 00000000 wanted 00000001
+bgezal_f value error @ 196,1: got 00000000 wanted 00000001
+bgezal_f value error @ 197,1: got 00000000 wanted 00000001
+bgezal_f value error @ 201,1: got 00000000 wanted 00000001
+bgezal_f value error @ 202,1: got 00000000 wanted 00000001
+bgezal_f value error @ 206,1: got 00000000 wanted 00000001
+bgezal_f value error @ 207,1: got 00000000 wanted 00000001
+bgezal_f value error @ 211,1: got 00000000 wanted 00000001
+bgezal_f value error @ 212,1: got 00000000 wanted 00000001
+bgezal_f value error @ 216,1: got 00000000 wanted 00000001
+bgezal_f value error @ 217,1: got 00000000 wanted 00000001
+bgezal_f value error @ 221,1: got 00000000 wanted 00000001
+bgezal_f value error @ 222,1: got 00000000 wanted 00000001
+bgezal_f value error @ 226,1: got 00000000 wanted 00000001
+bgezal_f value error @ 227,1: got 00000000 wanted 00000001
+bgezal_f value error @ 241,1: got 00000000 wanted 00000001
+bgezal_f value error @ 242,1: got 00000000 wanted 00000001
+bgezal_f value error @ 246,1: got 00000000 wanted 00000001
+bgezal_f value error @ 247,1: got 00000000 wanted 00000001
+bgezal_f value error @ 251,1: got 00000000 wanted 00000001
+bgezal_f value error @ 252,1: got 00000000 wanted 00000001
+bgezal_f value error @ 256,1: got 00000000 wanted 00000001
+bgezal_f value error @ 257,1: got 00000000 wanted 00000001
+bgezal_f value error @ 261,1: got 00000000 wanted 00000001
+bgezal_f value error @ 262,1: got 00000000 wanted 00000001
+bgezal_f value error @ 266,1: got 00000000 wanted 00000001
+bgezal_f value error @ 267,1: got 00000000 wanted 00000001
+bgezal_f value error @ 271,1: got 00000000 wanted 00000001
+bgezal_f value error @ 272,1: got 00000000 wanted 00000001
+bgezal_f value error @ 286,1: got 00000000 wanted 00000001
+bgezal_f value error @ 287,1: got 00000000 wanted 00000001
+bgezal_f value error @ 291,1: got 00000000 wanted 00000001
+bgezal_f value error @ 292,1: got 00000000 wanted 00000001
+bgezal_f value error @ 296,1: got 00000000 wanted 00000001
+bgezal_f value error @ 297,1: got 00000000 wanted 00000001
+bgezal_f value error @ 301,1: got 00000000 wanted 00000001
+bgezal_f value error @ 302,1: got 00000000 wanted 00000001
+bgezal_f value error @ 306,1: got 00000000 wanted 00000001
+bgezal_f value error @ 307,1: got 00000000 wanted 00000001
+bgezal_f value error @ 311,1: got 00000000 wanted 00000001
+bgezal_f value error @ 312,1: got 00000000 wanted 00000001
+bgezal_f value error @ 316,1: got 00000000 wanted 00000001
+bgezal_f value error @ 317,1: got 00000000 wanted 00000001
+too many errors, giving up
+Done
+Running CPU JMP test
+Running j test
+Done
+Running jr test
+jr exception error @ 9: got 00000005 wanted 00000004
+jr exception error @ 10: got 00000005 wanted 00000004
+jr exception error @ 11: got 00000005 wanted 00000004
+jr exception error @ 12: got 00000005 wanted 00000004
+jr exception error @ 13: got 00000005 wanted 00000004
+jr exception error @ 14: got 00000005 wanted 00000004
+jr exception error @ 15: got 00000005 wanted 00000004
+jr exception error @ 16: got 00000005 wanted 00000004
+jr exception error @ 17: got 00000005 wanted 00000004
+Done
+Running jal test
+Done
+Running jalr test
+jalr exception error @ 9: got 00000005 wanted 00000004
+jalr exception error @ 10: got 00000005 wanted 00000004
+jalr exception error @ 11: got 00000005 wanted 00000004
+jalr exception error @ 12: got 00000005 wanted 00000004
+jalr exception error @ 13: got 00000005 wanted 00000004
+jalr exception error @ 14: got 00000005 wanted 00000004
+jalr exception error @ 15: got 00000005 wanted 00000004
+jalr exception error @ 16: got 00000005 wanted 00000004
+jalr exception error @ 17: got 00000005 wanted 00000004
+Done
+Done
+Running CPU EXC test
+Running rfe test
+Done
+Running break test
+Done
+Running syscall test
+Done
+Done
+Running CPU MEM DLY test
+Running lb_d test
+Done
+Running lbu_d test
+Done
+Running lh_d test
+Done
+Running lhu_d test
+Done
+Running lw_d test
+Done
+Running lwl_d test
+Done
+Running lwr_d test
+Done
+Running nop_lb_nop_d test
+Done
+Running lb_nop_nop_d test
+Done
+Running nop_lbu_nop_d test
+Done
+Running lbu_nop_nop_d test
+Done
+Running nop_lh_nop_d test
+Done
+Running lh_nop_nop_d test
+Done
+Running nop_lhu_nop_d test
+Done
+Running lhu_nop_nop_d test
+Done
+Running nop_lw_nop_d test
+Done
+Running lw_nop_nop_d test
+Done
+Running nop_lwl_nop_d test
+Done
+Running lwl_nop_nop_d test
+Done
+Running nop_lwr_nop_d test
+Done
+Running lwr_nop_nop_d test
+Done
+Running nop_lb_lb_d test
+Done
+Running lb_lb_nop_d test
+Done
+Running nop_lbu_lb_d test
+Done
+Running lbu_lb_nop_d test
+Done
+Running nop_lh_lb_d test
+Done
+Running lh_lb_nop_d test
+Done
+Running nop_lhu_lb_d test
+Done
+Running lhu_lb_nop_d test
+Done
+Running nop_lw_lb_d test
+Done
+Running lw_lb_nop_d test
+Done
+Running nop_lwl_lb_d test
+Done
+Running lwl_lb_nop_d test
+Done
+Running nop_lwr_lb_d test
+Done
+Running lwr_lb_nop_d test
+Done
+Running nop_lb_lbu_d test
+Done
+Running lb_lbu_nop_d test
+Done
+Running nop_lbu_lbu_d test
+Done
+Running lbu_lbu_nop_d test
+Done
+Running nop_lh_lbu_d test
+Done
+Running lh_lbu_nop_d test
+Done
+Running nop_lhu_lbu_d test
+Done
+Running lhu_lbu_nop_d test
+Done
+Running nop_lw_lbu_d test
+Done
+Running lw_lbu_nop_d test
+Done
+Running nop_lwl_lbu_d test
+Done
+Running lwl_lbu_nop_d test
+Done
+Running nop_lwr_lbu_d test
+Done
+Running lwr_lbu_nop_d test
+Done
+Running nop_lb_lh_d test
+Done
+Running lb_lh_nop_d test
+Done
+Running nop_lbu_lh_d test
+Done
+Running lbu_lh_nop_d test
+Done
+Running nop_lh_lh_d test
+Done
+Running lh_lh_nop_d test
+Done
+Running nop_lhu_lh_d test
+Done
+Running lhu_lh_nop_d test
+Done
+Running nop_lw_lh_d test
+Done
+Running lw_lh_nop_d test
+Done
+Running nop_lwl_lh_d test
+Done
+Running lwl_lh_nop_d test
+Done
+Running nop_lwr_lh_d test
+Done
+Running lwr_lh_nop_d test
+Done
+Running nop_lb_lhu_d test
+Done
+Running lb_lhu_nop_d test
+Done
+Running nop_lbu_lhu_d test
+Done
+Running lbu_lhu_nop_d test
+Done
+Running nop_lh_lhu_d test
+Done
+Running lh_lhu_nop_d test
+Done
+Running nop_lhu_lhu_d test
+Done
+Running lhu_lhu_nop_d test
+Done
+Running nop_lw_lhu_d test
+Done
+Running lw_lhu_nop_d test
+Done
+Running nop_lwl_lhu_d test
+Done
+Running lwl_lhu_nop_d test
+Done
+Running nop_lwr_lhu_d test
+Done
+Running lwr_lhu_nop_d test
+Done
+Running nop_lb_lw_d test
+Done
+Running lb_lw_nop_d test
+Done
+Running nop_lbu_lw_d test
+Done
+Running lbu_lw_nop_d test
+Done
+Running nop_lh_lw_d test
+Done
+Running lh_lw_nop_d test
+Done
+Running nop_lhu_lw_d test
+Done
+Running lhu_lw_nop_d test
+Done
+Running nop_lw_lw_d test
+Done
+Running lw_lw_nop_d test
+Done
+Running nop_lwl_lw_d test
+Done
+Running lwl_lw_nop_d test
+Done
+Running nop_lwr_lw_d test
+Done
+Running lwr_lw_nop_d test
+Done
+Running nop_lb_lwl_d test
+Done
+Running lb_lwl_nop_d test
+Done
+Running nop_lbu_lwl_d test
+Done
+Running lbu_lwl_nop_d test
+Done
+Running nop_lh_lwl_d test
+Done
+Running lh_lwl_nop_d test
+Done
+Running nop_lhu_lwl_d test
+Done
+Running lhu_lwl_nop_d test
+Done
+Running nop_lw_lwl_d test
+Done
+Running lw_lwl_nop_d test
+Done
+Running nop_lwl_lwl_d test
+Done
+Running lwl_lwl_nop_d test
+Done
+Running nop_lwr_lwl_d test
+Done
+Running lwr_lwl_nop_d test
+Done
+Running nop_lb_lwr_d test
+Done
+Running lb_lwr_nop_d test
+Done
+Running nop_lbu_lwr_d test
+Done
+Running lbu_lwr_nop_d test
+Done
+Running nop_lh_lwr_d test
+Done
+Running lh_lwr_nop_d test
+Done
+Running nop_lhu_lwr_d test
+Done
+Running lhu_lwr_nop_d test
+Done
+Running nop_lw_lwr_d test
+Done
+Running lw_lwr_nop_d test
+Done
+Running nop_lwl_lwr_d test
+Done
+Running lwl_lwr_nop_d test
+Done
+Running nop_lwr_lwr_d test
+Done
+Running lwr_lwr_nop_d test
+Done
+Running nop_lb_lb2_d test
+Done
+Running lb_lb2_nop_d test
+Done
+Running nop_lbu_lb2_d test
+Done
+Running lbu_lb2_nop_d test
+Done
+Running nop_lh_lb2_d test
+Done
+Running lh_lb2_nop_d test
+Done
+Running nop_lhu_lb2_d test
+Done
+Running lhu_lb2_nop_d test
+Done
+Running nop_lw_lb2_d test
+Done
+Running lw_lb2_nop_d test
+Done
+Running nop_lwl_lb2_d test
+Done
+Running lwl_lb2_nop_d test
+Done
+Running nop_lwr_lb2_d test
+Done
+Running lwr_lb2_nop_d test
+Done
+Running nop_lb_lbu2_d test
+Done
+Running lb_lbu2_nop_d test
+Done
+Running nop_lbu_lbu2_d test
+Done
+Running lbu_lbu2_nop_d test
+Done
+Running nop_lh_lbu2_d test
+Done
+Running lh_lbu2_nop_d test
+Done
+Running nop_lhu_lbu2_d test
+Done
+Running lhu_lbu2_nop_d test
+Done
+Running nop_lw_lbu2_d test
+Done
+Running lw_lbu2_nop_d test
+Done
+Running nop_lwl_lbu2_d test
+Done
+Running lwl_lbu2_nop_d test
+Done
+Running nop_lwr_lbu2_d test
+Done
+Running lwr_lbu2_nop_d test
+Done
+Running nop_lb_lh2_d test
+Done
+Running lb_lh2_nop_d test
+Done
+Running nop_lbu_lh2_d test
+Done
+Running lbu_lh2_nop_d test
+Done
+Running nop_lh_lh2_d test
+Done
+Running lh_lh2_nop_d test
+Done
+Running nop_lhu_lh2_d test
+Done
+Running lhu_lh2_nop_d test
+Done
+Running nop_lw_lh2_d test
+Done
+Running lw_lh2_nop_d test
+Done
+Running nop_lwl_lh2_d test
+Done
+Running lwl_lh2_nop_d test
+Done
+Running nop_lwr_lh2_d test
+Done
+Running lwr_lh2_nop_d test
+Done
+Running nop_lb_lhu2_d test
+Done
+Running lb_lhu2_nop_d test
+Done
+Running nop_lbu_lhu2_d test
+Done
+Running lbu_lhu2_nop_d test
+Done
+Running nop_lh_lhu2_d test
+Done
+Running lh_lhu2_nop_d test
+Done
+Running nop_lhu_lhu2_d test
+Done
+Running lhu_lhu2_nop_d test
+Done
+Running nop_lw_lhu2_d test
+Done
+Running lw_lhu2_nop_d test
+Done
+Running nop_lwl_lhu2_d test
+Done
+Running lwl_lhu2_nop_d test
+Done
+Running nop_lwr_lhu2_d test
+Done
+Running lwr_lhu2_nop_d test
+Done
+Running nop_lb_lw2_d test
+Done
+Running lb_lw2_nop_d test
+Done
+Running nop_lbu_lw2_d test
+Done
+Running lbu_lw2_nop_d test
+Done
+Running nop_lh_lw2_d test
+Done
+Running lh_lw2_nop_d test
+Done
+Running nop_lhu_lw2_d test
+Done
+Running lhu_lw2_nop_d test
+Done
+Running nop_lw_lw2_d test
+Done
+Running lw_lw2_nop_d test
+Done
+Running nop_lwl_lw2_d test
+Done
+Running lwl_lw2_nop_d test
+Done
+Running nop_lwr_lw2_d test
+Done
+Running lwr_lw2_nop_d test
+Done
+Running nop_lb_lwl2_d test
+Done
+Running lb_lwl2_nop_d test
+Done
+Running nop_lbu_lwl2_d test
+Done
+Running lbu_lwl2_nop_d test
+Done
+Running nop_lh_lwl2_d test
+Done
+Running lh_lwl2_nop_d test
+Done
+Running nop_lhu_lwl2_d test
+Done
+Running lhu_lwl2_nop_d test
+Done
+Running nop_lw_lwl2_d test
+Done
+Running lw_lwl2_nop_d test
+Done
+Running nop_lwl_lwl2_d test
+Done
+Running lwl_lwl2_nop_d test
+Done
+Running nop_lwr_lwl2_d test
+Done
+Running lwr_lwl2_nop_d test
+Done
+Running nop_lb_lwr2_d test
+Done
+Running lb_lwr2_nop_d test
+Done
+Running nop_lbu_lwr2_d test
+Done
+Running lbu_lwr2_nop_d test
+Done
+Running nop_lh_lwr2_d test
+Done
+Running lh_lwr2_nop_d test
+Done
+Running nop_lhu_lwr2_d test
+Done
+Running lhu_lwr2_nop_d test
+Done
+Running nop_lw_lwr2_d test
+Done
+Running lw_lwr2_nop_d test
+Done
+Running nop_lwl_lwr2_d test
+Done
+Running lwl_lwr2_nop_d test
+Done
+Running nop_lwr_lwr2_d test
+Done
+Running lwr_lwr2_nop_d test
+Done
+Done
+Running CPU BRA ADV test
+Running b_0x00_b test
+Done
+Running b_0x02_b test
+b_0x02_b exception error @ 0: got 0000000a wanted 00000000
+b_0x02_b exception error @ 1: got 0000000a wanted 00000000
+b_0x02_b exception error @ 2: got 0000000a wanted 00000000
+b_0x02_b exception error @ 3: got 0000000a wanted 00000000
+b_0x02_b exception error @ 4: got 0000000a wanted 00000000
+b_0x02_b exception error @ 5: got 0000000a wanted 00000000
+b_0x02_b exception error @ 6: got 0000000a wanted 00000000
+b_0x02_b value error @ 6,1: got 00000000 wanted ffffffff
+b_0x02_b exception error @ 7: got 0000000a wanted 00000000
+b_0x02_b value error @ 7,1: got 00000000 wanted ffffffff
+b_0x02_b exception error @ 8: got 0000000a wanted 00000000
+b_0x02_b exception error @ 9: got 0000000a wanted 00000000
+b_0x02_b value error @ 9,1: got 00000000 wanted ffffffff
+b_0x02_b exception error @ 10: got 0000000a wanted 00000000
+b_0x02_b exception error @ 11: got 0000000a wanted 00000000
+b_0x02_b value error @ 11,1: got 00000000 wanted ffffffff
+b_0x02_b exception error @ 12: got 0000000a wanted 00000000
+b_0x02_b value error @ 12,1: got 00000000 wanted ffffffff
+b_0x02_b exception error @ 13: got 0000000a wanted 00000000
+b_0x02_b exception error @ 14: got 0000000a wanted 00000000
+b_0x02_b value error @ 14,1: got 00000000 wanted ffffffff
+b_0x02_b exception error @ 15: got 0000000a wanted 00000000
+b_0x02_b exception error @ 16: got 0000000a wanted 00000000
+b_0x02_b exception error @ 17: got 0000000a wanted 00000000
+b_0x02_b exception error @ 18: got 0000000a wanted 00000000
+b_0x02_b exception error @ 19: got 0000000a wanted 00000000
+b_0x02_b exception error @ 20: got 0000000a wanted 00000000
+b_0x02_b exception error @ 21: got 0000000a wanted 00000000
+b_0x02_b exception error @ 22: got 0000000a wanted 00000000
+b_0x02_b exception error @ 23: got 0000000a wanted 00000000
+b_0x02_b exception error @ 24: got 0000000a wanted 00000000
+b_0x02_b exception error @ 25: got 0000000a wanted 00000000
+b_0x02_b exception error @ 26: got 0000000a wanted 00000000
+b_0x02_b exception error @ 27: got 0000000a wanted 00000000
+b_0x02_b exception error @ 28: got 0000000a wanted 00000000
+b_0x02_b exception error @ 29: got 0000000a wanted 00000000
+b_0x02_b exception error @ 30: got 0000000a wanted 00000000
+b_0x02_b exception error @ 31: got 0000000a wanted 00000000
+b_0x02_b exception error @ 32: got 0000000a wanted 00000000
+b_0x02_b exception error @ 33: got 0000000a wanted 00000000
+b_0x02_b exception error @ 34: got 0000000a wanted 00000000
+b_0x02_b exception error @ 35: got 0000000a wanted 00000000
+b_0x02_b exception error @ 36: got 0000000a wanted 00000000
+b_0x02_b exception error @ 37: got 0000000a wanted 00000000
+b_0x02_b exception error @ 38: got 0000000a wanted 00000000
+b_0x02_b exception error @ 39: got 0000000a wanted 00000000
+b_0x02_b exception error @ 40: got 0000000a wanted 00000000
+b_0x02_b exception error @ 41: got 0000000a wanted 00000000
+b_0x02_b exception error @ 42: got 0000000a wanted 00000000
+b_0x02_b exception error @ 43: got 0000000a wanted 00000000
+b_0x02_b exception error @ 44: got 0000000a wanted 00000000
+b_0x02_b exception error @ 45: got 0000000a wanted 00000000
+b_0x02_b exception error @ 46: got 0000000a wanted 00000000
+b_0x02_b exception error @ 47: got 0000000a wanted 00000000
+b_0x02_b exception error @ 48: got 0000000a wanted 00000000
+b_0x02_b exception error @ 49: got 0000000a wanted 00000000
+b_0x02_b exception error @ 50: got 0000000a wanted 00000000
+b_0x02_b exception error @ 51: got 0000000a wanted 00000000
+b_0x02_b value error @ 51,1: got 00000000 wanted ffffffff
+b_0x02_b exception error @ 52: got 0000000a wanted 00000000
+b_0x02_b value error @ 52,1: got 00000000 wanted ffffffff
+b_0x02_b exception error @ 53: got 0000000a wanted 00000000
+b_0x02_b exception error @ 54: got 0000000a wanted 00000000
+b_0x02_b value error @ 54,1: got 00000000 wanted ffffffff
+b_0x02_b exception error @ 55: got 0000000a wanted 00000000
+b_0x02_b exception error @ 56: got 0000000a wanted 00000000
+b_0x02_b value error @ 56,1: got 00000000 wanted ffffffff
+b_0x02_b exception error @ 57: got 0000000a wanted 00000000
+b_0x02_b value error @ 57,1: got 00000000 wanted ffffffff
+b_0x02_b exception error @ 58: got 0000000a wanted 00000000
+b_0x02_b exception error @ 59: got 0000000a wanted 00000000
+b_0x02_b value error @ 59,1: got 00000000 wanted ffffffff
+b_0x02_b exception error @ 60: got 0000000a wanted 00000000
+b_0x02_b exception error @ 61: got 0000000a wanted 00000000
+b_0x02_b exception error @ 62: got 0000000a wanted 00000000
+b_0x02_b exception error @ 63: got 0000000a wanted 00000000
+b_0x02_b exception error @ 64: got 0000000a wanted 00000000
+b_0x02_b exception error @ 65: got 0000000a wanted 00000000
+b_0x02_b exception error @ 66: got 0000000a wanted 00000000
+b_0x02_b exception error @ 67: got 0000000a wanted 00000000
+b_0x02_b exception error @ 68: got 0000000a wanted 00000000
+b_0x02_b exception error @ 69: got 0000000a wanted 00000000
+b_0x02_b exception error @ 70: got 0000000a wanted 00000000
+b_0x02_b exception error @ 71: got 0000000a wanted 00000000
+b_0x02_b exception error @ 72: got 0000000a wanted 00000000
+b_0x02_b exception error @ 73: got 0000000a wanted 00000000
+b_0x02_b exception error @ 74: got 0000000a wanted 00000000
+b_0x02_b exception error @ 75: got 0000000a wanted 00000000
+b_0x02_b exception error @ 76: got 0000000a wanted 00000000
+b_0x02_b exception error @ 77: got 0000000a wanted 00000000
+b_0x02_b exception error @ 78: got 0000000a wanted 00000000
+b_0x02_b exception error @ 79: got 0000000a wanted 00000000
+b_0x02_b exception error @ 80: got 0000000a wanted 00000000
+b_0x02_b exception error @ 81: got 0000000a wanted 00000000
+b_0x02_b exception error @ 82: got 0000000a wanted 00000000
+b_0x02_b exception error @ 83: got 0000000a wanted 00000000
+b_0x02_b exception error @ 84: got 0000000a wanted 00000000
+b_0x02_b exception error @ 85: got 0000000a wanted 00000000
+b_0x02_b exception error @ 86: got 0000000a wanted 00000000
+b_0x02_b exception error @ 87: got 0000000a wanted 00000000
+too many errors, giving up
+Running b_0x04_b test
+b_0x04_b exception error @ 0: got 0000000a wanted 00000000
+b_0x04_b exception error @ 1: got 0000000a wanted 00000000
+b_0x04_b exception error @ 2: got 0000000a wanted 00000000
+b_0x04_b exception error @ 3: got 0000000a wanted 00000000
+b_0x04_b exception error @ 4: got 0000000a wanted 00000000
+b_0x04_b exception error @ 5: got 0000000a wanted 00000000
+b_0x04_b exception error @ 6: got 0000000a wanted 00000000
+b_0x04_b value error @ 6,1: got 00000000 wanted ffffffff
+b_0x04_b exception error @ 7: got 0000000a wanted 00000000
+b_0x04_b value error @ 7,1: got 00000000 wanted ffffffff
+b_0x04_b exception error @ 8: got 0000000a wanted 00000000
+b_0x04_b exception error @ 9: got 0000000a wanted 00000000
+b_0x04_b value error @ 9,1: got 00000000 wanted ffffffff
+b_0x04_b exception error @ 10: got 0000000a wanted 00000000
+b_0x04_b exception error @ 11: got 0000000a wanted 00000000
+b_0x04_b value error @ 11,1: got 00000000 wanted ffffffff
+b_0x04_b exception error @ 12: got 0000000a wanted 00000000
+b_0x04_b value error @ 12,1: got 00000000 wanted ffffffff
+b_0x04_b exception error @ 13: got 0000000a wanted 00000000
+b_0x04_b exception error @ 14: got 0000000a wanted 00000000
+b_0x04_b value error @ 14,1: got 00000000 wanted ffffffff
+b_0x04_b exception error @ 15: got 0000000a wanted 00000000
+b_0x04_b exception error @ 16: got 0000000a wanted 00000000
+b_0x04_b exception error @ 17: got 0000000a wanted 00000000
+b_0x04_b exception error @ 18: got 0000000a wanted 00000000
+b_0x04_b exception error @ 19: got 0000000a wanted 00000000
+b_0x04_b exception error @ 20: got 0000000a wanted 00000000
+b_0x04_b exception error @ 21: got 0000000a wanted 00000000
+b_0x04_b exception error @ 22: got 0000000a wanted 00000000
+b_0x04_b exception error @ 23: got 0000000a wanted 00000000
+b_0x04_b exception error @ 24: got 0000000a wanted 00000000
+b_0x04_b exception error @ 25: got 0000000a wanted 00000000
+b_0x04_b exception error @ 26: got 0000000a wanted 00000000
+b_0x04_b exception error @ 27: got 0000000a wanted 00000000
+b_0x04_b exception error @ 28: got 0000000a wanted 00000000
+b_0x04_b exception error @ 29: got 0000000a wanted 00000000
+b_0x04_b exception error @ 30: got 0000000a wanted 00000000
+b_0x04_b exception error @ 31: got 0000000a wanted 00000000
+b_0x04_b exception error @ 32: got 0000000a wanted 00000000
+b_0x04_b exception error @ 33: got 0000000a wanted 00000000
+b_0x04_b exception error @ 34: got 0000000a wanted 00000000
+b_0x04_b exception error @ 35: got 0000000a wanted 00000000
+b_0x04_b exception error @ 36: got 0000000a wanted 00000000
+b_0x04_b exception error @ 37: got 0000000a wanted 00000000
+b_0x04_b exception error @ 38: got 0000000a wanted 00000000
+b_0x04_b exception error @ 39: got 0000000a wanted 00000000
+b_0x04_b exception error @ 40: got 0000000a wanted 00000000
+b_0x04_b exception error @ 41: got 0000000a wanted 00000000
+b_0x04_b exception error @ 42: got 0000000a wanted 00000000
+b_0x04_b exception error @ 43: got 0000000a wanted 00000000
+b_0x04_b exception error @ 44: got 0000000a wanted 00000000
+b_0x04_b exception error @ 45: got 0000000a wanted 00000000
+b_0x04_b exception error @ 46: got 0000000a wanted 00000000
+b_0x04_b exception error @ 47: got 0000000a wanted 00000000
+b_0x04_b exception error @ 48: got 0000000a wanted 00000000
+b_0x04_b exception error @ 49: got 0000000a wanted 00000000
+b_0x04_b exception error @ 50: got 0000000a wanted 00000000
+b_0x04_b exception error @ 51: got 0000000a wanted 00000000
+b_0x04_b value error @ 51,1: got 00000000 wanted ffffffff
+b_0x04_b exception error @ 52: got 0000000a wanted 00000000
+b_0x04_b value error @ 52,1: got 00000000 wanted ffffffff
+b_0x04_b exception error @ 53: got 0000000a wanted 00000000
+b_0x04_b exception error @ 54: got 0000000a wanted 00000000
+b_0x04_b value error @ 54,1: got 00000000 wanted ffffffff
+b_0x04_b exception error @ 55: got 0000000a wanted 00000000
+b_0x04_b exception error @ 56: got 0000000a wanted 00000000
+b_0x04_b value error @ 56,1: got 00000000 wanted ffffffff
+b_0x04_b exception error @ 57: got 0000000a wanted 00000000
+b_0x04_b value error @ 57,1: got 00000000 wanted ffffffff
+b_0x04_b exception error @ 58: got 0000000a wanted 00000000
+b_0x04_b exception error @ 59: got 0000000a wanted 00000000
+b_0x04_b value error @ 59,1: got 00000000 wanted ffffffff
+b_0x04_b exception error @ 60: got 0000000a wanted 00000000
+b_0x04_b exception error @ 61: got 0000000a wanted 00000000
+b_0x04_b exception error @ 62: got 0000000a wanted 00000000
+b_0x04_b exception error @ 63: got 0000000a wanted 00000000
+b_0x04_b exception error @ 64: got 0000000a wanted 00000000
+b_0x04_b exception error @ 65: got 0000000a wanted 00000000
+b_0x04_b exception error @ 66: got 0000000a wanted 00000000
+b_0x04_b exception error @ 67: got 0000000a wanted 00000000
+b_0x04_b exception error @ 68: got 0000000a wanted 00000000
+b_0x04_b exception error @ 69: got 0000000a wanted 00000000
+b_0x04_b exception error @ 70: got 0000000a wanted 00000000
+b_0x04_b exception error @ 71: got 0000000a wanted 00000000
+b_0x04_b exception error @ 72: got 0000000a wanted 00000000
+b_0x04_b exception error @ 73: got 0000000a wanted 00000000
+b_0x04_b exception error @ 74: got 0000000a wanted 00000000
+b_0x04_b exception error @ 75: got 0000000a wanted 00000000
+b_0x04_b exception error @ 76: got 0000000a wanted 00000000
+b_0x04_b exception error @ 77: got 0000000a wanted 00000000
+b_0x04_b exception error @ 78: got 0000000a wanted 00000000
+b_0x04_b exception error @ 79: got 0000000a wanted 00000000
+b_0x04_b exception error @ 80: got 0000000a wanted 00000000
+b_0x04_b exception error @ 81: got 0000000a wanted 00000000
+b_0x04_b exception error @ 82: got 0000000a wanted 00000000
+b_0x04_b exception error @ 83: got 0000000a wanted 00000000
+b_0x04_b exception error @ 84: got 0000000a wanted 00000000
+b_0x04_b exception error @ 85: got 0000000a wanted 00000000
+b_0x04_b exception error @ 86: got 0000000a wanted 00000000
+b_0x04_b exception error @ 87: got 0000000a wanted 00000000
+too many errors, giving up
+Running b_0x06_b test
+b_0x06_b exception error @ 0: got 0000000a wanted 00000000
+b_0x06_b exception error @ 1: got 0000000a wanted 00000000
+b_0x06_b exception error @ 2: got 0000000a wanted 00000000
+b_0x06_b exception error @ 3: got 0000000a wanted 00000000
+b_0x06_b exception error @ 4: got 0000000a wanted 00000000
+b_0x06_b exception error @ 5: got 0000000a wanted 00000000
+b_0x06_b exception error @ 6: got 0000000a wanted 00000000
+b_0x06_b value error @ 6,1: got 00000000 wanted ffffffff
+b_0x06_b exception error @ 7: got 0000000a wanted 00000000
+b_0x06_b value error @ 7,1: got 00000000 wanted ffffffff
+b_0x06_b exception error @ 8: got 0000000a wanted 00000000
+b_0x06_b exception error @ 9: got 0000000a wanted 00000000
+b_0x06_b value error @ 9,1: got 00000000 wanted ffffffff
+b_0x06_b exception error @ 10: got 0000000a wanted 00000000
+b_0x06_b exception error @ 11: got 0000000a wanted 00000000
+b_0x06_b value error @ 11,1: got 00000000 wanted ffffffff
+b_0x06_b exception error @ 12: got 0000000a wanted 00000000
+b_0x06_b value error @ 12,1: got 00000000 wanted ffffffff
+b_0x06_b exception error @ 13: got 0000000a wanted 00000000
+b_0x06_b exception error @ 14: got 0000000a wanted 00000000
+b_0x06_b value error @ 14,1: got 00000000 wanted ffffffff
+b_0x06_b exception error @ 15: got 0000000a wanted 00000000
+b_0x06_b exception error @ 16: got 0000000a wanted 00000000
+b_0x06_b exception error @ 17: got 0000000a wanted 00000000
+b_0x06_b exception error @ 18: got 0000000a wanted 00000000
+b_0x06_b exception error @ 19: got 0000000a wanted 00000000
+b_0x06_b exception error @ 20: got 0000000a wanted 00000000
+b_0x06_b exception error @ 21: got 0000000a wanted 00000000
+b_0x06_b exception error @ 22: got 0000000a wanted 00000000
+b_0x06_b exception error @ 23: got 0000000a wanted 00000000
+b_0x06_b exception error @ 24: got 0000000a wanted 00000000
+b_0x06_b exception error @ 25: got 0000000a wanted 00000000
+b_0x06_b exception error @ 26: got 0000000a wanted 00000000
+b_0x06_b exception error @ 27: got 0000000a wanted 00000000
+b_0x06_b exception error @ 28: got 0000000a wanted 00000000
+b_0x06_b exception error @ 29: got 0000000a wanted 00000000
+b_0x06_b exception error @ 30: got 0000000a wanted 00000000
+b_0x06_b exception error @ 31: got 0000000a wanted 00000000
+b_0x06_b exception error @ 32: got 0000000a wanted 00000000
+b_0x06_b exception error @ 33: got 0000000a wanted 00000000
+b_0x06_b exception error @ 34: got 0000000a wanted 00000000
+b_0x06_b exception error @ 35: got 0000000a wanted 00000000
+b_0x06_b exception error @ 36: got 0000000a wanted 00000000
+b_0x06_b exception error @ 37: got 0000000a wanted 00000000
+b_0x06_b exception error @ 38: got 0000000a wanted 00000000
+b_0x06_b exception error @ 39: got 0000000a wanted 00000000
+b_0x06_b exception error @ 40: got 0000000a wanted 00000000
+b_0x06_b exception error @ 41: got 0000000a wanted 00000000
+b_0x06_b exception error @ 42: got 0000000a wanted 00000000
+b_0x06_b exception error @ 43: got 0000000a wanted 00000000
+b_0x06_b exception error @ 44: got 0000000a wanted 00000000
+b_0x06_b exception error @ 45: got 0000000a wanted 00000000
+b_0x06_b exception error @ 46: got 0000000a wanted 00000000
+b_0x06_b exception error @ 47: got 0000000a wanted 00000000
+b_0x06_b exception error @ 48: got 0000000a wanted 00000000
+b_0x06_b exception error @ 49: got 0000000a wanted 00000000
+b_0x06_b exception error @ 50: got 0000000a wanted 00000000
+b_0x06_b exception error @ 51: got 0000000a wanted 00000000
+b_0x06_b value error @ 51,1: got 00000000 wanted ffffffff
+b_0x06_b exception error @ 52: got 0000000a wanted 00000000
+b_0x06_b value error @ 52,1: got 00000000 wanted ffffffff
+b_0x06_b exception error @ 53: got 0000000a wanted 00000000
+b_0x06_b exception error @ 54: got 0000000a wanted 00000000
+b_0x06_b value error @ 54,1: got 00000000 wanted ffffffff
+b_0x06_b exception error @ 55: got 0000000a wanted 00000000
+b_0x06_b exception error @ 56: got 0000000a wanted 00000000
+b_0x06_b value error @ 56,1: got 00000000 wanted ffffffff
+b_0x06_b exception error @ 57: got 0000000a wanted 00000000
+b_0x06_b value error @ 57,1: got 00000000 wanted ffffffff
+b_0x06_b exception error @ 58: got 0000000a wanted 00000000
+b_0x06_b exception error @ 59: got 0000000a wanted 00000000
+b_0x06_b value error @ 59,1: got 00000000 wanted ffffffff
+b_0x06_b exception error @ 60: got 0000000a wanted 00000000
+b_0x06_b exception error @ 61: got 0000000a wanted 00000000
+b_0x06_b exception error @ 62: got 0000000a wanted 00000000
+b_0x06_b exception error @ 63: got 0000000a wanted 00000000
+b_0x06_b exception error @ 64: got 0000000a wanted 00000000
+b_0x06_b exception error @ 65: got 0000000a wanted 00000000
+b_0x06_b exception error @ 66: got 0000000a wanted 00000000
+b_0x06_b exception error @ 67: got 0000000a wanted 00000000
+b_0x06_b exception error @ 68: got 0000000a wanted 00000000
+b_0x06_b exception error @ 69: got 0000000a wanted 00000000
+b_0x06_b exception error @ 70: got 0000000a wanted 00000000
+b_0x06_b exception error @ 71: got 0000000a wanted 00000000
+b_0x06_b exception error @ 72: got 0000000a wanted 00000000
+b_0x06_b exception error @ 73: got 0000000a wanted 00000000
+b_0x06_b exception error @ 74: got 0000000a wanted 00000000
+b_0x06_b exception error @ 75: got 0000000a wanted 00000000
+b_0x06_b exception error @ 76: got 0000000a wanted 00000000
+b_0x06_b exception error @ 77: got 0000000a wanted 00000000
+b_0x06_b exception error @ 78: got 0000000a wanted 00000000
+b_0x06_b exception error @ 79: got 0000000a wanted 00000000
+b_0x06_b exception error @ 80: got 0000000a wanted 00000000
+b_0x06_b exception error @ 81: got 0000000a wanted 00000000
+b_0x06_b exception error @ 82: got 0000000a wanted 00000000
+b_0x06_b exception error @ 83: got 0000000a wanted 00000000
+b_0x06_b exception error @ 84: got 0000000a wanted 00000000
+b_0x06_b exception error @ 85: got 0000000a wanted 00000000
+b_0x06_b exception error @ 86: got 0000000a wanted 00000000
+b_0x06_b exception error @ 87: got 0000000a wanted 00000000
+too many errors, giving up
+Running b_0x08_b test
+b_0x08_b exception error @ 0: got 0000000a wanted 00000000
+b_0x08_b exception error @ 1: got 0000000a wanted 00000000
+b_0x08_b exception error @ 2: got 0000000a wanted 00000000
+b_0x08_b exception error @ 3: got 0000000a wanted 00000000
+b_0x08_b exception error @ 4: got 0000000a wanted 00000000
+b_0x08_b exception error @ 5: got 0000000a wanted 00000000
+b_0x08_b exception error @ 6: got 0000000a wanted 00000000
+b_0x08_b value error @ 6,1: got 00000000 wanted ffffffff
+b_0x08_b exception error @ 7: got 0000000a wanted 00000000
+b_0x08_b value error @ 7,1: got 00000000 wanted ffffffff
+b_0x08_b exception error @ 8: got 0000000a wanted 00000000
+b_0x08_b exception error @ 9: got 0000000a wanted 00000000
+b_0x08_b value error @ 9,1: got 00000000 wanted ffffffff
+b_0x08_b exception error @ 10: got 0000000a wanted 00000000
+b_0x08_b exception error @ 11: got 0000000a wanted 00000000
+b_0x08_b value error @ 11,1: got 00000000 wanted ffffffff
+b_0x08_b exception error @ 12: got 0000000a wanted 00000000
+b_0x08_b value error @ 12,1: got 00000000 wanted ffffffff
+b_0x08_b exception error @ 13: got 0000000a wanted 00000000
+b_0x08_b exception error @ 14: got 0000000a wanted 00000000
+b_0x08_b value error @ 14,1: got 00000000 wanted ffffffff
+b_0x08_b exception error @ 15: got 0000000a wanted 00000000
+b_0x08_b exception error @ 16: got 0000000a wanted 00000000
+b_0x08_b exception error @ 17: got 0000000a wanted 00000000
+b_0x08_b exception error @ 18: got 0000000a wanted 00000000
+b_0x08_b exception error @ 19: got 0000000a wanted 00000000
+b_0x08_b exception error @ 20: got 0000000a wanted 00000000
+b_0x08_b exception error @ 21: got 0000000a wanted 00000000
+b_0x08_b exception error @ 22: got 0000000a wanted 00000000
+b_0x08_b exception error @ 23: got 0000000a wanted 00000000
+b_0x08_b exception error @ 24: got 0000000a wanted 00000000
+b_0x08_b exception error @ 25: got 0000000a wanted 00000000
+b_0x08_b exception error @ 26: got 0000000a wanted 00000000
+b_0x08_b exception error @ 27: got 0000000a wanted 00000000
+b_0x08_b exception error @ 28: got 0000000a wanted 00000000
+b_0x08_b exception error @ 29: got 0000000a wanted 00000000
+b_0x08_b exception error @ 30: got 0000000a wanted 00000000
+b_0x08_b exception error @ 31: got 0000000a wanted 00000000
+b_0x08_b exception error @ 32: got 0000000a wanted 00000000
+b_0x08_b exception error @ 33: got 0000000a wanted 00000000
+b_0x08_b exception error @ 34: got 0000000a wanted 00000000
+b_0x08_b exception error @ 35: got 0000000a wanted 00000000
+b_0x08_b exception error @ 36: got 0000000a wanted 00000000
+b_0x08_b exception error @ 37: got 0000000a wanted 00000000
+b_0x08_b exception error @ 38: got 0000000a wanted 00000000
+b_0x08_b exception error @ 39: got 0000000a wanted 00000000
+b_0x08_b exception error @ 40: got 0000000a wanted 00000000
+b_0x08_b exception error @ 41: got 0000000a wanted 00000000
+b_0x08_b exception error @ 42: got 0000000a wanted 00000000
+b_0x08_b exception error @ 43: got 0000000a wanted 00000000
+b_0x08_b exception error @ 44: got 0000000a wanted 00000000
+b_0x08_b exception error @ 45: got 0000000a wanted 00000000
+b_0x08_b exception error @ 46: got 0000000a wanted 00000000
+b_0x08_b exception error @ 47: got 0000000a wanted 00000000
+b_0x08_b exception error @ 48: got 0000000a wanted 00000000
+b_0x08_b exception error @ 49: got 0000000a wanted 00000000
+b_0x08_b exception error @ 50: got 0000000a wanted 00000000
+b_0x08_b exception error @ 51: got 0000000a wanted 00000000
+b_0x08_b value error @ 51,1: got 00000000 wanted ffffffff
+b_0x08_b exception error @ 52: got 0000000a wanted 00000000
+b_0x08_b value error @ 52,1: got 00000000 wanted ffffffff
+b_0x08_b exception error @ 53: got 0000000a wanted 00000000
+b_0x08_b exception error @ 54: got 0000000a wanted 00000000
+b_0x08_b value error @ 54,1: got 00000000 wanted ffffffff
+b_0x08_b exception error @ 55: got 0000000a wanted 00000000
+b_0x08_b exception error @ 56: got 0000000a wanted 00000000
+b_0x08_b value error @ 56,1: got 00000000 wanted ffffffff
+b_0x08_b exception error @ 57: got 0000000a wanted 00000000
+b_0x08_b value error @ 57,1: got 00000000 wanted ffffffff
+b_0x08_b exception error @ 58: got 0000000a wanted 00000000
+b_0x08_b exception error @ 59: got 0000000a wanted 00000000
+b_0x08_b value error @ 59,1: got 00000000 wanted ffffffff
+b_0x08_b exception error @ 60: got 0000000a wanted 00000000
+b_0x08_b exception error @ 61: got 0000000a wanted 00000000
+b_0x08_b exception error @ 62: got 0000000a wanted 00000000
+b_0x08_b exception error @ 63: got 0000000a wanted 00000000
+b_0x08_b exception error @ 64: got 0000000a wanted 00000000
+b_0x08_b exception error @ 65: got 0000000a wanted 00000000
+b_0x08_b exception error @ 66: got 0000000a wanted 00000000
+b_0x08_b exception error @ 67: got 0000000a wanted 00000000
+b_0x08_b exception error @ 68: got 0000000a wanted 00000000
+b_0x08_b exception error @ 69: got 0000000a wanted 00000000
+b_0x08_b exception error @ 70: got 0000000a wanted 00000000
+b_0x08_b exception error @ 71: got 0000000a wanted 00000000
+b_0x08_b exception error @ 72: got 0000000a wanted 00000000
+b_0x08_b exception error @ 73: got 0000000a wanted 00000000
+b_0x08_b exception error @ 74: got 0000000a wanted 00000000
+b_0x08_b exception error @ 75: got 0000000a wanted 00000000
+b_0x08_b exception error @ 76: got 0000000a wanted 00000000
+b_0x08_b exception error @ 77: got 0000000a wanted 00000000
+b_0x08_b exception error @ 78: got 0000000a wanted 00000000
+b_0x08_b exception error @ 79: got 0000000a wanted 00000000
+b_0x08_b exception error @ 80: got 0000000a wanted 00000000
+b_0x08_b exception error @ 81: got 0000000a wanted 00000000
+b_0x08_b exception error @ 82: got 0000000a wanted 00000000
+b_0x08_b exception error @ 83: got 0000000a wanted 00000000
+b_0x08_b exception error @ 84: got 0000000a wanted 00000000
+b_0x08_b exception error @ 85: got 0000000a wanted 00000000
+b_0x08_b exception error @ 86: got 0000000a wanted 00000000
+b_0x08_b exception error @ 87: got 0000000a wanted 00000000
+too many errors, giving up
+Running b_0x0a_b test
+b_0x0a_b exception error @ 0: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 1: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 2: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 3: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 4: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 5: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 6: got 0000000a wanted 00000000
+b_0x0a_b value error @ 6,1: got 00000000 wanted ffffffff
+b_0x0a_b exception error @ 7: got 0000000a wanted 00000000
+b_0x0a_b value error @ 7,1: got 00000000 wanted ffffffff
+b_0x0a_b exception error @ 8: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 9: got 0000000a wanted 00000000
+b_0x0a_b value error @ 9,1: got 00000000 wanted ffffffff
+b_0x0a_b exception error @ 10: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 11: got 0000000a wanted 00000000
+b_0x0a_b value error @ 11,1: got 00000000 wanted ffffffff
+b_0x0a_b exception error @ 12: got 0000000a wanted 00000000
+b_0x0a_b value error @ 12,1: got 00000000 wanted ffffffff
+b_0x0a_b exception error @ 13: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 14: got 0000000a wanted 00000000
+b_0x0a_b value error @ 14,1: got 00000000 wanted ffffffff
+b_0x0a_b exception error @ 15: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 16: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 17: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 18: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 19: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 20: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 21: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 22: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 23: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 24: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 25: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 26: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 27: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 28: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 29: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 30: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 31: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 32: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 33: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 34: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 35: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 36: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 37: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 38: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 39: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 40: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 41: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 42: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 43: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 44: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 45: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 46: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 47: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 48: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 49: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 50: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 51: got 0000000a wanted 00000000
+b_0x0a_b value error @ 51,1: got 00000000 wanted ffffffff
+b_0x0a_b exception error @ 52: got 0000000a wanted 00000000
+b_0x0a_b value error @ 52,1: got 00000000 wanted ffffffff
+b_0x0a_b exception error @ 53: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 54: got 0000000a wanted 00000000
+b_0x0a_b value error @ 54,1: got 00000000 wanted ffffffff
+b_0x0a_b exception error @ 55: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 56: got 0000000a wanted 00000000
+b_0x0a_b value error @ 56,1: got 00000000 wanted ffffffff
+b_0x0a_b exception error @ 57: got 0000000a wanted 00000000
+b_0x0a_b value error @ 57,1: got 00000000 wanted ffffffff
+b_0x0a_b exception error @ 58: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 59: got 0000000a wanted 00000000
+b_0x0a_b value error @ 59,1: got 00000000 wanted ffffffff
+b_0x0a_b exception error @ 60: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 61: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 62: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 63: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 64: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 65: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 66: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 67: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 68: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 69: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 70: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 71: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 72: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 73: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 74: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 75: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 76: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 77: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 78: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 79: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 80: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 81: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 82: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 83: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 84: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 85: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 86: got 0000000a wanted 00000000
+b_0x0a_b exception error @ 87: got 0000000a wanted 00000000
+too many errors, giving up
+Running b_0x0c_b test
+b_0x0c_b exception error @ 0: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 1: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 2: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 3: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 4: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 5: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 6: got 0000000a wanted 00000000
+b_0x0c_b value error @ 6,1: got 00000000 wanted ffffffff
+b_0x0c_b exception error @ 7: got 0000000a wanted 00000000
+b_0x0c_b value error @ 7,1: got 00000000 wanted ffffffff
+b_0x0c_b exception error @ 8: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 9: got 0000000a wanted 00000000
+b_0x0c_b value error @ 9,1: got 00000000 wanted ffffffff
+b_0x0c_b exception error @ 10: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 11: got 0000000a wanted 00000000
+b_0x0c_b value error @ 11,1: got 00000000 wanted ffffffff
+b_0x0c_b exception error @ 12: got 0000000a wanted 00000000
+b_0x0c_b value error @ 12,1: got 00000000 wanted ffffffff
+b_0x0c_b exception error @ 13: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 14: got 0000000a wanted 00000000
+b_0x0c_b value error @ 14,1: got 00000000 wanted ffffffff
+b_0x0c_b exception error @ 15: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 16: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 17: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 18: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 19: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 20: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 21: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 22: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 23: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 24: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 25: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 26: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 27: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 28: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 29: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 30: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 31: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 32: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 33: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 34: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 35: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 36: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 37: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 38: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 39: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 40: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 41: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 42: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 43: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 44: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 45: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 46: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 47: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 48: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 49: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 50: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 51: got 0000000a wanted 00000000
+b_0x0c_b value error @ 51,1: got 00000000 wanted ffffffff
+b_0x0c_b exception error @ 52: got 0000000a wanted 00000000
+b_0x0c_b value error @ 52,1: got 00000000 wanted ffffffff
+b_0x0c_b exception error @ 53: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 54: got 0000000a wanted 00000000
+b_0x0c_b value error @ 54,1: got 00000000 wanted ffffffff
+b_0x0c_b exception error @ 55: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 56: got 0000000a wanted 00000000
+b_0x0c_b value error @ 56,1: got 00000000 wanted ffffffff
+b_0x0c_b exception error @ 57: got 0000000a wanted 00000000
+b_0x0c_b value error @ 57,1: got 00000000 wanted ffffffff
+b_0x0c_b exception error @ 58: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 59: got 0000000a wanted 00000000
+b_0x0c_b value error @ 59,1: got 00000000 wanted ffffffff
+b_0x0c_b exception error @ 60: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 61: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 62: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 63: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 64: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 65: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 66: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 67: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 68: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 69: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 70: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 71: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 72: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 73: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 74: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 75: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 76: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 77: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 78: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 79: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 80: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 81: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 82: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 83: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 84: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 85: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 86: got 0000000a wanted 00000000
+b_0x0c_b exception error @ 87: got 0000000a wanted 00000000
+too many errors, giving up
+Running b_0x0e_b test
+b_0x0e_b exception error @ 0: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 1: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 2: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 3: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 4: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 5: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 6: got 0000000a wanted 00000000
+b_0x0e_b value error @ 6,1: got 00000000 wanted ffffffff
+b_0x0e_b exception error @ 7: got 0000000a wanted 00000000
+b_0x0e_b value error @ 7,1: got 00000000 wanted ffffffff
+b_0x0e_b exception error @ 8: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 9: got 0000000a wanted 00000000
+b_0x0e_b value error @ 9,1: got 00000000 wanted ffffffff
+b_0x0e_b exception error @ 10: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 11: got 0000000a wanted 00000000
+b_0x0e_b value error @ 11,1: got 00000000 wanted ffffffff
+b_0x0e_b exception error @ 12: got 0000000a wanted 00000000
+b_0x0e_b value error @ 12,1: got 00000000 wanted ffffffff
+b_0x0e_b exception error @ 13: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 14: got 0000000a wanted 00000000
+b_0x0e_b value error @ 14,1: got 00000000 wanted ffffffff
+b_0x0e_b exception error @ 15: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 16: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 17: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 18: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 19: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 20: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 21: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 22: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 23: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 24: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 25: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 26: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 27: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 28: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 29: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 30: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 31: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 32: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 33: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 34: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 35: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 36: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 37: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 38: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 39: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 40: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 41: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 42: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 43: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 44: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 45: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 46: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 47: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 48: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 49: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 50: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 51: got 0000000a wanted 00000000
+b_0x0e_b value error @ 51,1: got 00000000 wanted ffffffff
+b_0x0e_b exception error @ 52: got 0000000a wanted 00000000
+b_0x0e_b value error @ 52,1: got 00000000 wanted ffffffff
+b_0x0e_b exception error @ 53: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 54: got 0000000a wanted 00000000
+b_0x0e_b value error @ 54,1: got 00000000 wanted ffffffff
+b_0x0e_b exception error @ 55: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 56: got 0000000a wanted 00000000
+b_0x0e_b value error @ 56,1: got 00000000 wanted ffffffff
+b_0x0e_b exception error @ 57: got 0000000a wanted 00000000
+b_0x0e_b value error @ 57,1: got 00000000 wanted ffffffff
+b_0x0e_b exception error @ 58: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 59: got 0000000a wanted 00000000
+b_0x0e_b value error @ 59,1: got 00000000 wanted ffffffff
+b_0x0e_b exception error @ 60: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 61: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 62: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 63: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 64: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 65: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 66: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 67: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 68: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 69: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 70: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 71: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 72: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 73: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 74: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 75: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 76: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 77: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 78: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 79: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 80: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 81: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 82: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 83: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 84: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 85: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 86: got 0000000a wanted 00000000
+b_0x0e_b exception error @ 87: got 0000000a wanted 00000000
+too many errors, giving up
+Running b_0x00_f test
+Done
+Running b_0x02_f test
+b_0x02_f exception error @ 0: got 0000000a wanted 00000000
+b_0x02_f exception error @ 1: got 0000000a wanted 00000000
+b_0x02_f exception error @ 2: got 0000000a wanted 00000000
+b_0x02_f exception error @ 3: got 0000000a wanted 00000000
+b_0x02_f exception error @ 4: got 0000000a wanted 00000000
+b_0x02_f exception error @ 5: got 0000000a wanted 00000000
+b_0x02_f exception error @ 6: got 0000000a wanted 00000000
+b_0x02_f value error @ 6,1: got 00000000 wanted 00000001
+b_0x02_f exception error @ 7: got 0000000a wanted 00000000
+b_0x02_f value error @ 7,1: got 00000000 wanted 00000001
+b_0x02_f exception error @ 8: got 0000000a wanted 00000000
+b_0x02_f exception error @ 9: got 0000000a wanted 00000000
+b_0x02_f value error @ 9,1: got 00000000 wanted 00000001
+b_0x02_f exception error @ 10: got 0000000a wanted 00000000
+b_0x02_f exception error @ 11: got 0000000a wanted 00000000
+b_0x02_f value error @ 11,1: got 00000000 wanted 00000001
+b_0x02_f exception error @ 12: got 0000000a wanted 00000000
+b_0x02_f value error @ 12,1: got 00000000 wanted 00000001
+b_0x02_f exception error @ 13: got 0000000a wanted 00000000
+b_0x02_f exception error @ 14: got 0000000a wanted 00000000
+b_0x02_f value error @ 14,1: got 00000000 wanted 00000001
+b_0x02_f exception error @ 15: got 0000000a wanted 00000000
+b_0x02_f exception error @ 16: got 0000000a wanted 00000000
+b_0x02_f exception error @ 17: got 0000000a wanted 00000000
+b_0x02_f exception error @ 18: got 0000000a wanted 00000000
+b_0x02_f exception error @ 19: got 0000000a wanted 00000000
+b_0x02_f exception error @ 20: got 0000000a wanted 00000000
+b_0x02_f exception error @ 21: got 0000000a wanted 00000000
+b_0x02_f exception error @ 22: got 0000000a wanted 00000000
+b_0x02_f exception error @ 23: got 0000000a wanted 00000000
+b_0x02_f exception error @ 24: got 0000000a wanted 00000000
+b_0x02_f exception error @ 25: got 0000000a wanted 00000000
+b_0x02_f exception error @ 26: got 0000000a wanted 00000000
+b_0x02_f exception error @ 27: got 0000000a wanted 00000000
+b_0x02_f exception error @ 28: got 0000000a wanted 00000000
+b_0x02_f exception error @ 29: got 0000000a wanted 00000000
+b_0x02_f exception error @ 30: got 0000000a wanted 00000000
+b_0x02_f exception error @ 31: got 0000000a wanted 00000000
+b_0x02_f exception error @ 32: got 0000000a wanted 00000000
+b_0x02_f exception error @ 33: got 0000000a wanted 00000000
+b_0x02_f exception error @ 34: got 0000000a wanted 00000000
+b_0x02_f exception error @ 35: got 0000000a wanted 00000000
+b_0x02_f exception error @ 36: got 0000000a wanted 00000000
+b_0x02_f exception error @ 37: got 0000000a wanted 00000000
+b_0x02_f exception error @ 38: got 0000000a wanted 00000000
+b_0x02_f exception error @ 39: got 0000000a wanted 00000000
+b_0x02_f exception error @ 40: got 0000000a wanted 00000000
+b_0x02_f exception error @ 41: got 0000000a wanted 00000000
+b_0x02_f exception error @ 42: got 0000000a wanted 00000000
+b_0x02_f exception error @ 43: got 0000000a wanted 00000000
+b_0x02_f exception error @ 44: got 0000000a wanted 00000000
+b_0x02_f exception error @ 45: got 0000000a wanted 00000000
+b_0x02_f exception error @ 46: got 0000000a wanted 00000000
+b_0x02_f exception error @ 47: got 0000000a wanted 00000000
+b_0x02_f exception error @ 48: got 0000000a wanted 00000000
+b_0x02_f exception error @ 49: got 0000000a wanted 00000000
+b_0x02_f exception error @ 50: got 0000000a wanted 00000000
+b_0x02_f exception error @ 51: got 0000000a wanted 00000000
+b_0x02_f value error @ 51,1: got 00000000 wanted 00000001
+b_0x02_f exception error @ 52: got 0000000a wanted 00000000
+b_0x02_f value error @ 52,1: got 00000000 wanted 00000001
+b_0x02_f exception error @ 53: got 0000000a wanted 00000000
+b_0x02_f exception error @ 54: got 0000000a wanted 00000000
+b_0x02_f value error @ 54,1: got 00000000 wanted 00000001
+b_0x02_f exception error @ 55: got 0000000a wanted 00000000
+b_0x02_f exception error @ 56: got 0000000a wanted 00000000
+b_0x02_f value error @ 56,1: got 00000000 wanted 00000001
+b_0x02_f exception error @ 57: got 0000000a wanted 00000000
+b_0x02_f value error @ 57,1: got 00000000 wanted 00000001
+b_0x02_f exception error @ 58: got 0000000a wanted 00000000
+b_0x02_f exception error @ 59: got 0000000a wanted 00000000
+b_0x02_f value error @ 59,1: got 00000000 wanted 00000001
+b_0x02_f exception error @ 60: got 0000000a wanted 00000000
+b_0x02_f exception error @ 61: got 0000000a wanted 00000000
+b_0x02_f exception error @ 62: got 0000000a wanted 00000000
+b_0x02_f exception error @ 63: got 0000000a wanted 00000000
+b_0x02_f exception error @ 64: got 0000000a wanted 00000000
+b_0x02_f exception error @ 65: got 0000000a wanted 00000000
+b_0x02_f exception error @ 66: got 0000000a wanted 00000000
+b_0x02_f exception error @ 67: got 0000000a wanted 00000000
+b_0x02_f exception error @ 68: got 0000000a wanted 00000000
+b_0x02_f exception error @ 69: got 0000000a wanted 00000000
+b_0x02_f exception error @ 70: got 0000000a wanted 00000000
+b_0x02_f exception error @ 71: got 0000000a wanted 00000000
+b_0x02_f exception error @ 72: got 0000000a wanted 00000000
+b_0x02_f exception error @ 73: got 0000000a wanted 00000000
+b_0x02_f exception error @ 74: got 0000000a wanted 00000000
+b_0x02_f exception error @ 75: got 0000000a wanted 00000000
+b_0x02_f exception error @ 76: got 0000000a wanted 00000000
+b_0x02_f exception error @ 77: got 0000000a wanted 00000000
+b_0x02_f exception error @ 78: got 0000000a wanted 00000000
+b_0x02_f exception error @ 79: got 0000000a wanted 00000000
+b_0x02_f exception error @ 80: got 0000000a wanted 00000000
+b_0x02_f exception error @ 81: got 0000000a wanted 00000000
+b_0x02_f exception error @ 82: got 0000000a wanted 00000000
+b_0x02_f exception error @ 83: got 0000000a wanted 00000000
+b_0x02_f exception error @ 84: got 0000000a wanted 00000000
+b_0x02_f exception error @ 85: got 0000000a wanted 00000000
+b_0x02_f exception error @ 86: got 0000000a wanted 00000000
+b_0x02_f exception error @ 87: got 0000000a wanted 00000000
+too many errors, giving up
+Running b_0x04_f test
+b_0x04_f exception error @ 0: got 0000000a wanted 00000000
+b_0x04_f exception error @ 1: got 0000000a wanted 00000000
+b_0x04_f exception error @ 2: got 0000000a wanted 00000000
+b_0x04_f exception error @ 3: got 0000000a wanted 00000000
+b_0x04_f exception error @ 4: got 0000000a wanted 00000000
+b_0x04_f exception error @ 5: got 0000000a wanted 00000000
+b_0x04_f exception error @ 6: got 0000000a wanted 00000000
+b_0x04_f value error @ 6,1: got 00000000 wanted 00000001
+b_0x04_f exception error @ 7: got 0000000a wanted 00000000
+b_0x04_f value error @ 7,1: got 00000000 wanted 00000001
+b_0x04_f exception error @ 8: got 0000000a wanted 00000000
+b_0x04_f exception error @ 9: got 0000000a wanted 00000000
+b_0x04_f value error @ 9,1: got 00000000 wanted 00000001
+b_0x04_f exception error @ 10: got 0000000a wanted 00000000
+b_0x04_f exception error @ 11: got 0000000a wanted 00000000
+b_0x04_f value error @ 11,1: got 00000000 wanted 00000001
+b_0x04_f exception error @ 12: got 0000000a wanted 00000000
+b_0x04_f value error @ 12,1: got 00000000 wanted 00000001
+b_0x04_f exception error @ 13: got 0000000a wanted 00000000
+b_0x04_f exception error @ 14: got 0000000a wanted 00000000
+b_0x04_f value error @ 14,1: got 00000000 wanted 00000001
+b_0x04_f exception error @ 15: got 0000000a wanted 00000000
+b_0x04_f exception error @ 16: got 0000000a wanted 00000000
+b_0x04_f exception error @ 17: got 0000000a wanted 00000000
+b_0x04_f exception error @ 18: got 0000000a wanted 00000000
+b_0x04_f exception error @ 19: got 0000000a wanted 00000000
+b_0x04_f exception error @ 20: got 0000000a wanted 00000000
+b_0x04_f exception error @ 21: got 0000000a wanted 00000000
+b_0x04_f exception error @ 22: got 0000000a wanted 00000000
+b_0x04_f exception error @ 23: got 0000000a wanted 00000000
+b_0x04_f exception error @ 24: got 0000000a wanted 00000000
+b_0x04_f exception error @ 25: got 0000000a wanted 00000000
+b_0x04_f exception error @ 26: got 0000000a wanted 00000000
+b_0x04_f exception error @ 27: got 0000000a wanted 00000000
+b_0x04_f exception error @ 28: got 0000000a wanted 00000000
+b_0x04_f exception error @ 29: got 0000000a wanted 00000000
+b_0x04_f exception error @ 30: got 0000000a wanted 00000000
+b_0x04_f exception error @ 31: got 0000000a wanted 00000000
+b_0x04_f exception error @ 32: got 0000000a wanted 00000000
+b_0x04_f exception error @ 33: got 0000000a wanted 00000000
+b_0x04_f exception error @ 34: got 0000000a wanted 00000000
+b_0x04_f exception error @ 35: got 0000000a wanted 00000000
+b_0x04_f exception error @ 36: got 0000000a wanted 00000000
+b_0x04_f exception error @ 37: got 0000000a wanted 00000000
+b_0x04_f exception error @ 38: got 0000000a wanted 00000000
+b_0x04_f exception error @ 39: got 0000000a wanted 00000000
+b_0x04_f exception error @ 40: got 0000000a wanted 00000000
+b_0x04_f exception error @ 41: got 0000000a wanted 00000000
+b_0x04_f exception error @ 42: got 0000000a wanted 00000000
+b_0x04_f exception error @ 43: got 0000000a wanted 00000000
+b_0x04_f exception error @ 44: got 0000000a wanted 00000000
+b_0x04_f exception error @ 45: got 0000000a wanted 00000000
+b_0x04_f exception error @ 46: got 0000000a wanted 00000000
+b_0x04_f exception error @ 47: got 0000000a wanted 00000000
+b_0x04_f exception error @ 48: got 0000000a wanted 00000000
+b_0x04_f exception error @ 49: got 0000000a wanted 00000000
+b_0x04_f exception error @ 50: got 0000000a wanted 00000000
+b_0x04_f exception error @ 51: got 0000000a wanted 00000000
+b_0x04_f value error @ 51,1: got 00000000 wanted 00000001
+b_0x04_f exception error @ 52: got 0000000a wanted 00000000
+b_0x04_f value error @ 52,1: got 00000000 wanted 00000001
+b_0x04_f exception error @ 53: got 0000000a wanted 00000000
+b_0x04_f exception error @ 54: got 0000000a wanted 00000000
+b_0x04_f value error @ 54,1: got 00000000 wanted 00000001
+b_0x04_f exception error @ 55: got 0000000a wanted 00000000
+b_0x04_f exception error @ 56: got 0000000a wanted 00000000
+b_0x04_f value error @ 56,1: got 00000000 wanted 00000001
+b_0x04_f exception error @ 57: got 0000000a wanted 00000000
+b_0x04_f value error @ 57,1: got 00000000 wanted 00000001
+b_0x04_f exception error @ 58: got 0000000a wanted 00000000
+b_0x04_f exception error @ 59: got 0000000a wanted 00000000
+b_0x04_f value error @ 59,1: got 00000000 wanted 00000001
+b_0x04_f exception error @ 60: got 0000000a wanted 00000000
+b_0x04_f exception error @ 61: got 0000000a wanted 00000000
+b_0x04_f exception error @ 62: got 0000000a wanted 00000000
+b_0x04_f exception error @ 63: got 0000000a wanted 00000000
+b_0x04_f exception error @ 64: got 0000000a wanted 00000000
+b_0x04_f exception error @ 65: got 0000000a wanted 00000000
+b_0x04_f exception error @ 66: got 0000000a wanted 00000000
+b_0x04_f exception error @ 67: got 0000000a wanted 00000000
+b_0x04_f exception error @ 68: got 0000000a wanted 00000000
+b_0x04_f exception error @ 69: got 0000000a wanted 00000000
+b_0x04_f exception error @ 70: got 0000000a wanted 00000000
+b_0x04_f exception error @ 71: got 0000000a wanted 00000000
+b_0x04_f exception error @ 72: got 0000000a wanted 00000000
+b_0x04_f exception error @ 73: got 0000000a wanted 00000000
+b_0x04_f exception error @ 74: got 0000000a wanted 00000000
+b_0x04_f exception error @ 75: got 0000000a wanted 00000000
+b_0x04_f exception error @ 76: got 0000000a wanted 00000000
+b_0x04_f exception error @ 77: got 0000000a wanted 00000000
+b_0x04_f exception error @ 78: got 0000000a wanted 00000000
+b_0x04_f exception error @ 79: got 0000000a wanted 00000000
+b_0x04_f exception error @ 80: got 0000000a wanted 00000000
+b_0x04_f exception error @ 81: got 0000000a wanted 00000000
+b_0x04_f exception error @ 82: got 0000000a wanted 00000000
+b_0x04_f exception error @ 83: got 0000000a wanted 00000000
+b_0x04_f exception error @ 84: got 0000000a wanted 00000000
+b_0x04_f exception error @ 85: got 0000000a wanted 00000000
+b_0x04_f exception error @ 86: got 0000000a wanted 00000000
+b_0x04_f exception error @ 87: got 0000000a wanted 00000000
+too many errors, giving up
+Running b_0x06_f test
+b_0x06_f exception error @ 0: got 0000000a wanted 00000000
+b_0x06_f exception error @ 1: got 0000000a wanted 00000000
+b_0x06_f exception error @ 2: got 0000000a wanted 00000000
+b_0x06_f exception error @ 3: got 0000000a wanted 00000000
+b_0x06_f exception error @ 4: got 0000000a wanted 00000000
+b_0x06_f exception error @ 5: got 0000000a wanted 00000000
+b_0x06_f exception error @ 6: got 0000000a wanted 00000000
+b_0x06_f value error @ 6,1: got 00000000 wanted 00000001
+b_0x06_f exception error @ 7: got 0000000a wanted 00000000
+b_0x06_f value error @ 7,1: got 00000000 wanted 00000001
+b_0x06_f exception error @ 8: got 0000000a wanted 00000000
+b_0x06_f exception error @ 9: got 0000000a wanted 00000000
+b_0x06_f value error @ 9,1: got 00000000 wanted 00000001
+b_0x06_f exception error @ 10: got 0000000a wanted 00000000
+b_0x06_f exception error @ 11: got 0000000a wanted 00000000
+b_0x06_f value error @ 11,1: got 00000000 wanted 00000001
+b_0x06_f exception error @ 12: got 0000000a wanted 00000000
+b_0x06_f value error @ 12,1: got 00000000 wanted 00000001
+b_0x06_f exception error @ 13: got 0000000a wanted 00000000
+b_0x06_f exception error @ 14: got 0000000a wanted 00000000
+b_0x06_f value error @ 14,1: got 00000000 wanted 00000001
+b_0x06_f exception error @ 15: got 0000000a wanted 00000000
+b_0x06_f exception error @ 16: got 0000000a wanted 00000000
+b_0x06_f exception error @ 17: got 0000000a wanted 00000000
+b_0x06_f exception error @ 18: got 0000000a wanted 00000000
+b_0x06_f exception error @ 19: got 0000000a wanted 00000000
+b_0x06_f exception error @ 20: got 0000000a wanted 00000000
+b_0x06_f exception error @ 21: got 0000000a wanted 00000000
+b_0x06_f exception error @ 22: got 0000000a wanted 00000000
+b_0x06_f exception error @ 23: got 0000000a wanted 00000000
+b_0x06_f exception error @ 24: got 0000000a wanted 00000000

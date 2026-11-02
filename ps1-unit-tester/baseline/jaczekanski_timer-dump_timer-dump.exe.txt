@@ -1,0 +1,283 @@
+timer-dump
+WARNING: This test requires you to have modified PSX motherboard with CPU PIN 160 (TCLK0) disconnected from GPU
+and connected to CPU PIN 70 (RTS), which allows this program for manual clocking of the Timer0 in Dot Clock mode.
+Dump all timer registers after every clock cycle
+Timer mode register explained:
+Sync enabled: 0
+Reset counter to 0x0000: when target
+IRQ when target: 1
+IRQ when 0xffff: 0
+IRQ repeat mode: one-shot
+IRQ pulse mode: short pulse
+Clock source: 1
+0, counter: 0x0002, mode: 0x0518, target: 0x0005, istat: 0x0000
+1, counter: 0x0005, mode: 0x0d18, target: 0x0005, istat: 0x0010
+0, counter: 0x0003, mode: 0x0518, target: 0x0005, istat: 0x0010
+1, counter: 0x0000, mode: 0x0d18, target: 0x0005, istat: 0x0010
+0, counter: 0x0003, mode: 0x0518, target: 0x0005, istat: 0x0010
+1, counter: 0x0000, mode: 0x0d18, target: 0x0005, istat: 0x0010
+0, counter: 0x0003, mode: 0x0518, target: 0x0005, istat: 0x0010
+1, counter: 0x0000, mode: 0x0d18, target: 0x0005, istat: 0x0010
+0, counter: 0x0004, mode: 0x0518, target: 0x0005, istat: 0x0010
+1, counter: 0x0001, mode: 0x0d18, target: 0x0005, istat: 0x0010
+0, counter: 0x0004, mode: 0x0d18, target: 0x0005, istat: 0x0010
+1, counter: 0x0001, mode: 0x0518, target: 0x0005, istat: 0x0010
+0, counter: 0x0004, mode: 0x0d18, target: 0x0005, istat: 0x0010
+1, counter: 0x0001, mode: 0x0518, target: 0x0005, istat: 0x0010
+0, counter: 0x0005, mode: 0x0d18, target: 0x0005, istat: 0x0010
+1, counter: 0x0002, mode: 0x0518, target: 0x0005, istat: 0x0010
+0, counter: 0x0005, mode: 0x0d18, target: 0x0005, istat: 0x0010
+1, counter: 0x0002, mode: 0x0518, target: 0x0005, istat: 0x0010
+0, counter: 0x0005, mode: 0x0d18, target: 0x0005, istat: 0x0010
+1, counter: 0x0003, mode: 0x0518, target: 0x0005, istat: 0x0010
+0, counter: 0x0000, mode: 0x0d18, target: 0x0005, istat: 0x0010
+1, counter: 0x0003, mode: 0x0518, target: 0x0005, istat: 0x0010
+0, counter: 0x0000, mode: 0x0d18, target: 0x0005, istat: 0x0010
+1, counter: 0x0003, mode: 0x0518, target: 0x0005, istat: 0x0010
+0, counter: 0x0000, mode: 0x0d18, target: 0x0005, istat: 0x0010
+1, counter: 0x0004, mode: 0x0518, target: 0x0005, istat: 0x0010
+Dump all timer registers after every clock cycle
+Timer mode register explained:
+Sync enabled: 0
+Reset counter to 0x0000: when target
+IRQ when target: 1
+IRQ when 0xffff: 0
+IRQ repeat mode: one-shot
+IRQ pulse mode: toggle
+Clock source: 1
+0, counter: 0x0003, mode: 0x0598, target: 0x0005, istat: 0x0010
+1, counter: 0x0000, mode: 0x0998, target: 0x0005, istat: 0x0010
+0, counter: 0x0003, mode: 0x0198, target: 0x0005, istat: 0x0010
+1, counter: 0x0001, mode: 0x0998, target: 0x0005, istat: 0x0010
+0, counter: 0x0004, mode: 0x0198, target: 0x0005, istat: 0x0010
+1, counter: 0x0001, mode: 0x0998, target: 0x0005, istat: 0x0010
+0, counter: 0x0004, mode: 0x0998, target: 0x0005, istat: 0x0010
+1, counter: 0x0001, mode: 0x0198, target: 0x0005, istat: 0x0010
+0, counter: 0x0004, mode: 0x0998, target: 0x0005, istat: 0x0010
+1, counter: 0x0002, mode: 0x0198, target: 0x0005, istat: 0x0010
+0, counter: 0x0005, mode: 0x0998, target: 0x0005, istat: 0x0010
+1, counter: 0x0002, mode: 0x0198, target: 0x0005, istat: 0x0010
+0, counter: 0x0005, mode: 0x0998, target: 0x0005, istat: 0x0010
+1, counter: 0x0002, mode: 0x0198, target: 0x0005, istat: 0x0010
+0, counter: 0x0005, mode: 0x0998, target: 0x0005, istat: 0x0010
+1, counter: 0x0003, mode: 0x0198, target: 0x0005, istat: 0x0010
+0, counter: 0x0000, mode: 0x0998, target: 0x0005, istat: 0x0010
+1, counter: 0x0003, mode: 0x0198, target: 0x0005, istat: 0x0010
+0, counter: 0x0000, mode: 0x0998, target: 0x0005, istat: 0x0010
+1, counter: 0x0003, mode: 0x0198, target: 0x0005, istat: 0x0010
+0, counter: 0x0000, mode: 0x0998, target: 0x0005, istat: 0x0010
+1, counter: 0x0004, mode: 0x0198, target: 0x0005, istat: 0x0010
+0, counter: 0x0001, mode: 0x0998, target: 0x0005, istat: 0x0010
+1, counter: 0x0004, mode: 0x0998, target: 0x0005, istat: 0x0010
+0, counter: 0x0001, mode: 0x0198, target: 0x0005, istat: 0x0010
+1, counter: 0x0004, mode: 0x0998, target: 0x0005, istat: 0x0010
+Dump all timer registers after every clock cycle
+Timer mode register explained:
+Sync enabled: 0
+Reset counter to 0x0000: when target
+IRQ when target: 1
+IRQ when 0xffff: 0
+IRQ repeat mode: repeatedly
+IRQ pulse mode: short pulse
+Clock source: 1
+0, counter: 0x0003, mode: 0x0558, target: 0x0005, istat: 0x0010
+1, counter: 0x0000, mode: 0x0d58, target: 0x0005, istat: 0x0010
+0, counter: 0x0003, mode: 0x0558, target: 0x0005, istat: 0x0010
+1, counter: 0x0000, mode: 0x0d58, target: 0x0005, istat: 0x0010
+0, counter: 0x0004, mode: 0x0558, target: 0x0005, istat: 0x0010
+1, counter: 0x0001, mode: 0x0d58, target: 0x0005, istat: 0x0010
+0, counter: 0x0004, mode: 0x0558, target: 0x0005, istat: 0x0010
+1, counter: 0x0001, mode: 0x0d58, target: 0x0005, istat: 0x0010
+0, counter: 0x0004, mode: 0x0958, target: 0x0005, istat: 0x0010
+1, counter: 0x0001, mode: 0x0558, target: 0x0005, istat: 0x0010
+0, counter: 0x0005, mode: 0x0958, target: 0x0005, istat: 0x0010
+1, counter: 0x0002, mode: 0x0558, target: 0x0005, istat: 0x0010
+0, counter: 0x0005, mode: 0x0d58, target: 0x0005, istat: 0x0010
+1, counter: 0x0002, mode: 0x0558, target: 0x0005, istat: 0x0010
+0, counter: 0x0005, mode: 0x0d58, target: 0x0005, istat: 0x0010
+1, counter: 0x0002, mode: 0x0558, target: 0x0005, istat: 0x0010
+0, counter: 0x0000, mode: 0x0d58, target: 0x0005, istat: 0x0010
+1, counter: 0x0003, mode: 0x0558, target: 0x0005, istat: 0x0010
+0, counter: 0x0000, mode: 0x0d58, target: 0x0005, istat: 0x0010
+1, counter: 0x0003, mode: 0x0558, target: 0x0005, istat: 0x0010
+0, counter: 0x0000, mode: 0x0d58, target: 0x0005, istat: 0x0010
+1, counter: 0x0003, mode: 0x0558, target: 0x0005, istat: 0x0010
+0, counter: 0x0001, mode: 0x0d58, target: 0x0005, istat: 0x0010
+1, counter: 0x0004, mode: 0x0558, target: 0x0005, istat: 0x0010
+0, counter: 0x0001, mode: 0x0d58, target: 0x0005, istat: 0x0010
+1, counter: 0x0004, mode: 0x0958, target: 0x0005, istat: 0x0010
+Dump all timer registers after every clock cycle
+Timer mode register explained:
+Sync enabled: 0
+Reset counter to 0x0000: when target
+IRQ when target: 1
+IRQ when 0xffff: 0
+IRQ repeat mode: repeatedly
+IRQ pulse mode: toggle
+Clock source: 1
+0, counter: 0x0003, mode: 0x05d8, target: 0x0005, istat: 0x0010
+1, counter: 0x0000, mode: 0x09d8, target: 0x0005, istat: 0x0010
+0, counter: 0x0003, mode: 0x01d8, target: 0x0005, istat: 0x0010
+1, counter: 0x0000, mode: 0x0dd8, target: 0x0005, istat: 0x0010
+0, counter: 0x0003, mode: 0x05d8, target: 0x0005, istat: 0x0010
+1, counter: 0x0001, mode: 0x09d8, target: 0x0005, istat: 0x0010
+0, counter: 0x0004, mode: 0x01d8, target: 0x0005, istat: 0x0010
+1, counter: 0x0001, mode: 0x0dd8, target: 0x0005, istat: 0x0010
+0, counter: 0x0004, mode: 0x09d8, target: 0x0005, istat: 0x0010
+1, counter: 0x0001, mode: 0x01d8, target: 0x0005, istat: 0x0010
+0, counter: 0x0004, mode: 0x0dd8, target: 0x0005, istat: 0x0010
+1, counter: 0x0002, mode: 0x05d8, target: 0x0005, istat: 0x0010
+0, counter: 0x0005, mode: 0x09d8, target: 0x0005, istat: 0x0010
+1, counter: 0x0002, mode: 0x01d8, target: 0x0005, istat: 0x0010
+0, counter: 0x0005, mode: 0x0dd8, target: 0x0005, istat: 0x0010
+1, counter: 0x0002, mode: 0x05d8, target: 0x0005, istat: 0x0010
+0, counter: 0x0005, mode: 0x09d8, target: 0x0005, istat: 0x0010
+1, counter: 0x0003, mode: 0x01d8, target: 0x0005, istat: 0x0010
+0, counter: 0x0000, mode: 0x0dd8, target: 0x0005, istat: 0x0010
+1, counter: 0x0003, mode: 0x05d8, target: 0x0005, istat: 0x0010
+0, counter: 0x0000, mode: 0x09d8, target: 0x0005, istat: 0x0010
+1, counter: 0x0003, mode: 0x01d8, target: 0x0005, istat: 0x0010
+0, counter: 0x0000, mode: 0x0dd8, target: 0x0005, istat: 0x0010
+1, counter: 0x0004, mode: 0x05d8, target: 0x0005, istat: 0x0010
+0, counter: 0x0001, mode: 0x09d8, target: 0x0005, istat: 0x0010
+1, counter: 0x0004, mode: 0x0dd8, target: 0x0005, istat: 0x0010
+Manually clock Timer0 counter using GPIO (RTS, CPU PIN 70).
+Check how long it takes for counter to reset 0 after it hit the target
+Timer mode register explained:
+Sync enabled: 0
+Reset counter to 0x0000: when target
+IRQ when target: 1
+IRQ when 0xffff: 0
+IRQ repeat mode: repeatedly
+IRQ pulse mode: toggle
+Clock source: 1
+Target: 0x0004
+  0, 1 counter: 0x0003
+  1, 1 counter: 0x0004
+  2, 1 counter: 0x0004
+  3, 1 counter: 0x0004
+  4, 0 counter: 0x0004
+  5, 0 counter: 0x0000
+  6, 0 counter: 0x0000
+  7, 0 counter: 0x0000
+  8, 1 counter: 0x0003
+  9, 1 counter: 0x0003
+ 10, 1 counter: 0x0003
+ 11, 1 counter: 0x0003
+ 12, 0 counter: 0x0004
+ 13, 0 counter: 0x0004
+ 14, 0 counter: 0x0004
+ 15, 0 counter: 0x0004
+ 16, 1 counter: 0x0002
+ 17, 1 counter: 0x0002
+ 18, 1 counter: 0x0003
+ 19, 1 counter: 0x0003
+ 20, 0 counter: 0x0003
+ 21, 0 counter: 0x0003
+ 22, 0 counter: 0x0004
+ 23, 0 counter: 0x0004
+ 24, 1 counter: 0x0002
+ 25, 1 counter: 0x0002
+ 26, 1 counter: 0x0002
+ 27, 1 counter: 0x0002
+ 28, 0 counter: 0x0003
+ 29, 0 counter: 0x0003
+ 30, 0 counter: 0x0003
+ 31, 0 counter: 0x0003
+ 32, 1 counter: 0x0001
+ 33, 1 counter: 0x0001
+ 34, 1 counter: 0x0001
+ 35, 1 counter: 0x0001
+ 36, 0 counter: 0x0002
+ 37, 0 counter: 0x0002
+ 38, 0 counter: 0x0002
+ 39, 0 counter: 0x0002
+ 40, 1 counter: 0x0000
+ 41, 1 counter: 0x0000
+ 42, 1 counter: 0x0001
+ 43, 1 counter: 0x0001
+ 44, 0 counter: 0x0001
+ 45, 0 counter: 0x0001
+ 46, 0 counter: 0x0002
+ 47, 0 counter: 0x0002
+ 48, 1 counter: 0x0000
+ 49, 1 counter: 0x0000
+ 50, 1 counter: 0x0000
+ 51, 1 counter: 0x0000
+ 52, 0 counter: 0x0001
+ 53, 0 counter: 0x0001
+ 54, 0 counter: 0x0001
+ 55, 0 counter: 0x0001
+ 56, 1 counter: 0x0004
+ 57, 1 counter: 0x0004
+ 58, 1 counter: 0x0004
+ 59, 1 counter: 0x0000
+ 60, 0 counter: 0x0000
+ 61, 0 counter: 0x0000
+ 62, 0 counter: 0x0000
+ 63, 0 counter: 0x0001
+ 64, 1 counter: 0x0003
+ 65, 1 counter: 0x0004
+ 66, 1 counter: 0x0004
+ 67, 1 counter: 0x0004
+ 68, 0 counter: 0x0004
+ 69, 0 counter: 0x0000
+ 70, 0 counter: 0x0000
+ 71, 0 counter: 0x0000
+ 72, 1 counter: 0x0003
+ 73, 1 counter: 0x0003
+ 74, 1 counter: 0x0003
+ 75, 1 counter: 0x0003
+ 76, 0 counter: 0x0004
+ 77, 0 counter: 0x0004
+ 78, 0 counter: 0x0004
+ 79, 0 counter: 0x0004
+ 80, 1 counter: 0x0002
+ 81, 1 counter: 0x0002
+ 82, 1 counter: 0x0002
+ 83, 1 counter: 0x0003
+ 84, 0 counter: 0x0003
+ 85, 0 counter: 0x0003
+ 86, 0 counter: 0x0003
+ 87, 0 counter: 0x0004
+ 88, 1 counter: 0x0001
+ 89, 1 counter: 0x0002
+ 90, 1 counter: 0x0002
+ 91, 1 counter: 0x0002
+ 92, 0 counter: 0x0002
+ 93, 0 counter: 0x0003
+ 94, 0 counter: 0x0003
+ 95, 0 counter: 0x0003
+ 96, 1 counter: 0x0001
+ 97, 1 counter: 0x0001
+ 98, 1 counter: 0x0001
+ 99, 1 counter: 0x0001
+100, 0 counter: 0x0002
+101, 0 counter: 0x0002
+102, 0 counter: 0x0002
+103, 0 counter: 0x0002
+104, 1 counter: 0x0000
+105, 1 counter: 0x0000
+106, 1 counter: 0x0001
+107, 1 counter: 0x0001
+108, 0 counter: 0x0001
+109, 0 counter: 0x0001
+110, 0 counter: 0x0002
+111, 0 counter: 0x0002
+112, 1 counter: 0x0004
+113, 1 counter: 0x0000
+114, 1 counter: 0x0000
+115, 1 counter: 0x0000
+116, 0 counter: 0x0000
+117, 0 counter: 0x0001
+118, 0 counter: 0x0001
+119, 0 counter: 0x0001
+120, 1 counter: 0x0004
+121, 1 counter: 0x0004
+122, 1 counter: 0x0004
+123, 1 counter: 0x0004
+124, 0 counter: 0x0000
+125, 0 counter: 0x0000
+126, 0 counter: 0x0000
+127, 0 counter: 0x0000
+Done.

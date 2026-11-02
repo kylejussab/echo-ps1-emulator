@@ -1,0 +1,20 @@
+cdrom/header-valid-bit
+> Initializing CD-ROM controller...
+psxcd: Init Ok!
+> Testing state of reading after initial reset
+> GetStat -> 0x02
+> Testing Getloc after initial reset
+> GetlocL succeeded - [02:00:00] mode 0
+! Expected failure but GetlocL succeeeded
+> GetlocP succeeded - track 01 index 01 [00:00:00] absolute [00:02:00]
+> Testing seek...
+> Seeking to [00:02:16] (logical)
+> Seek result irq=2, status=0x02
+> GetStat -> 0x02
+> Testing Getloc after seek
+> GetlocL succeeded - [02:00:00] mode 0
+> GetlocP succeeded - track 01 index 01 [00:00:16] absolute [00:02:00]
+> Testing read
+> GetStat -> 0x22
+! Expected stat bits 0x42, got 0x22
+> Waiting for read to complete

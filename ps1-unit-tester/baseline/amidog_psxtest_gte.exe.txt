@@ -1,0 +1,3 @@
+args: 0
+PSX is NTSC with CPU 00000002, GPU 00000002 and SPU 00000000
+Running tests

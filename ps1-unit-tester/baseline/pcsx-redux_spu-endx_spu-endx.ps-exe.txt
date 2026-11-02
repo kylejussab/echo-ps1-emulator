@@ -1,0 +1,21 @@
+SPUENDX: start
+SPUENDX: before keyon ENDX=00000000
+SPUENDX: after-latch ENDX_LOW=0003 voice1=SET voice0=SET spins=1
+SPUENDX: keyon2+00 ENDX_LOW=0001 voice1=clear voice0=SET
+SPUENDX: keyon2+01 ENDX_LOW=0001 voice1=clear voice0=SET
+SPUENDX: keyon2+02 ENDX_LOW=0001 voice1=clear voice0=SET
+SPUENDX: keyon2+03 ENDX_LOW=0001 voice1=clear voice0=SET
+SPUENDX: keyon2+04 ENDX_LOW=0001 voice1=clear voice0=SET
+SPUENDX: keyon2+05 ENDX_LOW=0001 voice1=clear voice0=SET
+SPUENDX: keyon2+06 ENDX_LOW=0001 voice1=clear voice0=SET
+SPUENDX: keyon2+07 ENDX_LOW=0001 voice1=clear voice0=SET
+SPUENDX: keyon2+08 ENDX_LOW=0001 voice1=clear voice0=SET
+SPUENDX: keyon2+09 ENDX_LOW=0001 voice1=clear voice0=SET
+SPUENDX: keyon2+10 ENDX_LOW=0001 voice1=clear voice0=SET
+SPUENDX: keyon2+11 ENDX_LOW=0001 voice1=clear voice0=SET
+SPUENDX: keyon2+12 ENDX_LOW=0001 voice1=clear voice0=SET
+SPUENDX: keyon2+13 ENDX_LOW=0001 voice1=clear voice0=SET
+SPUENDX: keyon2+14 ENDX_LOW=0001 voice1=clear voice0=SET
+SPUENDX: keyon2+15 ENDX_LOW=0001 voice1=clear voice0=SET
+SPUENDX: re-latch ENDX=00000003 voice1=SET envx=7fff spins=0
+SPUENDX: PASS (latched=1 clearedAt=0 relatched=1)

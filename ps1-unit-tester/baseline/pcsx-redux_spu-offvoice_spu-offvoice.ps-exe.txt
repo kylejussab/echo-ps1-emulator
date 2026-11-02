@@ -1,0 +1,6 @@
+SPUOFFVOICE: start
+SPUOFFVOICE: on-voice fired=1 polls=12182 stat=0840 ctrl=c040 envx=7fff ack=1 statAck=0800
+SPUOFFVOICE: off-voice fired=0 polls=0 stat=0000 envxIdle=0000 envxAtFire=0000 endx=0002 envxPolls=121
+SPUOFFVOICE: FAIL - SPUCNT.6 still set after the match; the SPU did not disable its own interrupt, so the address keeps re-firing
+SPUOFFVOICE: FAIL - a keyed-off voice stopped reading SPU RAM; no IRQA match in 4000000 polls, while the same voice playing matched in 12182
+SPUOFFVOICE: FAILURE (endx=0002 firedOn=1 ctrl=c040 ack=1 envxIdle=0000 firedOff=0)
