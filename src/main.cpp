@@ -5,7 +5,7 @@
 
 int main(int argc, char* argv[]) {
     std::string biosPath = "assets/SCPH1001.BIN";
-    std::string cuePath = "games/CTR - Crash Team Racing (USA)/CTR - Crash Team Racing (USA).cue";
+    std::string cuePath = "games/Tomb Raider (USA)/Tomb Raider (USA).cue";
 
     //Crash Bandicoot (USA)/Crash Bandicoot (USA).cue
     //Crash Bandicoot 2 - Cortex Strikes Back (USA)/Crash Bandicoot 2 - Cortex Strikes Back (USA).cue

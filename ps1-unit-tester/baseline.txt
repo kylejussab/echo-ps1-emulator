@@ -13,6 +13,9 @@ echo-tests/sio1_registers | FAIL | 9
 echo-tests/sio1_transfer | FAIL | 8
 echo-tests/sio_pad_protocol | PASS | 0
 echo-tests/sio_registers | FAIL | 6
+echo-tests/spu_registers | FAIL | 3
+echo-tests/spu_transfers | PASS | 0
+echo-tests/spu_voices | FAIL | 15
 echo-tests/timers_diff | PASS | 0
 echo-tests/timers_unit | PASS | 0
 jaczekanski/cdrom/getloc/getloc.exe | INFO | 0

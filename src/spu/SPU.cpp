@@ -226,7 +226,6 @@ bool SPU::DMARequest() const {
 }
 
 
-
 void SPU::advanceClock(int cycles) {
 	if (transferActive) {
 		transferCycleAccumulator += static_cast<uint32_t>(cycles);
