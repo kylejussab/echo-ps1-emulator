@@ -424,11 +424,6 @@ void CDROM::executeCommand(uint8_t command) {
             if (!parameterQueue.empty()) {
                 trackNumber = binaryCodedDecimalToDecimal(parameterQueue.front());
             }
-
-            /// @todo (accuracy): BUG: playingTrackNumber is computed from the position BEFORE the Play target is applied (L407/L411). Playing a track from elsewhere leaves the old track number, so AutoPause (L246) fires instantly and Report (L292) shows the wrong track. Compute it after currentReadLogicalBlockAddress is final.
-            playingTrackNumber = findTrackNumber(currentReadLogicalBlockAddress);
-
-            /// @todo (accuracy): track parameters N+1..99h must restart the beginning of the CURRENT track; here they fall through to Setloc/current position. Play also adds no seek time (ReadN uses calculateSeekCycles), and the first response is hardcoded 82h although only the Seek bit (bit 6) may be set until the seek completes.
             if (trackNumber != 0 && compactDisc.getTrack(trackNumber) != nullptr) {
                 currentReadLogicalBlockAddress = compactDisc.getTrack(trackNumber)->startLogicalBlockAddress;
                 setLocationPending = false;
@@ -437,6 +432,8 @@ void CDROM::executeCommand(uint8_t command) {
                 currentReadLogicalBlockAddress = seekTargetLogicalBlockAddress;
                 setLocationPending = false;
             }
+
+            playingTrackNumber = findTrackNumber(currentReadLogicalBlockAddress);
             
             isReading = false;
             isPlayingAudio = true;
@@ -582,25 +579,27 @@ void CDROM::executeCommand(uint8_t command) {
             });
             break;
         }
-        case 0x11: { // GetlocP (Get Physical Location Subchannel Q)
-            /// @todo (accuracy): GetlocP hardcodes track 01 / index 01 (L562-563), and the "relative" time (L556) is measured from the start of the disc, not of the track. It should use the track containing the position (findTrackNumber / Disc::getTrack), position minus that track's start, AAh in the lead-out, and index 00 in pregaps (needs Disc to parse INDEX 00). currentReadLogicalBlockAddress is the NEXT sector to read, so it's one ahead. Fails with 80h with no disc; works during a seek.
-            uint32_t absoluteTotalFrames = currentReadLogicalBlockAddress + 150;
-            uint8_t absoluteMinutes = decimalToBinaryCodedDecimal(absoluteTotalFrames / (60 * 75));
-            uint8_t absoluteSeconds = decimalToBinaryCodedDecimal((absoluteTotalFrames / 75) % 60);
-            uint8_t absoluteFrames = decimalToBinaryCodedDecimal(absoluteTotalFrames % 75);
+        case 0x11: { // GetlocP
+            uint32_t position = currentReadLogicalBlockAddress;
+            uint8_t trackNumber = findTrackNumber(position);
+            if (trackNumber == 0) trackNumber = 1;
+            const auto* track = compactDisc.getTrack(trackNumber);
+            uint32_t trackStart = track ? static_cast<uint32_t>(track->startLogicalBlockAddress) : 0;
 
-            uint32_t relativeTotalFrames = currentReadLogicalBlockAddress; 
-            uint8_t trackMinutes = decimalToBinaryCodedDecimal(relativeTotalFrames / (60 * 75));
-            uint8_t trackSeconds = decimalToBinaryCodedDecimal((relativeTotalFrames / 75) % 60);
-            uint8_t trackFrames = decimalToBinaryCodedDecimal(relativeTotalFrames % 75);
+            bool inPregap = position < trackStart;
+            uint32_t relative = inPregap ? (trackStart - position - 1) : (position - trackStart); // counts down inside a pregap
+            uint32_t absolute = position + 150;
 
-            queueInterrupt(0x03, Hardware::DELAY_CDROM_ACK , {
-                decimalToBinaryCodedDecimal(1), 
-                decimalToBinaryCodedDecimal(1), 
-                trackMinutes, trackSeconds, trackFrames,
-                absoluteMinutes, absoluteSeconds, absoluteFrames
+            queueInterrupt(0x03, Hardware::DELAY_CDROM_ACK, {
+                decimalToBinaryCodedDecimal(trackNumber),
+                decimalToBinaryCodedDecimal(inPregap ? 0 : 1),
+                decimalToBinaryCodedDecimal(relative / (60 * 75)),
+                decimalToBinaryCodedDecimal((relative / 75) % 60),
+                decimalToBinaryCodedDecimal(relative % 75),
+                decimalToBinaryCodedDecimal(absolute / (60 * 75)),
+                decimalToBinaryCodedDecimal((absolute / 75) % 60),
+                decimalToBinaryCodedDecimal(absolute % 75)
             });
-
             break;
         }
         case 0x12: { // Setsession (Set Active Disc Session)
@@ -793,7 +792,7 @@ uint8_t CDROM::findTrackNumber(uint32_t logicalBlockAddress) {
     for (uint8_t trackNumber = 1; trackNumber <= 99; trackNumber++) {
         const auto* track = compactDisc.getTrack(trackNumber);
         if (track == nullptr) break;
-        if (static_cast<uint32_t>(track->startLogicalBlockAddress) <= logicalBlockAddress) foundTrackNumber = trackNumber;
+        if (static_cast<uint32_t>(track->pregapStartLogicalBlockAddress) <= logicalBlockAddress) foundTrackNumber = trackNumber;
     }
     return foundTrackNumber;
 }
