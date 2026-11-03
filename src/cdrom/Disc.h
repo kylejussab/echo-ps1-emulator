@@ -24,8 +24,11 @@ public:
         uint32_t startLogicalBlockAddress = 0;      // Logical Block Address of INDEX 01 (where the track's audio/data really starts)
         uint32_t fileStartLogicalBlockAddress = 0;  // Logical Block Address of the first sector of the file this track lives in
         uint32_t indexLogicalBlockAddress = 0;      // INDEX 01 as written in the CUE: relative to the start of the file
+        uint32_t index0LogicalBlockAddress = 0;      // INDEX 00 as written in the CUE: relative to the start of the file
         uint32_t fileByteOffset = 0;
         std::string filename;
+        bool hasIndex0 = false;
+        uint32_t pregapStartLogicalBlockAddress = 0; // first sector of this track's pregap (== startLogicalBlockAddress when there is none)
     };
 
     

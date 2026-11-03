@@ -75,18 +75,21 @@ bool Disc::loadCue(const std::string& cuePath) {
             ss >> indexNumber >> minuteSecondFrameString;
 
             // INDEX 01 designates the start of the actual track data.
-            /// @todo (unimplemented): INDEX 00 and PREGAP are ignored. Real SubQ reports the next track's number and index 0 inside its pregap, which AutoPause, GetlocP (index and relative time) and Report depend on. GetTD correctly uses INDEX 01.
-            if (indexNumber == 1 && inTrack) {
+            if ((indexNumber == 0 || indexNumber == 1) && inTrack) {
                 int minutes = 0, seconds = 0, frames = 0;
                 char colon1 = 0, colon2 = 0;
                 std::stringstream minuteSecondFrameStream(minuteSecondFrameString);
                 minuteSecondFrameStream >> minutes >> colon1 >> seconds >> colon2 >> frames;
+                uint32_t parsedLogicalBlockAddress = minuteSecondFrameToLogicalBlockAddress(minutes, seconds, frames);
 
-                currentTrack.indexLogicalBlockAddress = minuteSecondFrameToLogicalBlockAddress(minutes, seconds, frames);
-                
-                // For Multi-BIN rips, the local file offset is strictly initialized to 0.
-                // Logical Block Address offsets are calculated dynamically during sector reads.
-                currentTrack.fileByteOffset = 0; 
+                if (indexNumber == 1) {
+                    currentTrack.indexLogicalBlockAddress = parsedLogicalBlockAddress;
+                    currentTrack.fileByteOffset = 0;
+                }
+                else {
+                    currentTrack.index0LogicalBlockAddress = parsedLogicalBlockAddress;
+                    currentTrack.hasIndex0 = true;
+                }
             }
         }
     }
@@ -98,6 +101,8 @@ bool Disc::loadCue(const std::string& cuePath) {
     uint32_t globalLogicalBlockAddress = 0;
     uint32_t currentFileStartLogicalBlockAddress = 0;
     std::string lastFilename;
+    TrackType previousTrackType = TrackType::Unknown;
+
     for (auto& track : tracks) {
         if (track.filename != lastFilename) {
             currentFileStartLogicalBlockAddress = globalLogicalBlockAddress;
@@ -111,6 +116,19 @@ bool Disc::loadCue(const std::string& cuePath) {
         // INDEX 01 is relative to the start of the track's file. In a single-BIN image that is the real track start,
         // in a multi-BIN image it is the pregap length when the file includes the pregap (usually 00:02:00 for audio).
         track.startLogicalBlockAddress = currentFileStartLogicalBlockAddress + track.indexLogicalBlockAddress;
+
+        // Where the track's pregap (index 00) begins. The drive reports sectors in here as THIS track, index 0.
+        if (track.hasIndex0) {
+            track.pregapStartLogicalBlockAddress = currentFileStartLogicalBlockAddress + track.index0LogicalBlockAddress;
+        }
+        else if (track.type == TrackType::Audio && previousTrackType == TrackType::Mode2_2352 && track.indexLogicalBlockAddress >= 150) {
+            track.pregapStartLogicalBlockAddress = track.startLogicalBlockAddress - 150; // no INDEX 00 in the cue, but audio after data always has a 2 second pregap
+        }
+        else {
+            track.pregapStartLogicalBlockAddress = track.startLogicalBlockAddress;
+        }
+        
+        previousTrackType = track.type;
     }
 
     totalSectors = globalLogicalBlockAddress;

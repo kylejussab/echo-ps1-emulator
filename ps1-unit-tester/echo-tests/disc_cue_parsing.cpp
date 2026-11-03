@@ -1,5 +1,5 @@
 // Disc: reading a cue sheet into a track table. Checks the track numbers and types, the INDEX 01 timestamps (minute:second:frame to
-// sector number), how a single BIN and a BIN per track are laid out end to end, how the cue syntax is tolerated, and that a broken
+// sector number), covers INDEX 00 and the pregap start, how a single BIN and a BIN per track are laid out end to end, how the cue syntax is tolerated, and that a broken
 // image fails cleanly instead of crashing. Needs no disc and no BIOS: the images are generated (support/synthetic_disc.h).
 //
 // A note on the 150-sector pregap. Disc numbers sectors from 0 = 00:02:00 and does not add or remove the 2-second lead-in anywhere:
@@ -66,6 +66,14 @@ void checkTrack(const Disc& disc, const ExpectedTrack& expected, const std::stri
 	check(track->filename == expected.filename, prefix + "points at its BIN file", "got '" + track->filename + "', expected '" + expected.filename + "'");
 }
 
+
+void checkPregapStart(const Disc& disc, int trackNumber, uint32_t expected, const std::string& context) {
+	const Disc::Track* track = disc.getTrack(trackNumber);
+	if (!check(track != nullptr, context + ": track " + std::to_string(trackNumber) + " exists")) return;
+	checkEqual(track->pregapStartLogicalBlockAddress, expected, context + ": track " + std::to_string(trackNumber) + " pregap starts at sector " + std::to_string(expected));
+}
+
+
 // One BIN with three tracks: the track table, the sector numbers, and the title read from sector 16
 void checkSingleBinLayout() {
 	Workspace workspace;
@@ -94,6 +102,10 @@ void checkSingleBinLayout() {
 	checkTrack(disc, {1, Disc::TrackType::Mode2_2352, 0, 0, 0, bin}, "single BIN");
 	checkTrack(disc, {2, Disc::TrackType::Audio, 30, 0, 30, bin}, "single BIN");
 	checkTrack(disc, {3, Disc::TrackType::Audio, 80, 0, 80, bin}, "single BIN");
+
+	checkPregapStart(disc, 1, 0, "single BIN");
+	checkPregapStart(disc, 2, 28, "single BIN (INDEX 00 at 00:00:28)");
+	checkPregapStart(disc, 3, 80, "single BIN (no INDEX 00, audio after audio: no pregap is guessed)");
 
 	check(disc.getTrack(0) == nullptr, "single BIN: there is no track 0");
 	check(disc.getTrack(4) == nullptr, "single BIN: there is no track 4");
@@ -162,10 +174,12 @@ void checkOtherIndexes() {
 	const Disc::Track* first = disc.getTrack(1);
 	if (check(first != nullptr, "other indexes: track 1 exists")) {
 		checkEqual(first->startLogicalBlockAddress, 20, "other indexes: INDEX 00 and INDEX 02 do not move the start of the track (INDEX 01)");
+		checkPregapStart(disc, 1, 0, "other indexes (INDEX 00 at 00:00:00 while INDEX 01 is at sector 20)");
 	}
 	const Disc::Track* second = disc.getTrack(2);
 	if (check(second != nullptr, "other indexes: track 2 exists")) {
 		checkEqual(second->startLogicalBlockAddress, 75, "other indexes: the next track still starts at its own INDEX 01");
+		checkPregapStart(disc, 2, 75, "other indexes (no INDEX 00: the pregap starts where the track does)");
 	}
 }
 
@@ -287,6 +301,10 @@ void checkMultiFileLayout() {
 	checkTrack(disc, {2, Disc::TrackType::Audio, 150, 60, 210, workspace.path("audio.bin")}, "multi-file");
 	checkTrack(disc, {3, Disc::TrackType::Audio, 225, 60, 285, workspace.path("audio.bin")}, "multi-file");
 	checkTrack(disc, {4, Disc::TrackType::Audio, 75, 360, 435, workspace.path("last.bin")}, "multi-file");
+	checkPregapStart(disc, 1, 0, "multi-file");
+	checkPregapStart(disc, 2, 60, "multi-file (INDEX 00 at 00:00:00 of audio.bin, which starts at sector 60)");
+	checkPregapStart(disc, 3, 285, "multi-file (no INDEX 00, audio after audio)");
+	checkPregapStart(disc, 4, 435, "multi-file (a new file, no INDEX 00, audio after audio)");
 }
 
 // Loading a second cue replaces the first one completely
@@ -358,6 +376,59 @@ void checkFailures() {
 	}
 }
 
+// A cue with no INDEX 00. Audio that follows a data track always has a 2-second pregap, so Disc assumes one there. Audio after audio gets no guess.
+void checkPregapWithoutIndex00() {
+	Workspace workspace;
+	if (!check(workspace.ok(), "no INDEX 00: could create a temporary directory")) return;
+	workspace.writeBin("big.bin", 0, 500);
+	workspace.writeBin("data.bin", 0, 60);
+	workspace.writeBin("audio.bin", 60, 300);
+
+	{	// One BIN, audio at 00:05:00 (sector 375): the 150 sectors before it are the pregap
+		std::string cuePath = workspace.writeCue("single.cue", joinLines({
+			"FILE \"big.bin\" BINARY",
+			"  TRACK 01 MODE2/2352",
+			"    INDEX 01 00:00:00",
+			"  TRACK 02 AUDIO",
+			"    INDEX 01 00:05:00",
+		}));
+		Disc disc;
+		if (check(load(disc, cuePath), "no INDEX 00, single BIN: the CUE loads")) {
+			checkEqual(disc.getTrack(2)->startLogicalBlockAddress, 375, "no INDEX 00, single BIN: the track starts at its INDEX 01");
+			checkPregapStart(disc, 2, 225, "no INDEX 00, single BIN (a 2 second pregap is assumed after a data track)");
+		}
+	}
+	{	// A BIN per track, the audio file starts with its pregap (INDEX 01 at 00:02:00) but the cue has no INDEX 00: the pregap is the start of the file
+		std::string cuePath = workspace.writeCue("pregap-in-file.cue", joinLines({
+			"FILE \"data.bin\" BINARY",
+			"  TRACK 01 MODE2/2352",
+			"    INDEX 01 00:00:00",
+			"FILE \"audio.bin\" BINARY",
+			"  TRACK 02 AUDIO",
+			"    INDEX 01 00:02:00",
+		}));
+		Disc disc;
+		if (check(load(disc, cuePath), "no INDEX 00, pregap in the file: the CUE loads")) {
+			checkEqual(disc.getTrack(2)->startLogicalBlockAddress, 210, "no INDEX 00, pregap in the file: the track starts 150 sectors into its file");
+			checkPregapStart(disc, 2, 60, "no INDEX 00, pregap in the file (the pregap is the start of the file)");
+		}
+	}
+	{	// A BIN per track, the audio file has no pregap at all (INDEX 01 at 00:00:00): nothing may be invented
+		std::string cuePath = workspace.writeCue("no-pregap.cue", joinLines({
+			"FILE \"data.bin\" BINARY",
+			"  TRACK 01 MODE2/2352",
+			"    INDEX 01 00:00:00",
+			"FILE \"audio.bin\" BINARY",
+			"  TRACK 02 AUDIO",
+			"    INDEX 01 00:00:00",
+		}));
+		Disc disc;
+		if (check(load(disc, cuePath), "no pregap in the file: the CUE loads")) {
+			checkPregapStart(disc, 2, 60, "no pregap in the file (the pregap starts where the track does)");
+		}
+	}
+}
+
 } // namespace
 
 int main() {
@@ -367,6 +438,7 @@ int main() {
 	checkCueSyntax();
 	checkTrackTypes();
 	checkMultiFileLayout();
+	checkPregapWithoutIndex00();
 	checkReload();
 	checkTinyDisc();
 	checkFailures();
