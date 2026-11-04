@@ -1,10 +1,9 @@
 #pragma once
 
 #include <array>
-#include <cstdint>
-#include <SDL2/SDL.h>
+#include <SDL3/SDL.h>
 
-/// @brief Emulates a PlayStation DualShock (SCPH-1200) controller on the Serial Input/Output 0 bus, fed by a host SDL2 gamepad.
+/// @brief Emulates a PlayStation DualShock (SCPH-1200) controller on the Serial Input/Output 0 bus, fed by a host SDL3 gamepad.
 /// The class manages both the host side and console side operations.
 /// Host side operations include SDL gamepad hotplug detection, button and axis polling, and rumble motor output.
 /// Console side operations include the controller's serial protocol, such as polling, configuration mode, mode lock, rumble mapping, and status queries. The Serial Input/Output feeds it one byte at a time via the transfer method.
@@ -129,9 +128,9 @@ private:
     };
 
 
-    /// @brief Maps a physical SDL controller button to its specific bit in the active-low PS1 button state word.
+    /// @brief Maps a physical SDL gamepad button to its specific bit in the active-low PS1 button state word.
     struct ButtonMap {
-        SDL_GameControllerButton sdlButton;
+        SDL_GamepadButton sdlButton;
         int bit;
     };
 
@@ -142,21 +141,22 @@ private:
     static constexpr uint32_t kRumbleDurationMilliseconds = 200;
     static constexpr uint32_t kRumbleRefreshMilliseconds  = 60;
 
+    // SDL3 names the face buttons by physical position: SOUTH is the bottom button (Cross), EAST is right (Circle), WEST is left (Square), NORTH is top (Triangle)
     static constexpr ButtonMap kButtonMap[] = {
-        {SDL_CONTROLLER_BUTTON_BACK,          0},  // Select
-        {SDL_CONTROLLER_BUTTON_LEFTSTICK,     1},  // L3
-        {SDL_CONTROLLER_BUTTON_RIGHTSTICK,    2},  // R3
-        {SDL_CONTROLLER_BUTTON_START,         3},  // Start
-        {SDL_CONTROLLER_BUTTON_DPAD_UP,       4},
-        {SDL_CONTROLLER_BUTTON_DPAD_RIGHT,    5},
-        {SDL_CONTROLLER_BUTTON_DPAD_DOWN,     6},
-        {SDL_CONTROLLER_BUTTON_DPAD_LEFT,     7},
-        {SDL_CONTROLLER_BUTTON_LEFTSHOULDER,  10}, // L1
-        {SDL_CONTROLLER_BUTTON_RIGHTSHOULDER, 11}, // R1
-        {SDL_CONTROLLER_BUTTON_Y,             12}, // Triangle
-        {SDL_CONTROLLER_BUTTON_B,             13}, // Circle
-        {SDL_CONTROLLER_BUTTON_A,             14}, // Cross
-        {SDL_CONTROLLER_BUTTON_X,             15}, // Square
+        {SDL_GAMEPAD_BUTTON_BACK,           0},  // Select
+        {SDL_GAMEPAD_BUTTON_LEFT_STICK,     1},  // L3
+        {SDL_GAMEPAD_BUTTON_RIGHT_STICK,    2},  // R3
+        {SDL_GAMEPAD_BUTTON_START,          3},  // Start
+        {SDL_GAMEPAD_BUTTON_DPAD_UP,        4},
+        {SDL_GAMEPAD_BUTTON_DPAD_RIGHT,     5},
+        {SDL_GAMEPAD_BUTTON_DPAD_DOWN,      6},
+        {SDL_GAMEPAD_BUTTON_DPAD_LEFT,      7},
+        {SDL_GAMEPAD_BUTTON_LEFT_SHOULDER,  10}, // L1
+        {SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER, 11}, // R1
+        {SDL_GAMEPAD_BUTTON_NORTH,          12}, // Triangle
+        {SDL_GAMEPAD_BUTTON_EAST,           13}, // Circle
+        {SDL_GAMEPAD_BUTTON_SOUTH,          14}, // Cross
+        {SDL_GAMEPAD_BUTTON_WEST,           15}, // Square
     };
 
     
@@ -166,12 +166,12 @@ private:
     static uint8_t axisToByte(int16_t raw);
 
 
-    SDL_GameController* controller = nullptr;
-    SDL_JoystickID instanceIdentifier = -1;
+    SDL_Gamepad* controller = nullptr;
+    SDL_JoystickID instanceIdentifier = 0; // 0 means no controller
 
-    /// @brief Opens and initializes a game controller by its device index.
-    /// @param deviceIndex The system index of the controller to open.
-    void openController(int deviceIndex);
+    /// @brief Opens and initializes a gamepad by its SDL joystick id.
+    /// @param id The SDL joystick id of the gamepad to open (from a gamepad added event or SDL_GetGamepads).
+    void openController(SDL_JoystickID id);
 
 
     /// @brief Closes the currently active game controller and releases its resources.
@@ -194,7 +194,7 @@ private:
     bool configurationMode = false;
 
     // Select + Start (2s) fallback for controllers without a Guide button
-    uint32_t selectStartHoldStartTime = 0;
+    uint64_t selectStartHoldStartTime = 0;
     bool toggleLocked = false;
 
 
@@ -207,7 +207,7 @@ private:
     bool rumbleWarned = false;
     uint16_t lastLow = 0;
     uint16_t lastHigh = 0;
-    uint32_t lastRumbleTick = 0;
+    uint64_t lastRumbleTick = 0;
 
 
     // Protocol state

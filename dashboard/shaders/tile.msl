@@ -1,0 +1,97 @@
+#include <metal_stdlib>
+using namespace metal;
+
+struct RectangleUniforms
+{
+	float2 center;
+	float2 halfSize;
+	float4 color;
+	float4 borderColor;
+	float cornerRadius;
+	float borderWidth;
+	float pixelsPerUnit;
+	float alignmentPad;
+	packed_float2 viewportSizeInUnits;
+	float2 padding;
+};
+
+struct VertexOutput
+{
+	float4 clipPosition [[position]];
+	float2 localPosition;
+};
+
+// Extra space around the rectangle so the anti-aliased edge has room to fade out.
+constant float edgePadding = 4.0;
+
+vertex VertexOutput vertexMain(uint vertexIndex [[vertex_id]],
+                               constant RectangleUniforms& uniforms [[buffer(0)]])
+{
+	const float2 cornerOffsets[6] = {
+		float2(-1.0, -1.0), float2(1.0, -1.0), float2(-1.0, 1.0),
+		float2(-1.0, 1.0), float2(1.0, -1.0), float2(1.0, 1.0)
+	};
+
+	float2 localPosition = cornerOffsets[vertexIndex] * (uniforms.halfSize + edgePadding);
+	float2 positionInUnits = uniforms.center + localPosition;
+	float2 normalizedPosition = positionInUnits / uniforms.viewportSizeInUnits;
+
+	VertexOutput output;
+	output.clipPosition = float4(normalizedPosition.x * 2.0 - 1.0, 1.0 - normalizedPosition.y * 2.0, 0.0, 1.0);
+	output.localPosition = localPosition;
+	return output;
+}
+
+float roundedBoxDistance(float2 pointFromCenter, float2 halfSize, float cornerRadius)
+{
+	float2 delta = abs(pointFromCenter) - halfSize + cornerRadius;
+	return length(max(delta, 0.0)) + min(max(delta.x, delta.y), 0.0) - cornerRadius;
+}
+
+fragment float4 fragmentMain(VertexOutput input [[stage_in]],
+                             constant RectangleUniforms& uniforms [[buffer(0)]])
+{
+	// Distance from the outer edge
+	float dist = roundedBoxDistance(input.localPosition, uniforms.halfSize, uniforms.cornerRadius);
+	
+	// Anti-aliased outer edge (Alpha)
+	float outerAlpha = saturate(0.5 - dist * uniforms.pixelsPerUnit);
+	
+	// Anti-aliased inner edge (Where border meets the fill)
+	float innerAlpha = saturate(0.5 - (dist + uniforms.borderWidth) * uniforms.pixelsPerUnit);
+	
+	// Mix the border color and fill color based on the inner edge
+	float4 blendedColor = mix(uniforms.borderColor, uniforms.color, innerAlpha);
+	
+	// If the tile has no border, just use the fill color!
+	if (uniforms.borderWidth <= 0.0) {
+		blendedColor = uniforms.color;
+	}
+
+
+	return float4(blendedColor.rgb, blendedColor.a * outerAlpha);
+}
+
+fragment float4 fragmentImage(VertexOutput input [[stage_in]],
+                              constant RectangleUniforms& uniforms [[buffer(0)]],
+                              texture2d<float> boxArt [[texture(0)]],
+                              sampler boxArtSampler [[sampler(0)]])
+{
+	float dist = roundedBoxDistance(input.localPosition, uniforms.halfSize, uniforms.cornerRadius);
+	float outerAlpha = saturate(0.5 - dist * uniforms.pixelsPerUnit);
+	float innerAlpha = saturate(0.5 - (dist + uniforms.borderWidth) * uniforms.pixelsPerUnit);
+
+	// localPosition is measured from the center, so this maps the tile onto 0..1
+	float2 textureCoordinate = saturate((input.localPosition + uniforms.halfSize) / (uniforms.halfSize * 2.0));
+	float4 art = boxArt.sample(boxArtSampler, textureCoordinate);
+
+	// uniforms.color.a is the tile's fade opacity
+	float4 fill = float4(art.rgb, art.a * uniforms.color.a);
+
+	float4 blendedColor = fill;
+	if (uniforms.borderWidth > 0.0) {
+		blendedColor = mix(uniforms.borderColor, fill, innerAlpha);
+	}
+
+	return float4(blendedColor.rgb, blendedColor.a * outerAlpha);
+}

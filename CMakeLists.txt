@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.20)
 project(echo-ps1-emulator)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -20,16 +20,19 @@ endif()
 
 list(APPEND CMAKE_PREFIX_PATH "/opt/homebrew" "/usr/local")
 
-find_package(SDL2 REQUIRED)
+find_package(SDL3 REQUIRED CONFIG)
 
-# Everything that makes up the emulated console. Both the emulator and the headless test runner link this.
+# Everything that makes up the emulated console, with no window of its own (PlayStation::runFrame, VideoOutput).
+# The Echo app (dashboard/) and the headless test runner both link this.
 add_library(echo_core STATIC
     src/cdrom/Disc.cpp
     src/cdrom/CDROM.cpp
 
     src/core/Bus.cpp
     src/core/DMA.cpp
+    src/core/PlayStation.cpp
     src/core/Timers.cpp
+    src/core/VideoOutput.cpp
 
     src/cpu/CPU.cpp
     src/cpu/GTE.cpp
@@ -46,13 +49,7 @@ add_library(echo_core STATIC
     src/spu/SPU.cpp)
 
 target_include_directories(echo_core PUBLIC src)
-target_link_libraries(echo_core PUBLIC SDL2::SDL2)
-
-# The emulator itself (window, input, frame pacing)
-add_executable(echo
-    src/main.cpp
-    src/core/PlayStation.cpp)
-target_link_libraries(echo PRIVATE echo_core)
+target_link_libraries(echo_core PUBLIC SDL3::SDL3)
 
 # Windowless runner used by ps1-unit-tester/run_tests.py
 add_executable(echo-headless ps1-unit-tester/runner/echo_headless.cpp)
@@ -79,7 +76,13 @@ if(ECHO_UNIT_TEST_TARGETS)
     add_dependencies(echo-tests ${ECHO_UNIT_TEST_TARGETS})
 endif()
 
-set_target_properties(echo echo-headless PROPERTIES
+set_target_properties(echo-headless PROPERTIES
     BUILD_WITH_INSTALL_RPATH TRUE
     INSTALL_RPATH "/opt/homebrew/lib;/usr/local/lib;/Library/Frameworks"
 )
+
+# The app: the dashboard and the emulator in one window. Without this there is no way to play, so it's on by default.
+option(ECHO_BUILD_DASHBOARD "Build the Echo app (SDL3 dashboard + emulator)" ON)
+if(ECHO_BUILD_DASHBOARD)
+    add_subdirectory(dashboard)
+endif()

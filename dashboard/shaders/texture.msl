@@ -1,0 +1,40 @@
+#include <metal_stdlib>
+using namespace metal;
+
+struct TextureUniforms {
+	float2 position;
+	float2 size;
+	float2 viewportSize;
+};
+
+struct TintUniforms {
+	float4 tint;
+	float opacity;
+};
+
+struct VertexOutput {
+	float4 clipPosition [[position]];
+	float2 texCoord;
+};
+
+vertex VertexOutput vertexMain(uint vertexIndex [[vertex_id]], constant TextureUniforms& uniforms [[buffer(0)]]) {
+	const float2 positions[6] = { float2(0,0), float2(1,0), float2(0,1), float2(0,1), float2(1,0), float2(1,1) };
+	const float2 texCoords[6] = { float2(0,0), float2(1,0), float2(0,1), float2(0,1), float2(1,0), float2(1,1) };
+
+	float2 pos = positions[vertexIndex] * uniforms.size + uniforms.position;
+	float2 normalized = pos / uniforms.viewportSize;
+
+	VertexOutput out;
+	out.clipPosition = float4(normalized.x * 2.0 - 1.0, 1.0 - normalized.y * 2.0, 0.0, 1.0);
+	out.texCoord = texCoords[vertexIndex];
+	return out;
+}
+
+fragment float4 fragmentMain(VertexOutput in [[stage_in]],
+                             constant TintUniforms& uniforms [[buffer(0)]],
+                             texture2d<float> tex [[texture(0)]],
+                             sampler texSampler [[sampler(0)]]) {
+	// The texture is a coverage mask. Only its alpha matters, and the color comes from the tint.
+	const float coverage = tex.sample(texSampler, in.texCoord).a;
+	return float4(uniforms.tint.rgb, coverage * uniforms.tint.a * uniforms.opacity);
+}

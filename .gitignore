@@ -30,3 +30,9 @@ games/
 # PS1 test suite: third-party test programs and generated output
 ps1-unit-tester/public-tests/
 ps1-unit-tester/results/
+
+# Dashboard graphics
+dashboard/boxart/*
+!dashboard/boxart/README.md
+dashboard/backgrounds/*
+!dashboard/backgrounds/README.md

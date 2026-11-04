@@ -12,7 +12,7 @@
 //
 // usage: echo-headless --bios <bios> --exe <program> [--frames N] [--quiet-exit N] [--tty-log file] [--vram-png file]
 //                      [--press <button>@<frame>[+<heldFrames>] ...]
-#include <SDL2/SDL.h>
+#include <SDL3/SDL.h>
 #include <algorithm>
 #include <cctype>
 #include <cstdint>
@@ -334,7 +334,7 @@ std::string formatGuestPrintf(Bus& bus, CPU& cpu) {
 struct ScriptedPress {
 	uint64_t pressFrame = 0;
 	uint64_t releaseFrame = 0;
-	int index = 0;          // SDL_GameControllerButton, or SDL_GameControllerAxis for L2/R2
+	int index = 0; //SDL_GamepadButton, or SDL_GamepadAxis for L2/R2
 	bool isAxis = false;
 	bool isDown = false;
 };
@@ -356,14 +356,14 @@ bool parseScriptedPress(const std::string& text, ScriptedPress& press) {
 
 	struct NamedButton { const char* name; int index; bool isAxis; };
 	static const NamedButton buttons[] = {
-		{"start", SDL_CONTROLLER_BUTTON_START, false}, {"select", SDL_CONTROLLER_BUTTON_BACK, false},
-		{"up", SDL_CONTROLLER_BUTTON_DPAD_UP, false}, {"down", SDL_CONTROLLER_BUTTON_DPAD_DOWN, false},
-		{"left", SDL_CONTROLLER_BUTTON_DPAD_LEFT, false}, {"right", SDL_CONTROLLER_BUTTON_DPAD_RIGHT, false},
-		{"cross", SDL_CONTROLLER_BUTTON_A, false}, {"circle", SDL_CONTROLLER_BUTTON_B, false},
-		{"square", SDL_CONTROLLER_BUTTON_X, false}, {"triangle", SDL_CONTROLLER_BUTTON_Y, false},
-		{"l1", SDL_CONTROLLER_BUTTON_LEFTSHOULDER, false}, {"r1", SDL_CONTROLLER_BUTTON_RIGHTSHOULDER, false},
-		{"l3", SDL_CONTROLLER_BUTTON_LEFTSTICK, false}, {"r3", SDL_CONTROLLER_BUTTON_RIGHTSTICK, false},
-		{"l2", SDL_CONTROLLER_AXIS_TRIGGERLEFT, true}, {"r2", SDL_CONTROLLER_AXIS_TRIGGERRIGHT, true},
+		{"start", SDL_GAMEPAD_BUTTON_START, false}, {"select", SDL_GAMEPAD_BUTTON_BACK, false},
+		{"up", SDL_GAMEPAD_BUTTON_DPAD_UP, false}, {"down", SDL_GAMEPAD_BUTTON_DPAD_DOWN, false},
+		{"left", SDL_GAMEPAD_BUTTON_DPAD_LEFT, false}, {"right", SDL_GAMEPAD_BUTTON_DPAD_RIGHT, false},
+		{"cross", SDL_GAMEPAD_BUTTON_SOUTH, false}, {"circle", SDL_GAMEPAD_BUTTON_EAST, false},
+		{"square", SDL_GAMEPAD_BUTTON_WEST, false}, {"triangle", SDL_GAMEPAD_BUTTON_NORTH, false},
+		{"l1", SDL_GAMEPAD_BUTTON_LEFT_SHOULDER, false}, {"r1", SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER, false},
+		{"l3", SDL_GAMEPAD_BUTTON_LEFT_STICK, false}, {"r3", SDL_GAMEPAD_BUTTON_RIGHT_STICK, false},
+		{"l2", SDL_GAMEPAD_AXIS_LEFT_TRIGGER, true}, {"r2", SDL_GAMEPAD_AXIS_RIGHT_TRIGGER, true},
 	};
 	for (const NamedButton& button : buttons) {
 		if (name == button.name) { press.index = button.index; press.isAxis = button.isAxis; return true; }
@@ -373,8 +373,8 @@ bool parseScriptedPress(const std::string& text, ScriptedPress& press) {
 
 void applyScriptedPress(SDL_Joystick* virtualPad, ScriptedPress& press, bool down) {
 	press.isDown = down;
-	if (press.isAxis) SDL_JoystickSetVirtualAxis(virtualPad, press.index, down ? 32767 : -32768);
-	else SDL_JoystickSetVirtualButton(virtualPad, press.index, down ? 1 : 0);
+	if (press.isAxis) SDL_SetJoystickVirtualAxis(virtualPad, press.index, down ? 32767 : -32768);
+	else SDL_SetJoystickVirtualButton(virtualPad, press.index, down);
 }
 
 void printUsage() {
@@ -428,20 +428,27 @@ int main(int argumentCount, char* arguments[]) {
 	}
 	CPU cpu(&bus);
 
-	// A virtual game controller, plugged in the same way SDL announces a real one (the Bus's DualShock has already started SDL's controller support)
+	// A virtual gamepad, plugged in the same way SDL announces a real one (the Bus's DualShock has already started SDL's gamepad support)
 	SDL_Joystick* virtualPad = nullptr;
 	if (!scriptedPresses.empty()) {
-		int deviceIndex = SDL_JoystickAttachVirtual(SDL_JOYSTICK_TYPE_GAMECONTROLLER, SDL_CONTROLLER_AXIS_MAX, SDL_CONTROLLER_BUTTON_MAX, 0);
-		virtualPad = deviceIndex >= 0 ? SDL_JoystickOpen(deviceIndex) : nullptr;
+		SDL_VirtualJoystickDesc description;
+		SDL_INIT_INTERFACE(&description);
+		description.type = SDL_JOYSTICK_TYPE_GAMEPAD;
+		description.naxes = SDL_GAMEPAD_AXIS_COUNT;
+		description.nbuttons = SDL_GAMEPAD_BUTTON_COUNT;
+		description.name = "echo-headless virtual pad";
+
+		SDL_JoystickID virtualId = SDL_AttachVirtualJoystick(&description);
+		virtualPad = virtualId != 0 ? SDL_OpenJoystick(virtualId) : nullptr;
 		if (!virtualPad) {
-			std::cout << "HEADLESS: could not create a virtual controller: " << SDL_GetError() << " (--press needs SDL 2.0.14 or newer)" << std::endl;
+			std::cout << "HEADLESS: could not create a virtual controller: " << SDL_GetError() << std::endl;
 			return 1;
 		}
-		SDL_JoystickSetVirtualAxis(virtualPad, SDL_CONTROLLER_AXIS_TRIGGERLEFT, -32768);   // triggers rest at the bottom of the range
-		SDL_JoystickSetVirtualAxis(virtualPad, SDL_CONTROLLER_AXIS_TRIGGERRIGHT, -32768);
+		SDL_SetJoystickVirtualAxis(virtualPad, SDL_GAMEPAD_AXIS_LEFT_TRIGGER, -32768);   // triggers rest at the bottom of the range
+		SDL_SetJoystickVirtualAxis(virtualPad, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER, -32768);
 		SDL_Event addedEvent = {};
-		addedEvent.type = SDL_CONTROLLERDEVICEADDED;
-		addedEvent.cdevice.which = deviceIndex;
+		addedEvent.type = SDL_EVENT_GAMEPAD_ADDED;
+		addedEvent.gdevice.which = virtualId;
 		bus.getSIO0().getController().handleEvent(addedEvent);
 	}
 
@@ -470,7 +477,7 @@ int main(int argumentCount, char* arguments[]) {
 				if (!press.isDown && frameCounter == press.pressFrame) applyScriptedPress(virtualPad, press, true);
 				else if (press.isDown && frameCounter == press.releaseFrame) applyScriptedPress(virtualPad, press, false);
 			}
-			SDL_GameControllerUpdate();
+			SDL_UpdateGamepads();
 		}
 
 		for (int stepIndex = 0; stepIndex < Hardware::CYCLES_PER_FRAME; stepIndex++) {

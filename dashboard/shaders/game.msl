@@ -1,0 +1,34 @@
+#include <metal_stdlib>
+using namespace metal;
+
+// Draws the emulator's picture as one rectangle. There are no vertex buffers: the six corners come from the vertex id.
+struct GameUniforms {
+    float4 rect;    // left, top, right, bottom in clip space (-1 to 1, y up)
+    float4 uvRect;  // u0, v0, u1, v1 of the part of the texture that holds the picture
+};
+
+struct GameVertexOut {
+    float4 position [[position]];
+    float2 uv;
+};
+
+vertex GameVertexOut gameVertex(uint vertexId [[vertex_id]], constant GameUniforms& uniforms [[buffer(0)]]) {
+    // Two triangles: (0,0) (1,0) (0,1) and (1,0) (1,1) (0,1)
+    const float cornerX = (vertexId == 1 || vertexId == 3 || vertexId == 4) ? 1.0 : 0.0;
+    const float cornerY = (vertexId == 2 || vertexId == 4 || vertexId == 5) ? 1.0 : 0.0;
+
+    GameVertexOut out;
+    out.position = float4(mix(uniforms.rect.x, uniforms.rect.z, cornerX),
+                          mix(uniforms.rect.y, uniforms.rect.w, cornerY),
+                          0.0, 1.0);
+    out.uv = float2(mix(uniforms.uvRect.x, uniforms.uvRect.z, cornerX),
+                    mix(uniforms.uvRect.y, uniforms.uvRect.w, cornerY));
+    return out;
+}
+
+fragment float4 gameFragment(GameVertexOut in [[stage_in]],
+                             texture2d<float> picture [[texture(0)]],
+                             sampler pictureSampler [[sampler(0)]]) {
+    // Opaque: the PS1's mask bit must never make part of the picture see-through
+    return float4(picture.sample(pictureSampler, in.uv).rgb, 1.0);
+}

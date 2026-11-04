@@ -3,42 +3,40 @@
 
 
 DualShock::DualShock() {
-    // Force SDL to use physical button positions
-    SDL_SetHint(SDL_HINT_GAMECONTROLLER_USE_BUTTON_LABELS, "0");
-    SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_SWITCH, "0");
-
-    SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI, "1");
-    SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS5, "1");
-    SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS5_RUMBLE, "1");
-
-    SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER);
-    SDL_GameControllerAddMappingsFromFile("assets/gamecontrollerdb.txt");
+    SDL_InitSubSystem(SDL_INIT_GAMEPAD);
+    SDL_AddGamepadMappingsFromFile("assets/gamecontrollerdb.txt");
 }
 
 
 DualShock::~DualShock() {
     closeController();
-    SDL_QuitSubSystem(SDL_INIT_GAMECONTROLLER);
+    SDL_QuitSubSystem(SDL_INIT_GAMEPAD);
 }
 
 
 void DualShock::handleEvent(const SDL_Event& event) {
     switch (event.type) {
-        case SDL_CONTROLLERDEVICEADDED:{
-            if (!controller) openController(event.cdevice.which);
+        case SDL_EVENT_GAMEPAD_ADDED:{
+            if (!controller) openController(event.gdevice.which);
             break;
         }
-        case SDL_CONTROLLERDEVICEREMOVED: {
-            if (controller && event.cdevice.which == instanceIdentifier) {
+        case SDL_EVENT_GAMEPAD_REMOVED: {
+            if (controller && event.gdevice.which == instanceIdentifier) {
                 closeController();
+
                 // Fall back to any other pad that is still plugged in
-                for (int i = 0; i < SDL_NumJoysticks() && !controller; ++i) openController(i);
+                int count = 0;
+                SDL_JoystickID* gamepadIds = SDL_GetGamepads(&count);
+                if (gamepadIds) {
+                    for (int i = 0; i < count && !controller; ++i) openController(gamepadIds[i]);
+                    SDL_free(gamepadIds);
+                }
             }
             break;
         }
-        case SDL_CONTROLLERBUTTONDOWN: {
+        case SDL_EVENT_GAMEPAD_BUTTON_DOWN: {
             // The Guide/PS button acts as the DualShock's Analog button
-            if (controller && event.cbutton.which == instanceIdentifier && event.cbutton.button == SDL_CONTROLLER_BUTTON_GUIDE) {
+            if (controller && event.gbutton.which == instanceIdentifier && event.gbutton.button == SDL_GAMEPAD_BUTTON_GUIDE) {
                 toggleAnalogMode();
             }
             break;
@@ -63,20 +61,20 @@ void DualShock::updateState() {
     
     // Digital buttons
     for (const ButtonMap& m : kButtonMap) {
-        if (SDL_GameControllerGetButton(controller, m.sdlButton)) {
+        if (SDL_GetGamepadButton(controller, m.sdlButton)) {
             controllerButtonState &= static_cast<uint16_t>(~(1u << m.bit));
         }
     }
 
     // L2/R2: SDL triggers rest at 0 and go up to 32767; treat ~half-pull as a press
-    if (SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_TRIGGERLEFT)  > kTriggerThreshold) controllerButtonState &= ~(1u << 8);
-    if (SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_TRIGGERRIGHT) > kTriggerThreshold) controllerButtonState &= ~(1u << 9);
+    if (SDL_GetGamepadAxis(controller, SDL_GAMEPAD_AXIS_LEFT_TRIGGER)  > kTriggerThreshold) controllerButtonState &= ~(1u << 8);
+    if (SDL_GetGamepadAxis(controller, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER) > kTriggerThreshold) controllerButtonState &= ~(1u << 9);
 
     // Sticks are always read; transfer() decides whether the game gets to see them
-    leftX  = axisToByte(SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_LEFTX));
-    leftY  = axisToByte(SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_LEFTY));
-    rightX = axisToByte(SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_RIGHTX));
-    rightY = axisToByte(SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_RIGHTY));
+    leftX  = axisToByte(SDL_GetGamepadAxis(controller, SDL_GAMEPAD_AXIS_LEFTX));
+    leftY  = axisToByte(SDL_GetGamepadAxis(controller, SDL_GAMEPAD_AXIS_LEFTY));
+    rightX = axisToByte(SDL_GetGamepadAxis(controller, SDL_GAMEPAD_AXIS_RIGHTX));
+    rightY = axisToByte(SDL_GetGamepadAxis(controller, SDL_GAMEPAD_AXIS_RIGHTY));
 
     // Fallback Analog toggle: hold Select + Start for 2 seconds
     const bool selectPressed = !(controllerButtonState & (1u << 0));
@@ -186,27 +184,27 @@ uint8_t DualShock::axisToByte(int16_t raw) {
 }
 
 
-void DualShock::openController(int deviceIndex) {
-    if (!SDL_IsGameController(deviceIndex)) return;
+void DualShock::openController(SDL_JoystickID id) {
+    if (!SDL_IsGamepad(id)) return;
 
-    controller = SDL_GameControllerOpen(deviceIndex);
+    controller = SDL_OpenGamepad(id);
     if (!controller) return;
 
-    instanceIdentifier = SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller));
+    instanceIdentifier = SDL_GetGamepadID(controller);
     lastLow = lastHigh = 0;
     rumbleWarned = false;
 
-    const char* name = SDL_GameControllerName(controller);
+    const char* name = SDL_GetGamepadName(controller);
     std::cout << "DUALSHOCK: Controller Connected (" << (name ? name : "unknown") << ")" << std::endl;
 }
 
 
 void DualShock::closeController() {
     if (controller) {
-        SDL_GameControllerRumble(controller, 0, 0, 0);
-        SDL_GameControllerClose(controller);
+        SDL_RumbleGamepad(controller, 0, 0, 0);
+        SDL_CloseGamepad(controller);
         controller = nullptr;
-        instanceIdentifier = -1;
+        instanceIdentifier = 0;
         std::cout << "DUALSHOCK: Controller Disconnected" << std::endl;
     }
 }
@@ -221,11 +219,11 @@ void DualShock::applyRumble() {
     const uint16_t high = static_cast<uint16_t>(smallMotor * 257);
     const bool active  = (low | high) != 0;
     const bool changed = (low != lastLow) || (high != lastHigh);
-    const uint32_t now = SDL_GetTicks();
+    const uint64_t now = SDL_GetTicks();
 
     if (!changed && !(active && now - lastRumbleTick >= kRumbleRefreshMilliseconds)) return;
 
-    if (SDL_GameControllerRumble(controller, low, high, active ? kRumbleDurationMilliseconds : 0) != 0) {
+    if (!SDL_RumbleGamepad(controller, low, high, active ? kRumbleDurationMilliseconds : 0)) {
         if (!rumbleWarned) {
             std::cout << "DUALSHOCK: Rumble failed: " << SDL_GetError() << std::endl;
             rumbleWarned = true;
